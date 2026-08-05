@@ -5,6 +5,7 @@ use std::process::Command;
 
 use crate::exec::{Cmd, CmdOutput, CommandRunner, Escalator, ExecError};
 use crate::improvement::Privilege;
+use crate::infra::exec::constants::INSTALL;
 
 /// The production [`CommandRunner`].
 ///
@@ -142,7 +143,7 @@ impl CommandRunner for RealRunner {
             // the same step, so the file is never briefly world-writable.
             Privilege::Root => {
                 let staged = stage_temp_file(path, contents)?;
-                let install = Cmd::root("install")
+                let install = Cmd::root(INSTALL)
                     .arg("-m")
                     .arg("0644")
                     .arg(staged.to_string_lossy().into_owned())

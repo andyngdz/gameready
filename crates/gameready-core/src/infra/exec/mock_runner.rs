@@ -4,13 +4,12 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use crate::exec::{Cmd, CmdOutput, CommandRunner, ExecError};
-use crate::improvement::Privilege;
+use crate::exec::{Cmd, CmdOutput, ExecError};
 
 /// Reported when the fake system's lock is poisoned, which only happens if a
 /// test panicked while holding it. Named once so the three call sites that can
 /// hit it stay in step.
-const POISONED: &str = "mock state poisoned";
+pub(super) const POISONED: &str = "mock state poisoned";
 
 /// A fake system a test can shape.
 ///
@@ -24,17 +23,19 @@ const POISONED: &str = "mock state poisoned";
 /// on the end state rather than only on the command sequence.
 #[derive(Debug, Default)]
 pub struct MockRunner {
-    state: Mutex<MockState>,
-    binaries: HashSet<String>,
+    pub(super) state: Mutex<MockState>,
+    pub(super) binaries: HashSet<String>,
     responses: HashMap<String, CmdOutput>,
     effects: HashMap<String, (PathBuf, String)>,
+    failing: HashSet<String>,
     fail_at: Option<usize>,
 }
 
+/// The fake system's mutable half: what it contains and what was asked of it.
 #[derive(Debug, Default)]
-struct MockState {
-    files: HashMap<PathBuf, String>,
-    commands: Vec<String>,
+pub(super) struct MockState {
+    pub(super) files: HashMap<PathBuf, String>,
+    pub(super) commands: Vec<String>,
 }
 
 impl MockRunner {
@@ -75,6 +76,18 @@ impl MockRunner {
                 stderr: String::new(),
             },
         );
+        self
+    }
+
+    /// Makes one named command exit non-zero.
+    ///
+    /// Probes read meaning out of an exit status: `pacman -Q foo` failing is how
+    /// "not installed" is expressed. Without this the mock answers 0 to
+    /// everything unseeded, so every such probe reports the opposite of the
+    /// truth and its test passes by accident.
+    #[must_use]
+    pub fn failing(mut self, command: impl Into<String>) -> Self {
+        self.failing.insert(command.into());
         self
     }
 
@@ -134,7 +147,7 @@ impl MockRunner {
             .unwrap_or_default()
     }
 
-    fn record(&self, cmd: &Cmd) -> Result<CmdOutput, ExecError> {
+    pub(super) fn record(&self, cmd: &Cmd) -> Result<CmdOutput, ExecError> {
         let rendered = cmd.to_string();
         let index = match self.state.lock() {
             Ok(mut state) => {
@@ -148,6 +161,14 @@ impl MockRunner {
                 });
             }
         };
+
+        if self.failing.contains(&rendered) {
+            return Ok(CmdOutput {
+                code: 1,
+                stdout: String::new(),
+                stderr: format!("{rendered}: seeded failure"),
+            });
+        }
 
         if self.fail_at == Some(index) {
             return Err(ExecError::NonZeroExit {
@@ -171,74 +192,3 @@ impl MockRunner {
         }))
     }
 }
-
-impl CommandRunner for MockRunner {
-    fn run(&self, cmd: &Cmd) -> Result<CmdOutput, ExecError> {
-        let output = self.record(cmd)?;
-        if output.code == 0 {
-            return Ok(output);
-        }
-        Err(ExecError::NonZeroExit {
-            command: cmd.to_string(),
-            code: output.code,
-            stdout: output.stdout,
-            stderr: output.stderr,
-        })
-    }
-
-    fn run_allowing_failure(&self, cmd: &Cmd) -> Result<CmdOutput, ExecError> {
-        self.record(cmd)
-    }
-
-    fn read_to_string(&self, path: &Path) -> Result<String, ExecError> {
-        self.file(path).ok_or_else(|| ExecError::Read {
-            path: path.to_path_buf(),
-            source: std::io::Error::from(std::io::ErrorKind::NotFound),
-        })
-    }
-
-    fn write_file(
-        &self,
-        path: &Path,
-        contents: &str,
-        _privilege: Privilege,
-    ) -> Result<(), ExecError> {
-        match self.state.lock() {
-            Ok(mut state) => {
-                state.files.insert(path.to_path_buf(), contents.to_owned());
-                Ok(())
-            }
-            Err(_) => Err(ExecError::Write {
-                path: path.to_path_buf(),
-                source: std::io::Error::other(POISONED),
-            }),
-        }
-    }
-
-    fn remove_file(&self, path: &Path, _privilege: Privilege) -> Result<(), ExecError> {
-        match self.state.lock() {
-            Ok(mut state) => {
-                state.files.remove(path);
-                Ok(())
-            }
-            Err(_) => Err(ExecError::Write {
-                path: path.to_path_buf(),
-                source: std::io::Error::other(POISONED),
-            }),
-        }
-    }
-
-    fn path_exists(&self, path: &Path) -> bool {
-        self.file(path).is_some()
-    }
-
-    fn which(&self, binary: &str) -> Option<PathBuf> {
-        self.binaries
-            .contains(binary)
-            .then(|| PathBuf::from("/usr/bin").join(binary))
-    }
-}
-
-#[cfg(test)]
-#[path = "mock_runner_test.rs"]
-mod mock_runner_test;
