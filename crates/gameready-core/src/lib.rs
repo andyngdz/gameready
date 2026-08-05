@@ -23,6 +23,7 @@
 pub mod doctor;
 pub mod exec;
 pub mod facts;
+pub mod games;
 pub mod improvement;
 pub mod infra;
 pub mod journal;

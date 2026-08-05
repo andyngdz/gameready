@@ -20,6 +20,11 @@ use gameready_core::run::{Mode, RunStatus};
 
 use crate::cli::args::{Cli, Command};
 
+/// The name every per-user directory is built from. Named once because the
+/// state directory and the config directory both derive from it, and two copies
+/// would let one be renamed without the other.
+const PROJECT: &str = "gameready";
+
 fn main() -> ExitCode {
     let cli = Cli::parse();
 
@@ -51,6 +56,11 @@ fn dispatch(cli: &Cli) -> Result<(RunStatus, String)> {
     match &cli.command {
         Command::Doctor => Ok((RunStatus::Clean, cli::commands::doctor(&runner)?)),
 
+        Command::ListGames => {
+            let games = user_games_dir(cli.games_dir.clone())?;
+            Ok((RunStatus::Clean, cli::commands::list_games(&games)?))
+        }
+
         Command::Apply { step, dry_run } => {
             let mode = if *dry_run { Mode::DryRun } else { Mode::Apply };
             let (report, rendered) = cli::commands::apply(&runner, paths, step.as_deref(), mode)?;
@@ -78,12 +88,25 @@ fn dispatch(cli: &Cli) -> Result<(RunStatus, String)> {
     }
 }
 
+/// Resolves where the user's own game profiles live.
+///
+/// Separate from the state directory: profiles are configuration a user writes
+/// and keeps, while the state directory is data gameready writes and prunes.
+fn user_games_dir(override_dir: Option<PathBuf>) -> Result<PathBuf> {
+    if let Some(dir) = override_dir {
+        return Ok(dir);
+    }
+    let dirs = ProjectDirs::from("", "", PROJECT)
+        .context("could not determine a config directory for this user")?;
+    Ok(dirs.config_dir().join("games"))
+}
+
 /// Resolves where the journal, backups, and logs live.
 fn state_paths(override_dir: Option<PathBuf>) -> Result<StatePaths> {
     if let Some(dir) = override_dir {
         return Ok(StatePaths::new(dir));
     }
-    let dirs = ProjectDirs::from("", "", "gameready")
+    let dirs = ProjectDirs::from("", "", PROJECT)
         .context("could not determine a state directory for this user")?;
     let root = dirs.state_dir().unwrap_or_else(|| dirs.data_dir());
     Ok(StatePaths::new(root.to_path_buf()))

@@ -65,4 +65,4 @@ jobs:
           docker run --rm \
             -v "$PWD/target/x86_64-unknown-linux-musl/release/gameready:/usr/local/bin/gameready:ro" \
             ${{ matrix.image }} \
-            gameready doctor
+            sh -c 'gameready doctor && gameready list-games'

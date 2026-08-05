@@ -1,0 +1,8 @@
+# Verified against this machine's Steam library on 2026-08-05.
+name = "Slay the Spire 2"
+steam_appid = 2868840
+
+# A turn-based card game holds a steady frame rate on anything. gamemode is
+# still worth it for the scheduling priority; an overlay is not.
+[launch]
+gamemode = true

@@ -1,0 +1,15 @@
+# Verified against this machine's Steam library on 2026-08-05.
+name = "Deadlock"
+steam_appid = 1422450
+
+[launch]
+gamemode = true
+mangohud = true
+
+[env]
+# Deadlock is a competitive shooter, so the stutter from compiling a shader
+# mid-fight costs more than the extra seconds of loading.
+DXVK_ASYNC = "1"
+
+[proton]
+prefer = "GE-Proton"

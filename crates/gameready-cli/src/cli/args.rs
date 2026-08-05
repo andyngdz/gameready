@@ -18,6 +18,11 @@ pub struct Cli {
     /// out of the invoking user's real journal.
     #[arg(long, global = true, env = "GAMEREADY_STATE_DIR")]
     pub state_dir: Option<std::path::PathBuf>,
+
+    /// Read your own game profiles from somewhere other than
+    /// `~/.config/gameready/games`.
+    #[arg(long, global = true, env = "GAMEREADY_GAMES_DIR")]
+    pub games_dir: Option<std::path::PathBuf>,
 }
 
 impl Command {
@@ -29,7 +34,7 @@ impl Command {
     #[must_use]
     pub const fn mutates(&self) -> bool {
         match self {
-            Self::Doctor => false,
+            Self::Doctor | Self::ListGames => false,
             Self::Apply { dry_run, .. } => !*dry_run,
             Self::Rollback { .. } | Self::Selftest { .. } => true,
         }
@@ -41,6 +46,9 @@ impl Command {
 pub enum Command {
     /// Report system facts and what each step would do.
     Doctor,
+
+    /// List the game profiles gameready can see, and where each came from.
+    ListGames,
 
     /// Apply improvements.
     Apply {
