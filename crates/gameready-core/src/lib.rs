@@ -20,6 +20,7 @@
 // user's machine, where a panic would abandon a half-applied change.
 #![cfg_attr(test, allow(clippy::expect_used, clippy::unwrap_used, clippy::panic))]
 
+pub mod doctor;
 pub mod exec;
 pub mod facts;
 pub mod improvement;

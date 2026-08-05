@@ -54,6 +54,7 @@ fn apply(runner: &MockRunner, paths: &StatePaths) -> RunId {
         runner,
         &mut journal,
         Mode::Apply,
+        None,
         &mut |_| {},
     )
     .expect("run completes");

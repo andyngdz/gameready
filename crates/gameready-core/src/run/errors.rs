@@ -3,6 +3,7 @@
 use thiserror::Error;
 
 use crate::journal::JournalError;
+use crate::pkg::PackageError;
 
 /// Why a run could not proceed.
 ///
@@ -13,6 +14,9 @@ use crate::journal::JournalError;
 pub enum RunError {
     #[error(transparent)]
     Journal(#[from] JournalError),
+
+    #[error(transparent)]
+    Package(#[from] PackageError),
 
     #[error("no step matched `{requested}`")]
     UnknownStep { requested: String },

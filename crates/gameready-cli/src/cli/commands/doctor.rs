@@ -3,6 +3,7 @@
 use std::fmt::Write as _;
 
 use anyhow::{Context as _, Result};
+use gameready_core::doctor;
 use gameready_core::exec::CommandRunner;
 use gameready_core::facts;
 use gameready_core::improvement::CoreCx;
@@ -15,9 +16,6 @@ pub fn run(runner: &dyn CommandRunner) -> Result<String> {
     let facts = facts::probe(runner).context(CANNOT_READ_SYSTEM)?;
     let cx = CoreCx::new(&facts, runner);
 
-    // `?` rather than a discarded Result: writing to a String cannot fail, but
-    // the formatting machinery still returns one, and `fmt::Error` converts
-    // into the anyhow error this already returns.
     let mut out = String::new();
     writeln!(out, "\nSystem")?;
     writeln!(out, "  distro    {}", facts.distro.name)?;
@@ -32,6 +30,16 @@ pub fn run(runner: &dyn CommandRunner) -> Result<String> {
             |probe| probe.describe(),
         );
         writeln!(out, "  {}  {state}", step.id())?;
+    }
+
+    let warnings = doctor::check_warnings(&facts, runner);
+    if !warnings.is_empty() {
+        writeln!(out, "\nWarnings")?;
+        for warning in &warnings {
+            writeln!(out, "  ! {}", warning.finding)?;
+            writeln!(out, "    {}", warning.explanation)?;
+            writeln!(out, "    Fix: {}", warning.suggestion)?;
+        }
     }
 
     Ok(out)

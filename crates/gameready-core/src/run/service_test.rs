@@ -1,7 +1,10 @@
 use tempfile::TempDir;
 
 use super::*;
-use crate::improvement::{Check, Improvement, ImprovementId, Privilege, StepPlan, Verification};
+use crate::improvement::{
+    ApplyCx, Check, CoreCx, Improvement, ImprovementId, Privilege, StepError, StepPlan,
+    Verification,
+};
 use crate::infra::exec::MockRunner;
 use crate::journal::{Change, RunId, StatePaths};
 use crate::run::RunStatus;
@@ -99,7 +102,16 @@ fn run_with(steps: Vec<Box<dyn CoreImprovement>>, mode: Mode, runner: &MockRunne
     let dir = TempDir::new().expect("temp dir");
     let mut journal = Journal::open(StatePaths::new(dir.path().to_path_buf()), RunId::generate())
         .expect("journal opens");
-    execute(steps, &facts(), runner, &mut journal, mode, &mut |_| {}).expect("run completes")
+    execute(
+        steps,
+        &facts(),
+        runner,
+        &mut journal,
+        mode,
+        None,
+        &mut |_| {},
+    )
+    .expect("run completes")
 }
 
 #[test]
@@ -245,6 +257,7 @@ fn events_arrive_in_phase_order() {
         &runner,
         &mut journal,
         Mode::Apply,
+        None,
         &mut |event| seen.push(event),
     )
     .expect("run completes");

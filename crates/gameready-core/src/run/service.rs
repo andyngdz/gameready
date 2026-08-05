@@ -5,27 +5,24 @@ use std::time::Instant;
 use crate::exec::CommandRunner;
 use crate::facts::SystemFacts;
 use crate::improvement::{
-    ApplyCx, CoreCx, CoreImprovement, Outcome, Probe, RollbackStatus, SkipReason, StepError,
+    CoreCx, CoreImprovement, ImprovementId, Outcome, Probe, RollbackStatus, SkipReason,
 };
-use crate::journal::{Journal, JournalEvent};
+use crate::journal::{Change, Journal, JournalEvent};
+use crate::pkg::PackageManager;
 use crate::run::domain::{Mode, RunEvent, RunReport, StepReport};
 use crate::run::errors::RunError;
+use crate::run::use_cases::apply_step::apply_and_verify;
+use crate::run::use_cases::resolve::resolve_dependencies;
 
-/// Probes, plans, applies, and verifies a set of steps.
-///
-/// The phases are separate on purpose. Every step is probed before any step
-/// applies, so the plan shown to the user is complete and a precondition that
-/// fails costs nothing. In [`Mode::DryRun`] the run stops after probing.
-///
-/// A step whose `verify` fails is rolled back from its own recorded changes and
-/// reported as failed, not applied. One step failing does not stop the rest:
-/// the failure is contained to that step, which has already been undone.
+/// Probes, resolves dependencies, installs prerequisites, applies, and verifies
+/// a set of steps.
 pub fn execute(
     steps: Vec<Box<dyn CoreImprovement>>,
     facts: &SystemFacts,
     runner: &dyn CommandRunner,
     journal: &mut Journal,
     mode: Mode,
+    pkg_manager: Option<&dyn PackageManager>,
     on_event: &mut dyn FnMut(RunEvent),
 ) -> Result<RunReport, RunError> {
     let started = Instant::now();
@@ -37,7 +34,7 @@ pub fn execute(
     for step in steps {
         on_event(RunEvent::Probing { step: step.id() });
         match probe_outcome(step.as_ref(), &cx, mode) {
-            Settled::Now(outcome) => reports.push(report(step.as_ref(), outcome)),
+            Settled::Now(outcome) => reports.push(step_report(step.as_ref(), outcome)),
             Settled::Apply => pending.push(step),
         }
     }
@@ -47,6 +44,111 @@ pub fn execute(
         skipped: reports.len(),
     });
 
+    let installed_deps = resolve_and_install(
+        &mut pending,
+        &mut reports,
+        &cx,
+        journal,
+        mode,
+        pkg_manager,
+        on_event,
+    )?;
+
+    if mode.mutates() {
+        apply_all(pending, &cx, runner, journal, &mut reports, on_event)?;
+    }
+
+    Ok(RunReport {
+        run: journal.run(),
+        mode,
+        steps: reports,
+        installed_dependencies: installed_deps,
+        took: started.elapsed(),
+    })
+}
+
+fn resolve_and_install(
+    pending: &mut Vec<Box<dyn CoreImprovement>>,
+    reports: &mut Vec<StepReport>,
+    cx: &CoreCx<'_>,
+    journal: &mut Journal,
+    mode: Mode,
+    pkg_manager: Option<&dyn PackageManager>,
+    on_event: &mut dyn FnMut(RunEvent),
+) -> Result<Vec<String>, RunError> {
+    let pm = match pkg_manager {
+        Some(pm) if !pending.is_empty() => pm,
+        _ => return Ok(Vec::new()),
+    };
+
+    let preflight = resolve_dependencies(pending, cx.facts, cx.runner, pm);
+    demote_blocked(pending, reports, &preflight);
+
+    on_event(RunEvent::DependenciesResolved {
+        report: preflight.clone(),
+    });
+
+    if !mode.mutates() || !preflight.needs_install() {
+        return Ok(Vec::new());
+    }
+
+    let packages = preflight.packages_to_install(cx.facts.distro.package_manager());
+    on_event(RunEvent::InstallingDependencies {
+        count: packages.len(),
+    });
+
+    let outcome = pm.install(cx.runner, &packages)?;
+
+    if outcome.changed_anything() {
+        journal.append(JournalEvent::Changed {
+            step: ImprovementId::from_static("preflight.dependencies"),
+            change: Change::PackagesInstalled {
+                manager: pm.kind().binary().to_owned(),
+                requested: outcome.requested.clone(),
+                newly_installed: outcome.newly_installed.clone(),
+            },
+        })?;
+    }
+
+    on_event(RunEvent::DependenciesInstalled {
+        newly_installed: outcome.newly_installed.clone(),
+    });
+
+    Ok(outcome.newly_installed)
+}
+
+fn demote_blocked(
+    pending: &mut Vec<Box<dyn CoreImprovement>>,
+    reports: &mut Vec<StepReport>,
+    preflight: &crate::run::domain::PreflightReport,
+) {
+    let blocked = preflight.blocked_steps();
+    if blocked.is_empty() {
+        return;
+    }
+    pending.retain(|step| {
+        if blocked.contains(&step.id()) {
+            reports.push(step_report(
+                step.as_ref(),
+                Outcome::NotApplicable {
+                    reason: "a required dependency is unavailable on this system".to_owned(),
+                },
+            ));
+            false
+        } else {
+            true
+        }
+    });
+}
+
+fn apply_all(
+    pending: Vec<Box<dyn CoreImprovement>>,
+    cx: &CoreCx<'_>,
+    runner: &dyn CommandRunner,
+    journal: &mut Journal,
+    reports: &mut Vec<StepReport>,
+    on_event: &mut dyn FnMut(RunEvent),
+) -> Result<(), RunError> {
     for step in pending {
         on_event(RunEvent::Applying {
             step: step.id(),
@@ -54,7 +156,7 @@ pub fn execute(
         });
 
         journal.append(JournalEvent::StepBegin { step: step.id() })?;
-        let outcome = apply_and_verify(step.as_ref(), &cx, runner, journal);
+        let outcome = apply_and_verify(step.as_ref(), cx, runner, journal);
 
         journal.append(JournalEvent::StepEnd {
             step: step.id(),
@@ -65,19 +167,11 @@ pub fn execute(
             label: outcome.label().to_owned(),
         });
 
-        reports.push(report(step.as_ref(), outcome));
+        reports.push(step_report(step.as_ref(), outcome));
     }
-
-    Ok(RunReport {
-        run: journal.run(),
-        mode,
-        steps: reports,
-        installed_dependencies: Vec::new(),
-        took: started.elapsed(),
-    })
+    Ok(())
 }
 
-/// Whether probing settled a step's fate or left it to apply.
 enum Settled {
     Now(Outcome),
     Apply,
@@ -96,8 +190,6 @@ fn probe_outcome(step: &dyn CoreImprovement, cx: &CoreCx<'_>, mode: Mode) -> Set
         Ok(Probe::Conflict { with, detail: _ }) => Settled::Now(Outcome::Skipped {
             reason: SkipReason::Conflict { with },
         }),
-        // A step that cannot read the current state cannot restore it, so an
-        // unreadable probe is never permission to apply.
         Ok(Probe::Unknown { reason }) => Settled::Now(Outcome::NotApplicable { reason }),
         Err(error) => Settled::Now(Outcome::Failed {
             error: error.to_string(),
@@ -106,77 +198,7 @@ fn probe_outcome(step: &dyn CoreImprovement, cx: &CoreCx<'_>, mode: Mode) -> Set
     }
 }
 
-/// Applies one step, then proves the change took effect.
-///
-/// A failure in either phase rolls the step back from the changes it actually
-/// recorded, so a partially applied step never survives as "applied".
-fn apply_and_verify(
-    step: &dyn CoreImprovement,
-    cx: &CoreCx<'_>,
-    runner: &dyn CommandRunner,
-    journal: &mut Journal,
-) -> Outcome {
-    let started = Instant::now();
-    let mut apply_cx = ApplyCx::new(*cx, step.id(), runner, journal);
-
-    if let Err(error) = step.apply(&mut apply_cx) {
-        let recorded = apply_cx.recorded().to_vec();
-        return failed(step, &recorded, &mut apply_cx, &error.to_string());
-    }
-
-    let verification = match step.verify(cx) {
-        Ok(verification) => verification,
-        Err(error) => {
-            let recorded = apply_cx.recorded().to_vec();
-            return failed(step, &recorded, &mut apply_cx, &error.to_string());
-        }
-    };
-
-    if !verification.passed() {
-        let recorded = apply_cx.recorded().to_vec();
-        let error = StepError::VerificationFailed {
-            step: step.id(),
-            failed: verification.failed_count(),
-            total: verification.total_count(),
-        };
-        return failed(step, &recorded, &mut apply_cx, &error.to_string());
-    }
-
-    Outcome::Applied {
-        changes: apply_cx.recorded().to_vec(),
-        verification,
-        took: started.elapsed(),
-    }
-}
-
-/// Undoes what the step recorded and reports the failure.
-fn failed(
-    step: &dyn CoreImprovement,
-    recorded: &[crate::journal::Change],
-    apply_cx: &mut ApplyCx<'_, CoreCx<'_>>,
-    error: &str,
-) -> Outcome {
-    if recorded.is_empty() {
-        return Outcome::Failed {
-            error: error.to_owned(),
-            rolled_back: RollbackStatus::NotAttempted,
-        };
-    }
-
-    let rolled_back = match step.rollback(recorded, apply_cx) {
-        Ok(()) => RollbackStatus::Succeeded,
-        Err(undo_error) => RollbackStatus::Failed {
-            detail: undo_error.to_string(),
-        },
-    };
-
-    Outcome::Failed {
-        error: error.to_owned(),
-        rolled_back,
-    }
-}
-
-fn report(step: &dyn CoreImprovement, outcome: Outcome) -> StepReport {
+fn step_report(step: &dyn CoreImprovement, outcome: Outcome) -> StepReport {
     StepReport {
         step: step.id(),
         name: step.name().to_owned(),

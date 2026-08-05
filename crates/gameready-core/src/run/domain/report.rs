@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 use crate::improvement::{Dependency, ImprovementId, Outcome};
 use crate::journal::RunId;
 
+use super::preflight::PreflightReport;
+
 /// Whether a run may change anything.
 ///
 /// An enum rather than a `dry_run: bool` so the apply path has to name which
@@ -139,6 +141,16 @@ pub enum RunEvent {
 
     /// Every step has been probed and the plan is settled.
     Planned { applicable: usize, skipped: usize },
+
+    /// Dependencies have been resolved. The CLI renders the preflight screen
+    /// from this.
+    DependenciesResolved { report: PreflightReport },
+
+    /// Installing prerequisites.
+    InstallingDependencies { count: usize },
+
+    /// Prerequisites installed.
+    DependenciesInstalled { newly_installed: Vec<String> },
 
     /// A step is about to change something.
     Applying { step: ImprovementId, name: String },
