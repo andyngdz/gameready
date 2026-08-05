@@ -35,6 +35,36 @@ impl RealRunner {
         self.escalator
     }
 
+    /// Fills the escalator's credential cache, prompting once.
+    ///
+    /// Every privileged command afterwards runs with `-n`, so without this the
+    /// first one fails on any machine whose cache is cold. Stdio is inherited
+    /// rather than captured, because a captured password prompt is a hang: the
+    /// user cannot see what is being asked.
+    ///
+    /// A no-op for escalators with no cache to fill. Those prompt per command,
+    /// which the pre-flight screen has to say rather than promise otherwise.
+    pub fn prime(&self) -> Result<(), ExecError> {
+        let Some(cmd) = self.escalator.prime() else {
+            return Ok(());
+        };
+
+        let status = Command::new(cmd.program())
+            .args(cmd.arguments())
+            .status()
+            .map_err(|source| ExecError::Spawn {
+                command: cmd.to_string(),
+                source,
+            })?;
+
+        if status.success() {
+            return Ok(());
+        }
+        Err(ExecError::EscalationNeedsPassword {
+            escalator: self.escalator.to_string(),
+        })
+    }
+
     fn spawn(&self, cmd: &Cmd) -> Result<CmdOutput, ExecError> {
         let (program, args) = if cmd.needs_root() {
             self.escalator.wrap(cmd.program(), cmd.arguments())

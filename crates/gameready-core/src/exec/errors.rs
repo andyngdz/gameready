@@ -7,7 +7,7 @@ use thiserror::Error;
 /// Why a command or a filesystem operation did not succeed.
 #[derive(Debug, Error)]
 pub enum ExecError {
-    #[error("`{command}` exited with status {code}")]
+    #[error("`{command}` exited with status {code}: {stderr}")]
     NonZeroExit {
         command: String,
         code: i32,

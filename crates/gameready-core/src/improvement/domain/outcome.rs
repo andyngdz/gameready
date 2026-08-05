@@ -71,6 +71,28 @@ impl Outcome {
         matches!(self, Self::Failed { .. })
     }
 
+    /// The one-line explanation shown under a step on the summary screen.
+    ///
+    /// Lives here rather than in the CLI because what there is to say about an
+    /// outcome is a property of the outcome. The CLI decides the colour and the
+    /// mark; this decides the words.
+    #[must_use]
+    pub fn detail(&self) -> Option<String> {
+        match self {
+            Self::Applied { verification, .. } => Some(format!(
+                "verified, {} of {} checks passed",
+                verification.total_count() - verification.failed_count(),
+                verification.total_count(),
+            )),
+            Self::AlreadyApplied { evidence } => Some(format!("already set: {evidence}")),
+            Self::NotApplicable { reason } => Some(reason.clone()),
+            Self::Skipped { reason } => Some(reason.describe()),
+            Self::Failed { error, rolled_back } => {
+                Some(format!("{error}; {}", rolled_back.describe()))
+            }
+        }
+    }
+
     /// Short word for the right-hand column of the progress list.
     #[must_use]
     pub const fn label(&self) -> &'static str {
@@ -109,6 +131,25 @@ pub enum SkipReason {
     DryRun,
 }
 
+impl SkipReason {
+    /// The reason, in the words shown to a user.
+    #[must_use]
+    pub fn describe(&self) -> String {
+        match self {
+            Self::UserDeclined => "you declined it".to_owned(),
+            Self::Conflict { with } => format!("{with} already owns this setting"),
+            Self::DependencyFailed { on } => format!("{on} failed, and this builds on it"),
+            Self::MissingDependency { name, detail } => {
+                format!("needs {name}, which is not available: {detail}")
+            }
+            Self::SteamRunning => "Steam is running and would overwrite this on exit; quit Steam, \
+                 then run `gameready apply --pending`"
+                .to_owned(),
+            Self::DryRun => "dry run".to_owned(),
+        }
+    }
+}
+
 /// Whether a failed step left anything behind.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "status", rename_all = "snake_case")]
@@ -123,4 +164,18 @@ pub enum RollbackStatus {
     /// look at something, so it carries the detail and the journal keeps the
     /// records for a manual `gameready rollback`.
     Failed { detail: String },
+}
+
+impl RollbackStatus {
+    /// What happened to the partial change, in the words shown to a user.
+    #[must_use]
+    pub fn describe(&self) -> String {
+        match self {
+            Self::NotAttempted => "nothing had changed yet".to_owned(),
+            Self::Succeeded => "the partial change was undone".to_owned(),
+            Self::Failed { detail } => {
+                format!("the undo also failed ({detail}), run `gameready rollback`")
+            }
+        }
+    }
 }
