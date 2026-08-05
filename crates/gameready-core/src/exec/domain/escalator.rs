@@ -118,6 +118,13 @@ impl Escalator {
                     .join(", "),
             })
     }
+
+    /// A fallback for commands that only read. Root commands will fail at
+    /// runtime with a spawn error since no escalator binary exists.
+    #[must_use]
+    pub const fn fallback_unprivileged() -> Self {
+        Self::Sudo
+    }
 }
 
 impl fmt::Display for Escalator {

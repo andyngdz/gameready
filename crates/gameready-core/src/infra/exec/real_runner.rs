@@ -30,6 +30,17 @@ impl RealRunner {
         Ok(Self::new(escalator))
     }
 
+    /// A runner that can only read. Root commands will fail at runtime.
+    ///
+    /// Used for commands like `doctor` and `--dry-run` on systems where no
+    /// escalator is installed, such as minimal containers.
+    #[must_use]
+    pub fn unprivileged() -> Self {
+        Self {
+            escalator: Escalator::fallback_unprivileged(),
+        }
+    }
+
     /// Which escalator privileged commands go through.
     #[must_use]
     pub const fn escalator(&self) -> Escalator {

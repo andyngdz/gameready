@@ -30,8 +30,6 @@ fn main() -> ExitCode {
         }
         Err(error) => {
             eprintln!("gameready: {error:#}");
-            // 2 is reserved for usage and configuration problems, which is what
-            // reaching here means: the run never started.
             ExitCode::from(2)
         }
     }
@@ -39,16 +37,16 @@ fn main() -> ExitCode {
 
 fn dispatch(cli: &Cli) -> Result<(RunStatus, String)> {
     let paths = state_paths(cli.state_dir.clone())?;
-    let runner = RealRunner::detect().context("no way to run privileged commands was found")?;
 
-    // One prompt, before anything runs. Every privileged command afterwards
-    // uses `sudo -n`, so priming here is what keeps a password prompt from
-    // appearing underneath a progress display, or from failing outright.
-    if cli.command.mutates() {
+    let runner = if cli.command.mutates() {
+        let runner = RealRunner::detect().context("no way to run privileged commands was found")?;
         runner
             .prime()
             .context("could not get permission to make system changes")?;
-    }
+        runner
+    } else {
+        RealRunner::detect().unwrap_or_else(|_| RealRunner::unprivileged())
+    };
 
     match &cli.command {
         Command::Doctor => Ok((RunStatus::Clean, cli::commands::doctor(&runner)?)),
