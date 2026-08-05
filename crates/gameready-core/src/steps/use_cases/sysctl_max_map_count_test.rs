@@ -22,6 +22,34 @@ fn journal(dir: &TempDir) -> Journal {
         .expect("journal opens")
 }
 
+#[test]
+fn the_managed_header_carries_the_run_id_not_the_step_id() {
+    // doctor ties a leftover file back to the run that made it. Stamping the
+    // step id in both fields makes that impossible, which is what shipped
+    // first.
+    let dir = TempDir::new().expect("temp dir");
+    let run = RunId::generate();
+    let runner = system_at(DEFAULT_ON_THIS_MACHINE);
+    let facts = facts();
+    let mut log =
+        Journal::open(StatePaths::new(dir.path().to_path_buf()), run).expect("journal opens");
+
+    let mut cx = ApplyCx::new(
+        CoreCx::new(&facts, &runner),
+        MaxMapCount::id_const(),
+        &runner,
+        &mut log,
+    );
+    MaxMapCount.apply(&mut cx).expect("applies");
+
+    let written = runner.file(SYSCTL_DROPIN).expect("drop-in written");
+    assert!(
+        written.contains(&format!("run={run}")),
+        "header does not name the run: {written}"
+    );
+    assert!(written.contains("step=core.sysctl.max-map-count"));
+}
+
 /// Runs apply against a system, returning the recorded changes.
 fn apply_against(runner: &MockRunner) -> (Vec<Change>, Result<(), StepError>) {
     let dir = TempDir::new().expect("temp dir");

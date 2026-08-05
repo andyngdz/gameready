@@ -3,7 +3,7 @@
 use crate::exec::CommandRunner;
 use crate::facts::SystemFacts;
 use crate::improvement::errors::StepError;
-use crate::journal::{Change, Journal, JournalEvent};
+use crate::journal::{Change, Journal, JournalEvent, RunId};
 
 use super::identity::ImprovementId;
 
@@ -69,6 +69,16 @@ impl<'a, C> ApplyCx<'a, C> {
     #[must_use]
     pub const fn step(&self) -> &ImprovementId {
         &self.step
+    }
+
+    /// Which run this belongs to.
+    ///
+    /// Steps stamp it into every file they create, so `doctor` can map a
+    /// leftover file back to the run that made it even when the journal is
+    /// gone.
+    #[must_use]
+    pub const fn run(&self) -> RunId {
+        self.journal.run()
     }
 
     /// Reads through the runner without recording anything.

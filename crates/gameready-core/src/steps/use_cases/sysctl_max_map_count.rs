@@ -7,7 +7,7 @@ use crate::improvement::{
     ApplyCx, Check, CoreCx, CoreImprovement, Improvement, ImprovementId, ParseFailure,
     PlannedAction, Privilege, Probe, StepError, StepPlan, Tag, Verification,
 };
-use crate::journal::Change;
+use crate::journal::{Change, RunId};
 use crate::steps::constants::{
     MANAGED_HEADER, PROC_SYS_VM, SYSCTL_BIN, SYSCTL_DROPIN, VM_MAX_MAP_COUNT,
 };
@@ -61,11 +61,16 @@ impl MaxMapCount {
     }
 
     /// The drop-in file's contents, carrying the marker `doctor` looks for.
-    fn dropin_contents(run: &str) -> String {
+    ///
+    /// The run id has to be the run, not the step: `doctor` uses it to tie a
+    /// leftover file back to the invocation that created it when the journal
+    /// has been deleted.
+    fn dropin_contents(run: RunId) -> String {
         format!(
-            "{MANAGED_HEADER} - {step} run={run}\n\
+            "{MANAGED_HEADER} {version} - step={step} run={run}\n\
              # Remove this file or run `gameready rollback` to revert.\n\
              {VM_MAX_MAP_COUNT} = {TARGET}\n",
+            version = env!("CARGO_PKG_VERSION"),
             step = Self::id_const(),
         )
     }
@@ -127,7 +132,7 @@ impl CoreImprovement for MaxMapCount {
     fn apply(&self, cx: &mut ApplyCx<'_, CoreCx<'_>>) -> Result<(), StepError> {
         let previous = self.read_current(cx.reader())?;
         let dropin = PathBuf::from(SYSCTL_DROPIN);
-        let contents = Self::dropin_contents(&cx.step().to_string());
+        let contents = Self::dropin_contents(cx.run());
 
         // Persistence first. If the run dies between the two mutations the
         // system is left correct on the next boot rather than correct now and
