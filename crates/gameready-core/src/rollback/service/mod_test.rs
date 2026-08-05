@@ -1,3 +1,4 @@
+use crate::improvement::Privilege;
 use tempfile::TempDir;
 
 use crate::improvement::ImprovementId;
@@ -28,6 +29,7 @@ fn recorded_run(dir: &TempDir) -> (RunId, Vec<crate::journal::JournalRecord>) {
                 backup: None,
                 sha256_after: digest(WROTE),
                 mode: 0o644,
+                privilege: Privilege::Root,
             },
         })
         .expect("appends");

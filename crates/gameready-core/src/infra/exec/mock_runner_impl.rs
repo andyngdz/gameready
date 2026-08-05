@@ -53,6 +53,10 @@ impl CommandRunner for MockRunner {
         }
     }
 
+    fn write_private_file(&self, path: &Path, contents: &str) -> Result<(), ExecError> {
+        self.write_file(path, contents, Privilege::User)
+    }
+
     fn remove_file(&self, path: &Path, _privilege: Privilege) -> Result<(), ExecError> {
         match self.state.lock() {
             Ok(mut state) => {

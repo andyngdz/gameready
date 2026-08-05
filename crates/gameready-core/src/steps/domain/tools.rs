@@ -28,15 +28,22 @@ pub struct GamingTool {
 /// they differ per distro by a few megabytes.
 const GAMEMODE_BYTES: u64 = 1_100_000;
 const MANGOHUD_BYTES: u64 = 5_400_000;
-const GAMESCOPE_BYTES: u64 = 8_900_000;
 
 /// Everything `core.pkg.tools` installs.
 ///
-/// All three carry the same name on pacman, apt, and dnf. That is not a
-/// guarantee for the future, which is why they still go through
-/// [`PackageSpec`] rather than a bare string: `gamescope` is absent from Debian
-/// 12 entirely, and the machinery that reports that has to exist anyway.
-pub const GAMING_TOOLS: [GamingTool; 3] = [
+/// gamemode is what actually tunes anything. mangohud is here so the user can
+/// answer "did that help", which is the only honest way to justify the rest of
+/// what gameready does; whether it appears in a launch option is a separate
+/// question the run asks.
+///
+/// gamescope is deliberately absent. It solves a real class of windowing
+/// problems, but no shipped profile invokes it, and installing 9MB that nothing
+/// runs is a surprise rather than a service.
+///
+/// Both names are the same on pacman, apt, and dnf. They still go through
+/// [`PackageSpec`] rather than a bare string, because a package that does not
+/// exist on a family has to be reportable and that machinery has to exist.
+pub const GAMING_TOOLS: [GamingTool; 2] = [
     GamingTool {
         // The package is `gamemode`; the daemon it installs is `gamemoded`.
         binary: "gamemoded",
@@ -49,11 +56,5 @@ pub const GAMING_TOOLS: [GamingTool; 3] = [
         spec: PackageSpec::uniform("mangohud", MANGOHUD_BYTES),
         what: "draws frame rate, frame times, and temperatures over the game, \
                so a change can be measured rather than guessed at",
-    },
-    GamingTool {
-        binary: "gamescope",
-        spec: PackageSpec::uniform("gamescope", GAMESCOPE_BYTES),
-        what: "runs a game in its own nested compositor, which fixes alt-tab \
-               and resolution handling that the desktop compositor gets wrong",
     },
 ];

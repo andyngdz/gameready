@@ -1,6 +1,7 @@
 //! Command line surface.
 
 use clap::{Parser, Subcommand};
+use gameready_core::run::Mode;
 
 /// Apply gaming-related system tuning on Linux, and undo it.
 #[derive(Debug, Parser)]
@@ -25,18 +26,53 @@ pub struct Cli {
     pub games_dir: Option<std::path::PathBuf>,
 }
 
+/// Whether a command will change the system.
+///
+/// Drives the one credential prompt at the start of a run. Every privileged
+/// command runs with `-n` afterwards, so a command that mutates without priming
+/// first fails against a cold cache rather than asking.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Effect {
+    /// Only reads. Runs without an escalator at all if the machine has none.
+    Reads,
+    /// Changes something, so the credential cache is primed first.
+    Mutates,
+}
+
 impl Command {
     /// Whether this command will change the system.
-    ///
-    /// Drives the one credential prompt at the start of a run. Every
-    /// privileged command runs with `-n` afterwards, so a command that mutates
-    /// without priming first fails against a cold cache rather than asking.
     #[must_use]
-    pub const fn mutates(&self) -> bool {
+    pub const fn effect(&self) -> Effect {
         match self {
-            Self::Doctor | Self::ListGames => false,
-            Self::Apply { dry_run, .. } => !*dry_run,
-            Self::Rollback { .. } | Self::Selftest { .. } => true,
+            Self::Doctor | Self::ListGames => Effect::Reads,
+            Self::Init { dry_run, .. } | Self::Apply { dry_run, .. } => {
+                if *dry_run {
+                    Effect::Reads
+                } else {
+                    Effect::Mutates
+                }
+            }
+            Self::Rollback { .. } | Self::Selftest { .. } => Effect::Mutates,
+        }
+    }
+
+    /// Whether this command should compute the plan or carry it out.
+    ///
+    /// Commands with no `--dry-run` of their own always apply; the ones that
+    /// have the flag answer with it.
+    #[must_use]
+    pub const fn mode(&self) -> Mode {
+        match self {
+            Self::Init { dry_run, .. } | Self::Apply { dry_run, .. } => {
+                if *dry_run {
+                    Mode::DryRun
+                } else {
+                    Mode::Apply
+                }
+            }
+            Self::Doctor | Self::ListGames | Self::Rollback { .. } | Self::Selftest { .. } => {
+                Mode::Apply
+            }
         }
     }
 }
@@ -44,6 +80,27 @@ impl Command {
 /// The subcommands.
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    /// Set up this machine: find your games, pick which to tune, apply.
+    ///
+    /// The one command most people need. Everything it does is undoable with
+    /// `gameready rollback`.
+    Init {
+        /// Take every game that has a profile without showing the picker.
+        #[arg(long)]
+        yes: bool,
+
+        /// Show a frame-rate overlay in game, without being asked.
+        ///
+        /// Off unless given. With `--yes` there is nobody to ask, so this is
+        /// the only way a scripted run turns the overlay on.
+        #[arg(long)]
+        fps_overlay: bool,
+
+        /// Work out what would change without changing anything.
+        #[arg(long)]
+        dry_run: bool,
+    },
+
     /// Report system facts and what each step would do.
     Doctor,
 

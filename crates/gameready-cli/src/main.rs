@@ -16,9 +16,10 @@ use directories::ProjectDirs;
 use gameready_core::infra::exec::RealRunner;
 use gameready_core::journal::StatePaths;
 use gameready_core::rollback::PackagePolicy;
-use gameready_core::run::{Mode, RunStatus};
+use gameready_core::run::{RunReport, RunStatus};
+use gameready_core::steam::Overlay;
 
-use crate::cli::args::{Cli, Command};
+use crate::cli::args::{Cli, Command, Effect};
 
 /// The name every per-user directory is built from. Named once because the
 /// state directory and the config directory both derive from it, and two copies
@@ -42,18 +43,20 @@ fn main() -> ExitCode {
 
 fn dispatch(cli: &Cli) -> Result<(RunStatus, String)> {
     let paths = state_paths(cli.state_dir.clone())?;
-
-    let runner = if cli.command.mutates() {
-        let runner = RealRunner::detect().context("no way to run privileged commands was found")?;
-        runner
-            .prime()
-            .context("could not get permission to make system changes")?;
-        runner
-    } else {
-        RealRunner::detect().unwrap_or_else(|_| RealRunner::unprivileged())
-    };
+    let runner = build_runner(cli.command.effect())?;
 
     match &cli.command {
+        Command::Init {
+            yes, fps_overlay, ..
+        } => {
+            let picker = if *yes {
+                cli::ui::Picker::TakeAll
+            } else {
+                cli::ui::Picker::Ask
+            };
+            reported(cli, init(cli, &runner, paths, picker, *fps_overlay)?)
+        }
+
         Command::Doctor => Ok((RunStatus::Clean, cli::commands::doctor(&runner)?)),
 
         Command::ListGames => {
@@ -61,15 +64,12 @@ fn dispatch(cli: &Cli) -> Result<(RunStatus, String)> {
             Ok((RunStatus::Clean, cli::commands::list_games(&games)?))
         }
 
-        Command::Apply { step, dry_run } => {
-            let mode = if *dry_run { Mode::DryRun } else { Mode::Apply };
-            let (report, rendered) = cli::commands::apply(&runner, paths, step.as_deref(), mode)?;
-            let output = if cli.json {
-                serde_json::to_string_pretty(&report)? + "\n"
-            } else {
-                rendered
-            };
-            Ok((report.status(), output))
+        Command::Apply { step, dry_run: _ } => {
+            let mode = cli.command.mode();
+            reported(
+                cli,
+                cli::commands::apply(&runner, paths, step.as_deref(), mode)?,
+            )
         }
 
         Command::Rollback {
@@ -86,6 +86,63 @@ fn dispatch(cli: &Cli) -> Result<(RunStatus, String)> {
 
         Command::Selftest { step: _ } => cli::commands::selftest(&runner, paths),
     }
+}
+
+/// Builds the runner, priming the credential cache when the command will change
+/// something.
+///
+/// A command that only reads falls back to an unprivileged runner, so `doctor`
+/// works in a container with no `sudo` at all.
+fn build_runner(effect: Effect) -> Result<RealRunner> {
+    match effect {
+        Effect::Reads => Ok(RealRunner::detect().unwrap_or_else(|_| RealRunner::unprivileged())),
+        Effect::Mutates => {
+            RealRunner::detect().context("no way to run privileged commands was found")
+        }
+    }
+}
+
+/// Fills the credential cache, prompting once.
+///
+/// Called after every question a command has, so the password prompt is the
+/// last thing between deciding and doing rather than the first thing a user
+/// meets.
+fn authorize(runner: &RealRunner) -> Result<()> {
+    runner
+        .prime()
+        .context("could not get permission to make system changes")
+}
+
+/// Runs `init` with the picker and overlay the flags asked for.
+///
+/// The overlay flag only ever turns it on. Without it an interactive run asks,
+/// and a run with nobody at the terminal leaves the screen alone.
+fn init(
+    cli: &Cli,
+    runner: &RealRunner,
+    paths: StatePaths,
+    picker: cli::ui::Picker,
+    fps_overlay: bool,
+) -> Result<(RunReport, String)> {
+    let games = user_games_dir(cli.games_dir.clone())?;
+    let request = cli::commands::InitRequest {
+        games_dir: &games,
+        mode: cli.command.mode(),
+        picker,
+        overlay: fps_overlay.then_some(Overlay::Show),
+    };
+    cli::commands::init(runner, paths, &request, &|| authorize(runner))
+}
+
+/// Renders a finished run as JSON or as the summary the user reads.
+fn reported(cli: &Cli, run: (RunReport, String)) -> Result<(RunStatus, String)> {
+    let (report, rendered) = run;
+    let output = if cli.json {
+        serde_json::to_string_pretty(&report)? + "\n"
+    } else {
+        rendered
+    };
+    Ok((report.status(), output))
 }
 
 /// Resolves where the user's own game profiles live.

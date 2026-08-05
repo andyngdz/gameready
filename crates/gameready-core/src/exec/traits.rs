@@ -49,6 +49,17 @@ pub trait CommandRunner: Send + Sync {
         privilege: Privilege,
     ) -> Result<(), ExecError>;
 
+    /// Writes a file only its owner can read.
+    ///
+    /// For a pre-image of something that holds credentials. Steam's
+    /// `localconfig.vdf` carries an encrypted app ticket and a cloud key, and
+    /// Steam leaves its own copy group-readable; a backup gameready keeps for
+    /// every run, in a directory nothing prunes, should not repeat that.
+    ///
+    /// Always the invoking user. A root-owned backup could not be read back by
+    /// the rollback that needs it.
+    fn write_private_file(&self, path: &Path, contents: &str) -> Result<(), ExecError>;
+
     /// Deletes a file. Succeeds if it is already gone, so rollback is
     /// idempotent and a half-finished undo can be re-run.
     fn remove_file(&self, path: &Path, privilege: Privilege) -> Result<(), ExecError>;

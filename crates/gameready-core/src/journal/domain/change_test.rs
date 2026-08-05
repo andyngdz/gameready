@@ -1,3 +1,4 @@
+use crate::improvement::Privilege;
 use std::path::PathBuf;
 
 use super::*;
@@ -11,12 +12,14 @@ fn a_file_we_created_is_undone_by_deleting_it() {
         backup: None,
         sha256_after: "abc123".to_owned(),
         mode: 0o644,
+        privilege: Privilege::Root,
     };
 
     match change.inverse() {
         Undo::DeleteFile {
             path,
             expect_sha256,
+            ..
         } => {
             assert_eq!(path, PathBuf::from("/etc/sysctl.d/99-gameready.conf"));
             // The digest lets rollback refuse to clobber a file the user edited.
@@ -39,6 +42,7 @@ fn a_file_we_replaced_is_undone_by_restoring_its_pre_image() {
         backup: Some(PathBuf::from("/state/backups/1/localconfig.vdf")),
         sha256_after: "def456".to_owned(),
         mode: 0o600,
+        privilege: Privilege::Root,
     };
 
     match change.inverse() {

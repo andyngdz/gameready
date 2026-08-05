@@ -1,3 +1,4 @@
+use crate::improvement::Privilege;
 use std::path::PathBuf;
 
 use crate::infra::exec::MockRunner;
@@ -12,6 +13,7 @@ fn delete_undo(expected: &str) -> Undo {
     Undo::DeleteFile {
         path: PathBuf::from(DROPIN),
         expect_sha256: expected.to_owned(),
+        privilege: Privilege::Root,
     }
 }
 

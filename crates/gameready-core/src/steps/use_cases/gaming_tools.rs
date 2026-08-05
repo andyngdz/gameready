@@ -1,4 +1,4 @@
-//! Install gamemode, mangohud, and gamescope.
+//! Install the tools the per-game settings rely on.
 
 use crate::improvement::{
     ApplyCx, Check, CoreCx, CoreImprovement, Improvement, ImprovementId, PlannedAction, Privilege,
@@ -10,11 +10,12 @@ use crate::steps::domain::{GAMING_TOOLS, GamingTool};
 
 /// Puts the three standard gaming tools on the system.
 ///
-/// These are not tuning in themselves. gamemode is what actually moves the
-/// governor and the scheduling priority while a game runs, which is why
-/// `core.cpu.governor` leaves the governor alone; mangohud is how a user
-/// measures whether any of this helped; gamescope fixes a class of windowing
-/// problems no sysctl can.
+/// Neither is tuning in itself. gamemode is what actually moves the governor
+/// and the scheduling priority while a game runs, which is why
+/// `core.cpu.governor` leaves the governor alone. mangohud is how a user
+/// measures whether any of this helped; whether it appears in a launch option
+/// is a separate question the run asks, and the answer does not change what
+/// gets installed.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct GamingTools;
 
@@ -34,8 +35,8 @@ impl GamingTools {
     /// The tools whose executable is not on `PATH`.
     ///
     /// Probed by looking up the binary rather than by asking the package
-    /// manager, because a user who built gamescope by hand has it and does not
-    /// need the package.
+    /// manager, because a user who built one of these by hand has it and does
+    /// not need the package.
     fn absent(cx: &CoreCx<'_>) -> Vec<&'static GamingTool> {
         GAMING_TOOLS
             .iter()
@@ -94,16 +95,15 @@ impl Improvement for GamingTools {
     }
 
     fn name(&self) -> &str {
-        "Install gamemode, mangohud, and gamescope"
+        "Install gamemode and mangohud"
     }
 
     fn rationale(&self) -> &str {
         "gamemode raises the CPU governor and process priority for the duration \
          of a game and puts them back afterwards, which is safer than pinning \
          the governor system-wide. mangohud is how you see whether any change \
-         helped. gamescope gives a game its own compositor, which fixes alt-tab \
-         and resolution handling. All three are ordinary packages and come off \
-         the same way they went on."
+         helped, which is the only honest way to justify the rest of this. Both \
+         are ordinary packages and come off the same way they went on."
     }
 
     fn privilege(&self) -> Privilege {
@@ -119,7 +119,7 @@ impl CoreImprovement for GamingTools {
     fn probe(&self, cx: &CoreCx<'_>) -> Result<Probe, StepError> {
         if Self::absent(cx).is_empty() {
             return Ok(Probe::AlreadyApplied {
-                evidence: "gamemoded, mangohud, and gamescope are all on PATH".to_owned(),
+                evidence: "gamemoded and mangohud are both on PATH".to_owned(),
             });
         }
 
@@ -132,8 +132,9 @@ impl CoreImprovement for GamingTools {
 
         let candidates = Self::candidates(cx, packages)?;
         if Self::installable(&candidates).is_empty() {
-            // Debian 12 has no gamescope at all, and a user on it should read
-            // that rather than watch the step fail.
+            // A package can be missing from a family's repositories entirely,
+            // and a user on that family should read that rather than watch the
+            // step fail.
             return Ok(Probe::NotApplicable {
                 reason: format!(
                     "none of the missing tools are in this system's repositories ({})",
@@ -185,9 +186,9 @@ impl CoreImprovement for GamingTools {
     fn verify(&self, cx: &CoreCx<'_>) -> Result<Verification, StepError> {
         let mut verification = Verification::new();
 
-        // Only the tools this system can actually get are checked. Claiming
-        // gamescope on Debian 12 failed would be blaming the step for a package
-        // that does not exist there.
+        // Only the tools this system can actually get are checked. Claiming a
+        // package failed on a family that does not carry it would be blaming
+        // the step for the distribution's choice.
         for tool in GAMING_TOOLS.iter().filter(|tool| {
             tool.spec
                 .name_for(cx.facts.distro.package_manager())

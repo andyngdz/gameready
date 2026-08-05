@@ -26,7 +26,7 @@ impl fmt::Display for GameList<'_> {
         writeln!(f, "\nGames")?;
 
         if self.catalog.is_empty() {
-            writeln!(f, "  none")?;
+            writeln!(f, "{}", crate::cli::ui::NOTHING)?;
         }
 
         for entry in self.catalog.entries() {

@@ -16,3 +16,7 @@ pub(super) const OS_RELEASE_FIXTURE: &str = indoc::indoc! {r#"
     VERSION_ID="26.04"
     PRETTY_NAME="Ubuntu 26.04 LTS"
     "#};
+
+/// Reported when the journal cannot be opened. Named once because both `apply`
+/// and `init` open it, and a run that cannot journal must not proceed.
+pub const CANNOT_OPEN_JOURNAL: &str = "could not open the journal";

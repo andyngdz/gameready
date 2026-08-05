@@ -11,5 +11,6 @@ pub use domain::{
 };
 pub use errors::RunError;
 pub use service::execute;
+pub use use_cases::launch::targets_for;
 pub use use_cases::resolve::resolve_dependencies;
 pub use use_cases::selftest::selftest;

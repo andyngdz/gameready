@@ -3,7 +3,7 @@
 use anyhow::{Context as _, Result};
 use gameready_core::facts;
 
-use crate::cli::commands::constants::CANNOT_READ_SYSTEM;
+use crate::cli::commands::constants::{CANNOT_OPEN_JOURNAL, CANNOT_READ_SYSTEM};
 use gameready_core::exec::CommandRunner;
 use gameready_core::improvement::ImprovementId;
 use gameready_core::infra::pkg;
@@ -32,7 +32,7 @@ pub fn run(
     let facts = facts::probe(runner).context(CANNOT_READ_SYSTEM)?;
     let pm = pkg::for_kind(facts.distro.package_manager());
     let mut journal =
-        Journal::open(paths.clone(), RunId::generate()).context("could not open the journal")?;
+        Journal::open(paths.clone(), RunId::generate()).context(CANNOT_OPEN_JOURNAL)?;
 
     let report = execute(
         selected,

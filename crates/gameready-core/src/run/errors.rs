@@ -18,6 +18,9 @@ pub enum RunError {
     #[error(transparent)]
     Package(#[from] PackageError),
 
+    #[error(transparent)]
+    Steam(#[from] crate::steam::SteamError),
+
     #[error("no step matched `{requested}`")]
     UnknownStep { requested: String },
 

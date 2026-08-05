@@ -4,12 +4,14 @@
 mod apply;
 mod constants;
 mod doctor;
+pub(crate) mod init;
 mod list_games;
 mod rollback;
 mod selftest;
 
 pub use apply::run as apply;
 pub use doctor::run as doctor;
+pub use init::{InitRequest, run as init};
 pub use list_games::run as list_games;
 pub use rollback::run as rollback;
 pub use selftest::run as selftest;

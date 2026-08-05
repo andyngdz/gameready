@@ -6,14 +6,14 @@ use crate::infra::exec::MockRunner;
 use crate::infra::pkg::Apt;
 use crate::journal::{Journal, RunId, StatePaths};
 
-const TOOL_BINARIES: [&str; 3] = ["gamemoded", "mangohud", "gamescope"];
+const TOOL_BINARIES: [&str; 2] = ["gamemoded", "mangohud"];
 
 /// A Debian box where every named package is in the archive but none is
 /// installed. `dpkg-query` failing is how apt reports "not installed", and an
 /// `apt-cache show` that prints a stanza is how it reports "available".
 fn debian_box() -> MockRunner {
     let mut runner = MockRunner::new();
-    for package in ["gamemode", "mangohud", "gamescope"] {
+    for package in ["gamemode", "mangohud"] {
         runner = runner
             .failing(format!(
                 "dpkg-query --showformat=${{Version}} --show {package}"
@@ -62,7 +62,7 @@ fn probe_reports_already_applied_when_every_binary_is_on_path() {
 fn probe_reports_not_applicable_when_no_missing_tool_is_in_a_repository() {
     // Debian 12 has no gamescope; this is the same shape with all three gone.
     let mut runner = MockRunner::new();
-    for package in ["gamemode", "mangohud", "gamescope"] {
+    for package in ["gamemode", "mangohud"] {
         runner = runner
             .failing(format!(
                 "dpkg-query --showformat=${{Version}} --show {package}"
@@ -98,7 +98,7 @@ fn a_tool_already_on_path_is_left_out_of_the_plan() {
     assert_eq!(
         plan.actions,
         vec![PlannedAction::InstallPackages {
-            names: vec!["gamemode".to_owned(), "gamescope".to_owned()],
+            names: vec!["gamemode".to_owned()],
         }]
     );
 }
@@ -119,21 +119,13 @@ fn apply_installs_in_one_transaction_and_journals_it() {
         apply.recorded(),
         [Change::PackagesInstalled {
             manager: "apt-get".to_owned(),
-            requested: vec![
-                "gamemode".to_owned(),
-                "mangohud".to_owned(),
-                "gamescope".to_owned(),
-            ],
-            newly_installed: vec![
-                "gamemode".to_owned(),
-                "mangohud".to_owned(),
-                "gamescope".to_owned(),
-            ],
+            requested: vec!["gamemode".to_owned(), "mangohud".to_owned()],
+            newly_installed: vec!["gamemode".to_owned(), "mangohud".to_owned()],
         }]
     );
     assert!(
         runner.commands().iter().any(|command| command
-            == "sudo apt-get install --yes --no-install-recommends gamemode mangohud gamescope"),
+            == "sudo apt-get install --yes --no-install-recommends gamemode mangohud"),
         "expected one transaction, got {:?}",
         runner.commands()
     );
@@ -146,8 +138,8 @@ fn verify_fails_when_a_binary_did_not_appear() {
     let cx = CoreCx::new(&facts, &runner).with_packages(&Apt);
 
     let verification = GamingTools.verify(&cx).expect("verified");
-    assert_eq!(verification.total_count(), 3);
-    assert_eq!(verification.failed_count(), 2);
+    assert_eq!(verification.total_count(), 2);
+    assert_eq!(verification.failed_count(), 1);
 }
 
 #[test]
@@ -191,7 +183,7 @@ fn a_failed_install_leaves_a_journal_that_names_every_package() {
     // The undo record goes down before the transaction runs, so an interrupt
     // partway through still lists everything the transaction could have added.
     let dir = TempDir::new().expect("temp dir");
-    let runner = debian_box().failing_at(12);
+    let runner = debian_box().failing_at(8);
     let facts = facts();
     let cx = CoreCx::new(&facts, &runner).with_packages(&Apt);
     let mut journal =
@@ -207,7 +199,7 @@ fn a_failed_install_leaves_a_journal_that_names_every_package() {
             Change::PackagesInstalled {
                 newly_installed, ..
             },
-        ] => assert_eq!(newly_installed.len(), 3),
+        ] => assert_eq!(newly_installed.len(), 2),
         other => panic!("expected one recorded install, got {other:?}"),
     }
 }

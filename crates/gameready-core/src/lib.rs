@@ -30,5 +30,6 @@ pub mod journal;
 pub mod pkg;
 pub mod rollback;
 pub mod run;
+pub mod steam;
 pub mod steps;
 pub mod systemd;

@@ -2,6 +2,7 @@
 
 pub(crate) mod constants;
 mod dry_runner;
+mod files;
 mod real_runner;
 
 #[cfg(any(test, feature = "testkit"))]

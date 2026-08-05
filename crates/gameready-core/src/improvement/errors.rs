@@ -86,6 +86,12 @@ pub enum StepError {
     /// tell "this package does not exist here" from "the command broke".
     #[error(transparent)]
     Packages(#[from] crate::pkg::PackageError),
+
+    /// Steam's config could not be read as the format it is meant to be in.
+    /// Distinct from an IO failure: the file was readable and did not look like
+    /// what was expected, so nothing was written.
+    #[error(transparent)]
+    SteamConfig(#[from] crate::steam::VdfError),
 }
 
 /// The concrete ways reading a system file can fail to yield a usable value.

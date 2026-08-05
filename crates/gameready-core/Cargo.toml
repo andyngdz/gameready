@@ -18,7 +18,9 @@ testkit = []
 [dependencies]
 directories.workspace = true
 itertools.workspace = true
+keyvalues-parser.workspace = true
 rust-embed.workspace = true
+steamlocate.workspace = true
 rustix.workspace = true
 semver.workspace = true
 serde.workspace = true

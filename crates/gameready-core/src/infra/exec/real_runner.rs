@@ -6,6 +6,7 @@ use std::process::Command;
 use crate::exec::{Cmd, CmdOutput, CommandRunner, Escalator, ExecError};
 use crate::improvement::Privilege;
 use crate::infra::exec::constants::INSTALL;
+use crate::infra::exec::files::{stage_temp_file, write_owner_only};
 
 /// The production [`CommandRunner`].
 ///
@@ -170,6 +171,10 @@ impl CommandRunner for RealRunner {
         }
     }
 
+    fn write_private_file(&self, path: &Path, contents: &str) -> Result<(), ExecError> {
+        write_owner_only(path, contents)
+    }
+
     fn remove_file(&self, path: &Path, privilege: Privilege) -> Result<(), ExecError> {
         match privilege {
             Privilege::User => match std::fs::remove_file(path) {
@@ -198,21 +203,6 @@ impl CommandRunner for RealRunner {
     fn which(&self, binary: &str) -> Option<PathBuf> {
         which_on_path(binary)
     }
-}
-
-/// Stages content in a temporary file next to nothing in particular, for a
-/// privileged `install` to move into place.
-fn stage_temp_file(destination: &Path, contents: &str) -> Result<PathBuf, ExecError> {
-    let name = destination.file_name().map_or_else(
-        || "gameready".to_owned(),
-        |n| n.to_string_lossy().into_owned(),
-    );
-    let staged = std::env::temp_dir().join(format!("gameready-staged-{name}"));
-    std::fs::write(&staged, contents).map_err(|source| ExecError::Write {
-        path: staged.clone(),
-        source,
-    })?;
-    Ok(staged)
 }
 
 /// Resolves an executable by walking `PATH`.

@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::games::domain::{GameKey, GameProfile};
+use crate::games::domain::{AppId, GameKey, GameProfile};
 
 /// Where a profile was found.
 ///
@@ -76,6 +76,18 @@ impl Catalog {
     #[must_use]
     pub fn find(&self, name: &str) -> Option<&CatalogEntry> {
         self.get(&GameKey::from_name(name))
+    }
+
+    /// The profile for a Steam application, when one exists.
+    ///
+    /// Matched on the appid rather than the name. Steam's name for a game and
+    /// the name in a profile drift apart over re-releases and editions, and the
+    /// appid is what actually identifies the thing being tuned.
+    #[must_use]
+    pub fn by_app_id(&self, app_id: AppId) -> Option<&CatalogEntry> {
+        self.entries
+            .values()
+            .find(|entry| entry.profile.app_id == app_id)
     }
 
     /// Every profile, in key order so the list is the same on every machine.

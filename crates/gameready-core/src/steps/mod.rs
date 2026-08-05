@@ -5,7 +5,12 @@ pub mod domain;
 mod service;
 mod use_cases;
 
-pub use constants::{MANAGED_HEADER, SYSCTL_BIN, SYSCTL_DROPIN};
-pub use domain::{COMPETING_DAEMONS, CompetingDaemon, GAMING_TOOLS, GamingTool};
+pub use constants::{
+    LAUNCH_OPTIONS_KEY, MANAGED_HEADER, STEAM_APPS_PATH, SYSCTL_BIN, SYSCTL_DROPIN,
+};
+pub use domain::{
+    COMPETING_DAEMONS, CompetingDaemon, Edited, GAMING_TOOLS, GamingTool, LaunchTarget,
+    apply_targets,
+};
 pub use service::{core_steps, find_core_step};
-pub use use_cases::{Conflicts, CpuGovernor, GamingTools, MaxMapCount};
+pub use use_cases::{Conflicts, CpuGovernor, GamingTools, MaxMapCount, SteamLaunchOptions};

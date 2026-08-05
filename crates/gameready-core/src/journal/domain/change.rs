@@ -10,6 +10,17 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+use crate::improvement::Privilege;
+
+/// The privilege a record written before this field existed was made with.
+///
+/// Every step that predates it wrote under `/etc`, which is root's. Defaulting
+/// to anything else would make an old journal undo itself without the privilege
+/// it needs.
+const fn assumed_root() -> Privilege {
+    Privilege::Root
+}
+
 /// Hex digest of file contents.
 ///
 /// Recorded when a file is written and re-checked before it is deleted, so
@@ -43,6 +54,13 @@ pub enum Change {
         /// since we wrote it" from "the user edited it afterwards".
         sha256_after: String,
         mode: u32,
+        /// How the write was made, so the undo is made the same way.
+        ///
+        /// Restoring a file in the user's home as root would leave it owned by
+        /// root, and the program that owns it, such as Steam, would then fail
+        /// to save its own settings.
+        #[serde(default = "assumed_root")]
+        privilege: Privilege,
     },
 
     /// A file gameready deleted, with its pre-image kept.
@@ -50,6 +68,8 @@ pub enum Change {
         path: PathBuf,
         backup: PathBuf,
         mode: u32,
+        #[serde(default = "assumed_root")]
+        privilege: Privilege,
     },
 
     /// A kernel parameter set at runtime. Evaporates on reboot on its own; the
@@ -93,24 +113,33 @@ impl Change {
                 backup,
                 sha256_after,
                 mode,
+                privilege,
             } => match (existed, backup) {
                 (true, Some(backup)) => Undo::RestoreFile {
                     path: path.clone(),
                     from: backup.clone(),
                     mode: *mode,
+                    privilege: *privilege,
                 },
                 // Created by us, so the inverse is removal. The digest lets the
                 // caller refuse to delete a file the user edited afterwards.
                 _ => Undo::DeleteFile {
                     path: path.clone(),
                     expect_sha256: sha256_after.clone(),
+                    privilege: *privilege,
                 },
             },
 
-            Self::FileRemoved { path, backup, mode } => Undo::RestoreFile {
+            Self::FileRemoved {
+                path,
+                backup,
+                mode,
+                privilege,
+            } => Undo::RestoreFile {
                 path: path.clone(),
                 from: backup.clone(),
                 mode: *mode,
+                privilege: *privilege,
             },
 
             Self::SysctlRuntime { key, previous } => Undo::SetSysctl {
@@ -177,6 +206,9 @@ pub enum Undo {
     DeleteFile {
         path: PathBuf,
         expect_sha256: String,
+        /// The privilege the write was made with, so the undo matches it.
+        #[serde(default = "assumed_root")]
+        privilege: Privilege,
     },
 
     /// Put a pre-image back, restoring the recorded mode.
@@ -184,6 +216,8 @@ pub enum Undo {
         path: PathBuf,
         from: PathBuf,
         mode: u32,
+        #[serde(default = "assumed_root")]
+        privilege: Privilege,
     },
 
     /// Set a kernel parameter back to its prior value.

@@ -30,3 +30,13 @@ pub const SYSCTL_BIN: &str = "sysctl";
 /// system with different governors on different cores was configured that way
 /// by hand and is not one gameready should be second-guessing.
 pub const SCALING_GOVERNOR: &str = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor";
+
+/// Where Steam keeps per-game settings inside `localconfig.vdf`.
+pub const STEAM_APPS_PATH: [&str; 5] =
+    ["UserLocalConfigStore", "Software", "Valve", "Steam", "apps"];
+
+/// The key holding a game's launch options.
+pub const LAUNCH_OPTIONS_KEY: &str = "LaunchOptions";
+
+/// The name the pre-image of Steam's config is filed under in a run's backups.
+pub const LOCAL_CONFIG_BACKUP: &str = "localconfig.vdf";

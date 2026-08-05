@@ -145,6 +145,7 @@ impl CoreImprovement for MaxMapCount {
                 backup: None,
                 sha256_after,
                 mode: 0o644,
+                privilege: Privilege::Root,
             },
             |runner| {
                 runner

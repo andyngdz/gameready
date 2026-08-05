@@ -4,7 +4,6 @@ steam_appid = 1091500
 
 [launch]
 gamemode = true
-mangohud = true
 
 [proton]
 prefer = "GE-Proton"

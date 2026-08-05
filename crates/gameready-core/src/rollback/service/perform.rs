@@ -18,9 +18,15 @@ pub(super) fn perform(
         Undo::DeleteFile {
             path,
             expect_sha256,
-        } => delete_file(runner, path, expect_sha256),
+            privilege,
+        } => delete_file(runner, path, expect_sha256, *privilege),
 
-        Undo::RestoreFile { path, from, .. } => restore_file(runner, path, from),
+        Undo::RestoreFile {
+            path,
+            from,
+            privilege,
+            ..
+        } => restore_file(runner, path, from, *privilege),
 
         Undo::SetSysctl { key, value } => set_sysctl(runner, key, value),
 
@@ -43,7 +49,12 @@ pub(super) fn perform(
 /// and points at the run to undo instead; the second is theirs and is left
 /// alone, because a stale drop-in is recoverable and a clobbered hand edit is
 /// not.
-fn delete_file(runner: &dyn CommandRunner, path: &Path, expect_sha256: &str) -> UndoOutcome {
+fn delete_file(
+    runner: &dyn CommandRunner,
+    path: &Path,
+    expect_sha256: &str,
+    privilege: Privilege,
+) -> UndoOutcome {
     if !runner.path_exists(path) {
         return UndoOutcome::AlreadyGone;
     }
@@ -61,7 +72,7 @@ fn delete_file(runner: &dyn CommandRunner, path: &Path, expect_sha256: &str) -> 
         return mismatch(path, &current);
     }
 
-    match runner.remove_file(path, Privilege::Root) {
+    match runner.remove_file(path, privilege) {
         Ok(()) => UndoOutcome::Reverted {
             detail: format!("removed {}", path.display()),
         },
@@ -104,7 +115,12 @@ fn managed_run(contents: &str) -> Option<&str> {
 }
 
 /// Puts a pre-image back.
-fn restore_file(runner: &dyn CommandRunner, path: &Path, from: &Path) -> UndoOutcome {
+fn restore_file(
+    runner: &dyn CommandRunner,
+    path: &Path,
+    from: &Path,
+    privilege: Privilege,
+) -> UndoOutcome {
     let contents = match runner.read_to_string(from) {
         Ok(contents) => contents,
         Err(error) => {
@@ -114,7 +130,7 @@ fn restore_file(runner: &dyn CommandRunner, path: &Path, from: &Path) -> UndoOut
         }
     };
 
-    match runner.write_file(path, &contents, Privilege::Root) {
+    match runner.write_file(path, &contents, privilege) {
         Ok(()) => UndoOutcome::Reverted {
             detail: format!("restored {}", path.display()),
         },
