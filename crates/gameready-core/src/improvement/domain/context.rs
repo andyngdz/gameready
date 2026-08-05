@@ -4,6 +4,7 @@ use crate::exec::CommandRunner;
 use crate::facts::SystemFacts;
 use crate::improvement::errors::StepError;
 use crate::journal::{Change, Journal, JournalEvent, RunId};
+use crate::pkg::PackageManager;
 
 use super::identity::ImprovementId;
 
@@ -20,13 +21,35 @@ pub struct CoreCx<'a> {
     /// The only route to the system. Reads are free; mutations belong in
     /// `apply` and must go through [`ApplyCx::mutate`].
     pub runner: &'a dyn CommandRunner,
+
+    /// The distro's package tooling, for steps that install something of their
+    /// own rather than declaring it through `dependencies()`.
+    ///
+    /// Optional because a step that touches no packages must still be testable
+    /// without standing one up, and because the doctor and rollback paths build
+    /// a context without ever installing anything. A step that needs one and
+    /// finds `None` reports that it cannot tell rather than assuming.
+    pub packages: Option<&'a dyn PackageManager>,
 }
 
 impl<'a> CoreCx<'a> {
-    /// Builds a context from probed facts and a runner.
+    /// Builds a context from probed facts and a runner, with no package
+    /// tooling. The common case: most steps write files and set kernel
+    /// parameters.
     #[must_use]
     pub const fn new(facts: &'a SystemFacts, runner: &'a dyn CommandRunner) -> Self {
-        Self { facts, runner }
+        Self {
+            facts,
+            runner,
+            packages: None,
+        }
+    }
+
+    /// Adds the package tooling a step needs to install something itself.
+    #[must_use]
+    pub const fn with_packages(mut self, packages: &'a dyn PackageManager) -> Self {
+        self.packages = Some(packages);
+        self
     }
 }
 

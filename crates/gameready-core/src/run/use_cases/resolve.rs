@@ -60,7 +60,7 @@ fn dep_key(dep: &Dependency, pm: PackageManagerKind) -> String {
     match &dep.kind {
         DependencyKind::Binary { name, .. } => format!("bin:{name}"),
         DependencyKind::Package { spec } => {
-            let pkg = package_name(spec, pm).unwrap_or("?");
+            let pkg = spec.name_for(pm).unwrap_or("?");
             format!("pkg:{pkg}")
         }
         DependencyKind::Kernel { min } => format!("kernel:{min}"),
@@ -87,7 +87,7 @@ fn probe_one(
             if runner.which(name).is_some() {
                 return DependencyStatus::Present;
             }
-            let pkg = match package_name(provided_by, facts.distro.package_manager()) {
+            let pkg = match provided_by.name_for(facts.distro.package_manager()) {
                 Some(name) => name,
                 None => return DependencyStatus::Unavailable,
             };
@@ -98,7 +98,7 @@ fn probe_one(
             }
         }
         DependencyKind::Package { spec } => {
-            let pkg = match package_name(spec, facts.distro.package_manager()) {
+            let pkg = match spec.name_for(facts.distro.package_manager()) {
                 Some(name) => name,
                 None => return DependencyStatus::Unavailable,
             };
@@ -122,18 +122,6 @@ fn probe_one(
                 DependencyStatus::Unavailable
             }
         }
-    }
-}
-
-/// Resolves a [`PackageSpec`] to the concrete name for this distro family.
-fn package_name(
-    spec: &crate::improvement::PackageSpec,
-    pm: PackageManagerKind,
-) -> Option<&'static str> {
-    match pm {
-        PackageManagerKind::Pacman => spec.pacman,
-        PackageManagerKind::Apt => spec.apt,
-        PackageManagerKind::Dnf => spec.dnf,
     }
 }
 

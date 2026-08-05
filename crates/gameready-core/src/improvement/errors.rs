@@ -80,6 +80,12 @@ pub enum StepError {
 
     #[error(transparent)]
     Journal(#[from] crate::journal::JournalError),
+
+    /// The package tooling refused a query or an install. Kept as its own
+    /// variant rather than flattened into `Command`, because the caller can
+    /// tell "this package does not exist here" from "the command broke".
+    #[error(transparent)]
+    Packages(#[from] crate::pkg::PackageError),
 }
 
 /// The concrete ways reading a system file can fail to yield a usable value.

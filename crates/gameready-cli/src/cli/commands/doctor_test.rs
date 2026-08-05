@@ -1,4 +1,3 @@
-use gameready_core::exec::Cmd;
 use gameready_core::infra::exec::MockRunner;
 
 use super::run;
@@ -49,14 +48,19 @@ fn doctor_changes_nothing() {
         )
         .with_file("/proc/sys/vm/max_map_count", "1048576\n");
 
+    let before = runner.paths();
     let _ = run(&runner).expect("doctor reads the system");
 
+    // Doctor probes with whatever read-only queries its steps need, and the
+    // list grows as steps are added. What must never change is that none of
+    // them takes privilege or leaves a file behind.
     assert!(
         runner
             .commands()
             .iter()
-            .all(|cmd| cmd == &Cmd::user("uname").arg("-r").to_string()),
-        "doctor ran something other than a probe: {:?}",
+            .all(|cmd| !cmd.starts_with("sudo ")),
+        "doctor asked for root: {:?}",
         runner.commands()
     );
+    assert_eq!(runner.paths().len(), before.len(), "doctor wrote a file");
 }

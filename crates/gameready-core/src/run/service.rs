@@ -26,7 +26,10 @@ pub fn execute(
     on_event: &mut dyn FnMut(RunEvent),
 ) -> Result<RunReport, RunError> {
     let started = Instant::now();
-    let cx = CoreCx::new(facts, runner);
+    let cx = match pkg_manager {
+        Some(pm) => CoreCx::new(facts, runner).with_packages(pm),
+        None => CoreCx::new(facts, runner),
+    };
 
     let mut reports = Vec::with_capacity(steps.len());
     let mut pending = Vec::new();

@@ -7,6 +7,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::facts::PackageManagerKind;
+
 /// One prerequisite, with the text shown to the user before anything is
 /// installed on their machine.
 ///
@@ -92,6 +94,20 @@ impl PackageSpec {
             apt: Some(name),
             dnf: Some(name),
             approx_bytes,
+        }
+    }
+
+    /// What this package is called on the given tooling.
+    ///
+    /// `None` means it does not exist there at all, which is a different answer
+    /// from "exists but is not in a configured repository": the first is known
+    /// without asking the system, the second needs a query.
+    #[must_use]
+    pub const fn name_for(&self, pm: PackageManagerKind) -> Option<&'static str> {
+        match pm {
+            PackageManagerKind::Pacman => self.pacman,
+            PackageManagerKind::Apt => self.apt,
+            PackageManagerKind::Dnf => self.dnf,
         }
     }
 }

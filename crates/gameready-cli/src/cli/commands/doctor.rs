@@ -7,6 +7,7 @@ use gameready_core::doctor;
 use gameready_core::exec::CommandRunner;
 use gameready_core::facts;
 use gameready_core::improvement::CoreCx;
+use gameready_core::infra::pkg;
 use gameready_core::steps::core_steps;
 
 use crate::cli::commands::constants::CANNOT_READ_SYSTEM;
@@ -14,7 +15,11 @@ use crate::cli::commands::constants::CANNOT_READ_SYSTEM;
 /// Reports system facts and what each step currently finds.
 pub fn run(runner: &dyn CommandRunner) -> Result<String> {
     let facts = facts::probe(runner).context(CANNOT_READ_SYSTEM)?;
-    let cx = CoreCx::new(&facts, runner);
+    // The package tooling is what lets a step answer "is this in your
+    // repositories" rather than "I could not tell", which is the difference
+    // between a useful doctor line and a shrug.
+    let packages = pkg::for_kind(facts.distro.package_manager());
+    let cx = CoreCx::new(&facts, runner).with_packages(packages.as_ref());
 
     let mut out = String::new();
     writeln!(out, "\nSystem")?;

@@ -21,8 +21,8 @@ fn a_step_that_applies_and_reverts_cleanly_passes() {
     // The mock never moves the runtime value, so verification after apply
     // fails and the selftest must say so rather than report a pass.
     assert_eq!(status, gameready_core::run::RunStatus::StepFailed);
-    assert!(text.contains("core.sysctl.max-map-count"));
-    assert!(text.contains("apply="));
+    assert!(text.contains("core.sysctl.max-map-count"), "{text}");
+    assert!(text.contains("verify failed"), "{text}");
 }
 
 #[test]

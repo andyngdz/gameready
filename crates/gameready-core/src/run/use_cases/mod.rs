@@ -2,3 +2,4 @@
 
 pub(crate) mod apply_step;
 pub mod resolve;
+pub mod selftest;

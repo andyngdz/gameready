@@ -23,3 +23,10 @@ pub const PROC_SYS_VM: &str = "/proc/sys/vm";
 
 /// The tool that reads and writes kernel parameters.
 pub const SYSCTL_BIN: &str = "sysctl";
+
+/// Where the kernel reports the first core's frequency-scaling governor.
+///
+/// Core zero stands in for the machine: the governor is per-policy, and a
+/// system with different governors on different cores was configured that way
+/// by hand and is not one gameready should be second-guessing.
+pub const SCALING_GOVERNOR: &str = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor";

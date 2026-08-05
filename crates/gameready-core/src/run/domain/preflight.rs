@@ -98,22 +98,11 @@ impl PreflightReport {
             .iter()
             .filter_map(|rd| match &rd.dependency.kind {
                 DependencyKind::Binary { provided_by, .. } => {
-                    spec_name(provided_by, pm).map(String::from)
+                    provided_by.name_for(pm).map(String::from)
                 }
-                DependencyKind::Package { spec } => spec_name(spec, pm).map(String::from),
+                DependencyKind::Package { spec } => spec.name_for(pm).map(String::from),
                 DependencyKind::Kernel { .. } | DependencyKind::Feature { .. } => None,
             })
             .collect()
-    }
-}
-
-fn spec_name(
-    spec: &crate::improvement::PackageSpec,
-    pm: PackageManagerKind,
-) -> Option<&'static str> {
-    match pm {
-        PackageManagerKind::Pacman => spec.pacman,
-        PackageManagerKind::Apt => spec.apt,
-        PackageManagerKind::Dnf => spec.dnf,
     }
 }
