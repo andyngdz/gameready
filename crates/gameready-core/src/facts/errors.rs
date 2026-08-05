@@ -20,4 +20,13 @@ pub enum FactsError {
 
     #[error("`{release}` is not a kernel release this can compare")]
     KernelRelease { release: String },
+
+    #[error("/etc/os-release has no {missing} field")]
+    OsRelease { missing: &'static str },
+
+    /// The distro is real but outside what gameready knows how to drive. Named
+    /// separately from a parse failure so the message can say which distro and
+    /// what it claimed to be like, which is what a bug report needs.
+    #[error("`{id}` (ID_LIKE=`{id_like}`) is not a distro gameready supports")]
+    UnsupportedDistro { id: String, id_like: String },
 }

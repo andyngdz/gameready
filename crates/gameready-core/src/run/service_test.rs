@@ -1,7 +1,6 @@
 use tempfile::TempDir;
 
 use super::*;
-use crate::improvement::KernelVersion;
 use crate::improvement::{Check, Improvement, ImprovementId, Privilege, StepPlan, Verification};
 use crate::infra::exec::MockRunner;
 use crate::journal::{Change, RunId, StatePaths};
@@ -93,7 +92,7 @@ impl CoreImprovement for Fake {
 }
 
 fn facts() -> SystemFacts {
-    SystemFacts::new(KernelVersion::new(7, 0, 0), "7.0.0-29-generic".to_owned())
+    SystemFacts::fixture(crate::facts::Family::Debian)
 }
 
 fn run_with(steps: Vec<Box<dyn CoreImprovement>>, mode: Mode, runner: &MockRunner) -> RunReport {

@@ -5,31 +5,33 @@ use std::fmt::Write as _;
 use anyhow::{Context as _, Result};
 use gameready_core::exec::CommandRunner;
 use gameready_core::facts;
+use gameready_core::improvement::CoreCx;
+use gameready_core::steps::core_steps;
 
 use crate::cli::commands::constants::CANNOT_READ_SYSTEM;
-use gameready_core::improvement::{CoreCx, Probe};
-use gameready_core::steps::core_steps;
 
 /// Reports system facts and what each step currently finds.
 pub fn run(runner: &dyn CommandRunner) -> Result<String> {
     let facts = facts::probe(runner).context(CANNOT_READ_SYSTEM)?;
     let cx = CoreCx::new(&facts, runner);
 
+    // `?` rather than a discarded Result: writing to a String cannot fail, but
+    // the formatting machinery still returns one, and `fmt::Error` converts
+    // into the anyhow error this already returns.
     let mut out = String::new();
-    let _ = writeln!(out, "\nSystem");
-    let _ = writeln!(out, "  kernel   {}", facts.kernel_release);
+    writeln!(out, "\nSystem")?;
+    writeln!(out, "  distro    {}", facts.distro.name)?;
+    writeln!(out, "  family    {}", facts.distro.family)?;
+    writeln!(out, "  packages  {}", facts.distro.package_manager())?;
+    writeln!(out, "  kernel    {}", facts.kernel_release)?;
 
-    let _ = writeln!(out, "\nSteps");
+    writeln!(out, "\nSteps")?;
     for step in core_steps() {
-        let state = match step.probe(&cx) {
-            Ok(Probe::Applicable) => "would apply".to_owned(),
-            Ok(Probe::AlreadyApplied { evidence }) => format!("already set ({evidence})"),
-            Ok(Probe::NotApplicable { reason }) => format!("not applicable ({reason})"),
-            Ok(Probe::Conflict { with, .. }) => format!("conflicts with {with}"),
-            Ok(Probe::Unknown { reason }) => format!("could not tell ({reason})"),
-            Err(error) => format!("probe failed: {error}"),
-        };
-        let _ = writeln!(out, "  {}  {state}", step.id());
+        let state = step.probe(&cx).map_or_else(
+            |error| format!("probe failed: {error}"),
+            |probe| probe.describe(),
+        );
+        writeln!(out, "  {}  {state}", step.id())?;
     }
 
     Ok(out)

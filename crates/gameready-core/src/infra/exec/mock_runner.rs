@@ -27,6 +27,7 @@ pub struct MockRunner {
     state: Mutex<MockState>,
     binaries: HashSet<String>,
     responses: HashMap<String, CmdOutput>,
+    effects: HashMap<String, (PathBuf, String)>,
     fail_at: Option<usize>,
 }
 
@@ -74,6 +75,24 @@ impl MockRunner {
                 stderr: String::new(),
             },
         );
+        self
+    }
+
+    /// Records that a command changes a file when it runs.
+    ///
+    /// Without this the mock cannot model `sysctl -w`, whose whole purpose is
+    /// to change what `/proc/sys/...` reads back. A step that writes a value
+    /// and then verifies it would always appear to fail, so no integration test
+    /// of the apply-then-verify sequence would be possible.
+    #[must_use]
+    pub fn where_command_writes(
+        mut self,
+        command: impl Into<String>,
+        path: impl Into<PathBuf>,
+        contents: impl Into<String>,
+    ) -> Self {
+        self.effects
+            .insert(command.into(), (path.into(), contents.into()));
         self
     }
 
@@ -137,6 +156,12 @@ impl MockRunner {
                 stdout: String::new(),
                 stderr: "injected failure".to_owned(),
             });
+        }
+
+        if let Some((path, contents)) = self.effects.get(&rendered)
+            && let Ok(mut state) = self.state.lock()
+        {
+            state.files.insert(path.clone(), contents.clone());
         }
 
         Ok(self.responses.get(&rendered).cloned().unwrap_or(CmdOutput {

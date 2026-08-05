@@ -4,12 +4,11 @@ use tempfile::TempDir;
 
 use super::*;
 use crate::facts::SystemFacts;
-use crate::improvement::KernelVersion;
 use crate::infra::exec::MockRunner;
 use crate::journal::{Journal, RunId, StatePaths};
 
 fn facts() -> SystemFacts {
-    SystemFacts::new(KernelVersion::new(7, 0, 0), "7.0.0-29-generic".to_owned())
+    SystemFacts::fixture(crate::facts::Family::Debian)
 }
 
 fn change() -> Change {

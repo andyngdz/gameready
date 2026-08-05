@@ -2,7 +2,6 @@ use tempfile::TempDir;
 
 use super::*;
 use crate::facts::SystemFacts;
-use crate::improvement::KernelVersion;
 use crate::infra::exec::MockRunner;
 use crate::journal::{Journal, RunId, StatePaths};
 
@@ -10,7 +9,7 @@ const DEFAULT_ON_THIS_MACHINE: &str = "1048576";
 const RUNTIME: &str = "/proc/sys/vm/max_map_count";
 
 fn facts() -> SystemFacts {
-    SystemFacts::new(KernelVersion::new(7, 0, 0), "7.0.0-29-generic".to_owned())
+    SystemFacts::fixture(crate::facts::Family::Debian)
 }
 
 fn system_at(value: &str) -> MockRunner {

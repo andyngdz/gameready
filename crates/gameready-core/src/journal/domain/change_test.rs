@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use super::*;
+use crate::journal::PriorUnitState;
 
 #[test]
 fn a_file_we_created_is_undone_by_deleting_it() {
@@ -107,8 +108,24 @@ fn a_unit_is_undone_by_returning_it_to_its_prior_state() {
         change.inverse(),
         Undo::RestoreUnit {
             unit: "scx_loader.service".to_owned(),
-            enabled: false,
-            active: false,
+            prior: PriorUnitState::WasDisabled,
+        }
+    );
+}
+
+#[test]
+fn a_unit_that_was_already_enabled_records_that_it_should_stay() {
+    let change = Change::SystemdUnit {
+        unit: "scx_loader.service".to_owned(),
+        was_enabled: true,
+        was_active: true,
+    };
+
+    assert_eq!(
+        change.inverse(),
+        Undo::RestoreUnit {
+            unit: "scx_loader.service".to_owned(),
+            prior: PriorUnitState::WasEnabled,
         }
     );
 }

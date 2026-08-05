@@ -7,7 +7,7 @@ use crate::improvement::{
     ApplyCx, Check, CoreCx, CoreImprovement, Improvement, ImprovementId, ParseFailure,
     PlannedAction, Privilege, Probe, StepError, StepPlan, Tag, Verification,
 };
-use crate::journal::{Change, RunId};
+use crate::journal::{Change, RunId, digest};
 use crate::steps::constants::{
     MANAGED_HEADER, PROC_SYS_VM, SYSCTL_BIN, SYSCTL_DROPIN, VM_MAX_MAP_COUNT,
 };
@@ -137,13 +137,13 @@ impl CoreImprovement for MaxMapCount {
         // Persistence first. If the run dies between the two mutations the
         // system is left correct on the next boot rather than correct now and
         // wrong later, which is the harder failure to notice.
-        let digest = sha256_hex(&contents);
+        let sha256_after = digest(&contents);
         cx.mutate(
             Change::FileWritten {
                 path: dropin.clone(),
                 existed: false,
                 backup: None,
-                sha256_after: digest,
+                sha256_after,
                 mode: 0o644,
             },
             |runner| {
@@ -232,14 +232,6 @@ impl CoreImprovement for MaxMapCount {
         }
         Ok(())
     }
-}
-
-/// Hex digest of what was written, so rollback can tell "unchanged since we
-/// wrote it" from "the user edited it afterwards" and refuse to clobber.
-fn sha256_hex(contents: &str) -> String {
-    use sha2::{Digest, Sha256};
-    let digest = Sha256::digest(contents.as_bytes());
-    digest.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
 #[cfg(test)]

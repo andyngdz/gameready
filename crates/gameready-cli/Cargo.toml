@@ -32,6 +32,7 @@ tracing-subscriber.workspace = true
 gameready-core = { workspace = true, features = ["testkit"] }
 
 assert_cmd.workspace = true
+indoc = "2"
 insta.workspace = true
 insta-cmd.workspace = true
 predicates.workspace = true

@@ -1,8 +1,11 @@
 //! Reading the system's facts through the command runner.
 
+use std::path::Path;
+
 use crate::exec::{Cmd, CommandRunner};
 use crate::facts::domain::SystemFacts;
 use crate::facts::errors::FactsError;
+use crate::facts::service::os_release::{OS_RELEASE, parse as parse_os_release};
 use crate::improvement::KernelVersion;
 
 /// Probes the running system.
@@ -20,8 +23,19 @@ pub fn probe(runner: &dyn CommandRunner) -> Result<SystemFacts, FactsError> {
         .stdout_trimmed()
         .to_owned();
 
+    let os_release = runner
+        .read_to_string(Path::new(OS_RELEASE))
+        .map_err(|source| FactsError::Probe {
+            what: "os-release",
+            source,
+        })?;
+
     let kernel = parse_kernel_release(&release)?;
-    Ok(SystemFacts::new(kernel, release))
+    Ok(SystemFacts::new(
+        parse_os_release(&os_release)?,
+        kernel,
+        release,
+    ))
 }
 
 /// Parses the numeric prefix of a `uname -r` string.
@@ -67,5 +81,5 @@ pub fn parse_kernel_release(release: &str) -> Result<KernelVersion, FactsError> 
 }
 
 #[cfg(test)]
-#[path = "service_test.rs"]
-mod service_test;
+#[path = "probe_test.rs"]
+mod probe_test;

@@ -15,6 +15,7 @@ use clap::Parser;
 use directories::ProjectDirs;
 use gameready_core::infra::exec::RealRunner;
 use gameready_core::journal::StatePaths;
+use gameready_core::rollback::PackagePolicy;
 use gameready_core::run::{Mode, RunStatus};
 
 use crate::cli::args::{Cli, Command};
@@ -40,6 +41,15 @@ fn dispatch(cli: &Cli) -> Result<(RunStatus, String)> {
     let paths = state_paths(cli.state_dir.clone())?;
     let runner = RealRunner::detect().context("no way to run privileged commands was found")?;
 
+    // One prompt, before anything runs. Every privileged command afterwards
+    // uses `sudo -n`, so priming here is what keeps a password prompt from
+    // appearing underneath a progress display, or from failing outright.
+    if cli.command.mutates() {
+        runner
+            .prime()
+            .context("could not get permission to make system changes")?;
+    }
+
     match &cli.command {
         Command::Doctor => Ok((RunStatus::Clean, cli::commands::doctor(&runner)?)),
 
@@ -54,20 +64,19 @@ fn dispatch(cli: &Cli) -> Result<(RunStatus, String)> {
             Ok((report.status(), output))
         }
 
-        Command::Rollback { run } => Ok((
-            RunStatus::Clean,
-            cli::commands::rollback(&paths, run.as_deref())?,
-        )),
-
-        Command::Selftest { step: _ } => {
-            let (passed, output) = cli::commands::selftest(&runner, paths)?;
-            let status = if passed {
-                RunStatus::Clean
+        Command::Rollback {
+            run,
+            purge_packages,
+        } => {
+            let policy = if *purge_packages {
+                PackagePolicy::Purge
             } else {
-                RunStatus::StepFailed
+                PackagePolicy::Keep
             };
-            Ok((status, output))
+            cli::commands::rollback(&runner, paths, run.as_deref(), policy)
         }
+
+        Command::Selftest { step: _ } => cli::commands::selftest(&runner, paths),
     }
 }
 

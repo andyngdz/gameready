@@ -25,5 +25,6 @@ pub mod facts;
 pub mod improvement;
 pub mod infra;
 pub mod journal;
+pub mod rollback;
 pub mod run;
 pub mod steps;

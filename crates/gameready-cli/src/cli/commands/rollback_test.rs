@@ -1,20 +1,30 @@
+use gameready_core::infra::exec::MockRunner;
 use gameready_core::journal::StatePaths;
+use gameready_core::rollback::PackagePolicy;
 use tempfile::TempDir;
 
 use super::run;
 
 #[test]
-fn reports_an_empty_journal_without_failing() {
+fn an_empty_journal_is_reported_rather_than_treated_as_an_error_state() {
     let dir = TempDir::new().expect("temp dir");
-    let text = run(&StatePaths::new(dir.path().to_path_buf()), None).expect("reads");
-    assert!(text.contains("Records   0"));
+    let runner = MockRunner::new();
+    let paths = StatePaths::new(dir.path().to_path_buf());
+
+    let error =
+        run(&runner, paths, None, PackagePolicy::Keep).expect_err("there is nothing to undo");
+
+    assert!(error.to_string().contains("no runs"), "{error}");
 }
 
 #[test]
-fn says_plainly_that_it_changed_nothing() {
-    // Until the undo replay lands, this must not read as though it undid work.
+fn a_malformed_run_id_is_rejected_before_anything_runs() {
     let dir = TempDir::new().expect("temp dir");
-    let text = run(&StatePaths::new(dir.path().to_path_buf()), None).expect("reads");
-    assert!(text.contains("not implemented"));
-    assert!(text.contains("Nothing was changed"));
+    let runner = MockRunner::new();
+    let paths = StatePaths::new(dir.path().to_path_buf());
+
+    let error = run(&runner, paths, Some("not-a-ulid"), PackagePolicy::Keep).expect_err("bad id");
+
+    assert!(error.to_string().contains("not a run id"), "{error}");
+    assert!(runner.commands().is_empty());
 }

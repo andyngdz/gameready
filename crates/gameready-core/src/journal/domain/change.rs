@@ -8,6 +8,20 @@
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+
+/// Hex digest of file contents.
+///
+/// Recorded when a file is written and re-checked before it is deleted, so
+/// rollback can tell "unchanged since we wrote it" from "the user edited it
+/// afterwards" and refuse to clobber the second.
+#[must_use]
+pub fn digest(contents: &str) -> String {
+    Sha256::digest(contents.as_bytes())
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
+}
 
 /// A mutation gameready made, carrying enough prior state to undo it.
 ///
@@ -124,18 +138,33 @@ impl Change {
             },
 
             Self::SystemdUnit {
-                unit,
-                was_enabled,
-                was_active,
+                unit, was_enabled, ..
             } => Undo::RestoreUnit {
                 unit: unit.clone(),
-                enabled: *was_enabled,
-                active: *was_active,
+                prior: if *was_enabled {
+                    PriorUnitState::WasEnabled
+                } else {
+                    PriorUnitState::WasDisabled
+                },
             },
 
             Self::DirCreated { path } => Undo::RemoveDirIfEmpty { path: path.clone() },
         }
     }
+}
+
+/// What a systemd unit's state was before the run.
+///
+/// An enum rather than a bool so the undo reads as "it was disabled, put it
+/// back" instead of a bare `if enabled`, where the false branch is the one that
+/// acts and is easy to invert by accident.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PriorUnitState {
+    /// The run enabled it, so the undo disables it again.
+    WasDisabled,
+    /// It was already enabled, so the undo leaves it alone.
+    WasEnabled,
 }
 
 /// The operation that reverses a [`Change`].
@@ -170,12 +199,8 @@ pub enum Undo {
         installed: Vec<String>,
     },
 
-    /// Return a unit to its prior enabled and active state.
-    RestoreUnit {
-        unit: String,
-        enabled: bool,
-        active: bool,
-    },
+    /// Return a unit to the state it was in before the run.
+    RestoreUnit { unit: String, prior: PriorUnitState },
 
     /// Remove a directory, but only if nothing else put anything in it.
     RemoveDirIfEmpty { path: PathBuf },

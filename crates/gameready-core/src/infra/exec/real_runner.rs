@@ -148,6 +148,10 @@ impl CommandRunner for RealRunner {
                     .arg(staged.to_string_lossy().into_owned())
                     .arg(path.to_string_lossy().into_owned());
                 let result = self.run(&install).map(|_| ());
+                // Best effort, and deliberately not propagated: the staged copy
+                // is in the temp directory and the install either happened or
+                // did not. Failing the write because the leftover could not be
+                // swept up would report the wrong thing.
                 let _ = std::fs::remove_file(&staged);
                 result
             }

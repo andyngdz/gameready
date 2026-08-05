@@ -7,6 +7,8 @@ mod domain;
 mod errors;
 mod service;
 
-pub use domain::{Change, JOURNAL_VERSION, JournalEvent, JournalRecord, RunId, Undo};
+pub use domain::{
+    Change, JOURNAL_VERSION, JournalEvent, JournalRecord, PriorUnitState, RunId, Undo, digest,
+};
 pub use errors::JournalError;
 pub use service::{Journal, StatePaths, load};

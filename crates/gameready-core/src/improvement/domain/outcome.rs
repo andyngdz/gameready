@@ -33,6 +33,25 @@ pub enum Probe {
     Unknown { reason: String },
 }
 
+impl Probe {
+    /// What was found, in the words shown to the user.
+    ///
+    /// Lives here rather than in the CLI for the same reason as
+    /// [`Outcome::detail`]: what there is to say about a probe result is a
+    /// property of the result. The CLI decides the layout, this decides the
+    /// words, and `doctor` and the plan screen cannot drift apart.
+    #[must_use]
+    pub fn describe(&self) -> String {
+        match self {
+            Self::Applicable => "would apply".to_owned(),
+            Self::AlreadyApplied { evidence } => format!("already set ({evidence})"),
+            Self::NotApplicable { reason } => format!("not applicable ({reason})"),
+            Self::Conflict { with, detail } => format!("conflicts with {with}: {detail}"),
+            Self::Unknown { reason } => format!("could not tell ({reason})"),
+        }
+    }
+}
+
 /// How a step ended. One of these is recorded per step per run and is what the
 /// summary screen and `--json` output are built from.
 #[derive(Debug, Serialize, Deserialize)]

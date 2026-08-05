@@ -20,6 +20,22 @@ pub struct Cli {
     pub state_dir: Option<std::path::PathBuf>,
 }
 
+impl Command {
+    /// Whether this command will change the system.
+    ///
+    /// Drives the one credential prompt at the start of a run. Every
+    /// privileged command runs with `-n` afterwards, so a command that mutates
+    /// without priming first fails against a cold cache rather than asking.
+    #[must_use]
+    pub const fn mutates(&self) -> bool {
+        match self {
+            Self::Doctor => false,
+            Self::Apply { dry_run, .. } => !*dry_run,
+            Self::Rollback { .. } | Self::Selftest { .. } => true,
+        }
+    }
+}
+
 /// The subcommands.
 #[derive(Debug, Subcommand)]
 pub enum Command {
@@ -42,6 +58,13 @@ pub enum Command {
         /// Which run to undo. Defaults to the most recent.
         #[arg(long)]
         run: Option<String>,
+
+        /// Also remove packages the run installed.
+        ///
+        /// Off by default: uninstalling is not the inverse of installing, so
+        /// the dependency cascade is the user's call, not ours.
+        #[arg(long)]
+        purge_packages: bool,
     },
 
     /// Apply a step, verify it, roll it back, and verify it reverted.
@@ -55,3 +78,7 @@ pub enum Command {
         step: Option<String>,
     },
 }
+
+#[cfg(test)]
+#[path = "args_test.rs"]
+mod args_test;

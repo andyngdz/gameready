@@ -80,14 +80,20 @@ change, plus pre-images of replaced files under `backups/`.
 ```bash
 gameready rollback                    # last run
 gameready rollback --run <id>         # a specific run
-gameready rollback --all              # every recorded run
-gameready status                      # what is currently applied
+gameready rollback --purge-packages   # also remove packages the run installed
 ```
 
-Rollback reverses configuration changes. Packages installed during a run stay
-installed unless `--purge-packages` is passed, because removing a package is not
-the inverse of installing one: dependency cascades, leftover configuration, and
-other users of the package all differ from the original operation.
+Rollback reverses configuration changes in reverse order, so a runtime value
+goes back before the file that persists it is removed.
+
+A file that changed since gameready wrote it is left alone and reported. The
+recorded digest is what distinguishes undoing our own work from destroying a
+hand edit.
+
+Packages installed during a run stay installed unless `--purge-packages` is
+passed, because removing a package is not the inverse of installing one:
+dependency cascades, leftover configuration, and other users of the package all
+differ from the original operation.
 
 ## Supported
 
