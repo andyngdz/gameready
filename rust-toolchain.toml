@@ -1,0 +1,8 @@
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]
+# The musl target is deliberately not listed here. Container tests build one
+# static binary for x86_64-unknown-linux-musl to run across the arch, debian,
+# ubuntu, and fedora images without glibc version skew, but declaring it here
+# makes every cargo invocation sync it. The docker test harness adds the target
+# itself when it needs it.

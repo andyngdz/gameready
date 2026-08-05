@@ -1,0 +1,33 @@
+[package]
+name = "gameready-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Improvement engine, journal, and rollback for gameready"
+
+[lints]
+workspace = true
+
+[features]
+# Exposes MockRunner and the fixture harness to downstream test code.
+# The CLI crate's integration tests need them; production builds do not.
+testkit = []
+
+[dependencies]
+directories.workspace = true
+itertools.workspace = true
+rustix.workspace = true
+semver.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+ulid = { workspace = true, features = ["serde"] }
+
+[dev-dependencies]
+proptest.workspace = true
+rstest.workspace = true
+tempfile.workspace = true

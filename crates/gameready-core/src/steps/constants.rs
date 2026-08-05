@@ -1,0 +1,25 @@
+//! Paths and markers shared by the built-in steps.
+
+/// Every sysctl gameready sets goes in this one file.
+///
+/// One file, always created and never edited, is what keeps the undo simple:
+/// there is no prior content to preserve, so losing the journal still leaves a
+/// change that is identifiable and removable. Editing `/etc/sysctl.conf` in
+/// place would make rollback depend on a backup that may not exist.
+pub const SYSCTL_DROPIN: &str = "/etc/sysctl.d/99-gameready.conf";
+
+/// Marks a file as gameready's own.
+///
+/// `doctor` scans for this so it can find and clean up leftovers even when the
+/// journal has been deleted, which is the failure mode of keeping state in
+/// `$HOME`. Formatted with the tool version, the step id, and the run id.
+pub const MANAGED_HEADER: &str = "# Managed by gameready";
+
+/// Kernel parameter some Proton titles need raised before they will start.
+pub const VM_MAX_MAP_COUNT: &str = "vm.max_map_count";
+
+/// Where the kernel exposes the live value of a `vm.` parameter.
+pub const PROC_SYS_VM: &str = "/proc/sys/vm";
+
+/// The tool that reads and writes kernel parameters.
+pub const SYSCTL_BIN: &str = "sysctl";

@@ -1,0 +1,66 @@
+//! The seam between step logic and the real system.
+//!
+//! Every process spawn and every filesystem touch a step performs goes through
+//! this trait. That is what makes a step testable without root and without a
+//! real machine: the mock implementation records what was asked for and answers
+//! from a fixture, so a step's command sequence, journal records, and rollback
+//! path are all covered by ordinary unit tests.
+
+use std::path::{Path, PathBuf};
+
+use crate::exec::domain::{Cmd, CmdOutput};
+use crate::exec::errors::ExecError;
+use crate::improvement::Privilege;
+
+/// Runs commands and touches files on behalf of a step.
+///
+/// Implementations: `RealRunner` against the live system, `DryRunner` which
+/// answers reads and refuses writes, and `MockRunner` for tests.
+///
+/// Steps must not mutate through this directly. Mutations go through
+/// `ApplyCx::mutate`, which makes the undo record durable first; a clippy
+/// `disallowed_methods` entry catches the direct route.
+pub trait CommandRunner: Send + Sync {
+    /// Runs a command to completion and returns its output.
+    ///
+    /// A non-zero exit is an error, not an output with a code set: a caller
+    /// holding a [`CmdOutput`] can assume the command worked. Commands whose
+    /// non-zero exit is meaningful, such as a package-manager query answering
+    /// "not installed", use [`CommandRunner::run_allowing_failure`].
+    fn run(&self, cmd: &Cmd) -> Result<CmdOutput, ExecError>;
+
+    /// Runs a command and returns its output whatever the exit status.
+    ///
+    /// For probes where a non-zero exit is an answer rather than a fault, such
+    /// as `dpkg-query -s <pkg>` on a package that is not installed.
+    fn run_allowing_failure(&self, cmd: &Cmd) -> Result<CmdOutput, ExecError>;
+
+    /// Reads a file as UTF-8.
+    fn read_to_string(&self, path: &Path) -> Result<String, ExecError>;
+
+    /// Writes a file, creating it if absent.
+    ///
+    /// For a root-owned destination the implementation routes through the
+    /// escalator rather than requiring the process to be root.
+    fn write_file(
+        &self,
+        path: &Path,
+        contents: &str,
+        privilege: Privilege,
+    ) -> Result<(), ExecError>;
+
+    /// Deletes a file. Succeeds if it is already gone, so rollback is
+    /// idempotent and a half-finished undo can be re-run.
+    fn remove_file(&self, path: &Path, privilege: Privilege) -> Result<(), ExecError>;
+
+    /// Whether a path exists. Answers `false` for a path that exists but cannot
+    /// be stat'd, which is the useful answer for probing.
+    fn path_exists(&self, path: &Path) -> bool;
+
+    /// Resolves an executable on `PATH`.
+    ///
+    /// Used to probe binary dependencies. Deliberately not "ask the package
+    /// manager": a user may have installed a tool outside it, and a step needs
+    /// to know whether the binary is usable, not whether a package is recorded.
+    fn which(&self, binary: &str) -> Option<PathBuf>;
+}

@@ -1,0 +1,6 @@
+/target
+**/*.rs.bk
+*.pdb
+
+# insta writes these when a snapshot changes; review with `cargo insta review`
+**/snapshots/*.snap.new

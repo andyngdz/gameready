@@ -1,0 +1,20 @@
+# Intentionally empty.
+#
+# The invariant this file was meant to enforce is that a step never mutates
+# system state without an undo record already fsync'd, which means every
+# mutation goes through ApplyCx::mutate rather than straight to the runner.
+#
+# disallowed-methods cannot express it. The mutating calls live *inside* the
+# closure ApplyCx::mutate passes the runner to, which is exactly where they
+# belong, and clippy sees no difference between that call site and one outside
+# the closure. Banning the method flags the correct usage.
+#
+# What holds the invariant today: ApplyCx::mutate is the only way to obtain a
+# runner alongside a journal, and calling it requires constructing the Change
+# that describes the undo. Steps are tested against MockRunner with a sweep that
+# fails at every command position and asserts the recorded undo records cover
+# every mutating command that ran.
+#
+# The enforcement that would actually work is narrowing ApplyCx::reader() to a
+# read-only trait, so the mutating methods are unreachable outside mutate().
+# Left for M2, when the second step lands and the read-only surface is known.
