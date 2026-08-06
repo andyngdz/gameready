@@ -12,12 +12,14 @@ use sha2::{Digest, Sha256};
 
 use crate::improvement::Privilege;
 
+use super::undo::{PriorUnitState, Undo};
+
 /// The privilege a record written before this field existed was made with.
 ///
 /// Every step that predates it wrote under `/etc`, which is root's. Defaulting
 /// to anything else would make an old journal undo itself without the privilege
 /// it needs.
-const fn assumed_root() -> Privilege {
+pub(crate) const fn assumed_root() -> Privilege {
     Privilege::Root
 }
 
@@ -96,6 +98,17 @@ pub enum Change {
 
     /// A directory gameready created.
     DirCreated { path: PathBuf },
+
+    /// A directory tree gameready installed, such as a Proton build extracted
+    /// from a tarball. Unlike [`DirCreated`](Self::DirCreated), the undo is a
+    /// recursive delete rather than an empty-only remove, because the directory
+    /// was populated by the install itself and keeping it would leave behind
+    /// exactly the artifact the user asked to undo.
+    DirTreeInstalled {
+        path: PathBuf,
+        #[serde(default = "assumed_root")]
+        privilege: Privilege,
+    },
 }
 
 impl Change {
@@ -121,8 +134,6 @@ impl Change {
                     mode: *mode,
                     privilege: *privilege,
                 },
-                // Created by us, so the inverse is removal. The digest lets the
-                // caller refuse to delete a file the user edited afterwards.
                 _ => Undo::DeleteFile {
                     path: path.clone(),
                     expect_sha256: sha256_after.clone(),
@@ -152,11 +163,6 @@ impl Change {
                 value: previous.clone(),
             },
 
-            // Uninstalling is not the inverse of installing: dependency
-            // cascades, leftover config, and other users relying on the package
-            // all make removal a different operation with different blast
-            // radius. Default is to report and leave; `--purge-packages` opts
-            // into the removal explicitly.
             Self::PackagesInstalled {
                 manager,
                 newly_installed,
@@ -178,66 +184,13 @@ impl Change {
             },
 
             Self::DirCreated { path } => Undo::RemoveDirIfEmpty { path: path.clone() },
+
+            Self::DirTreeInstalled { path, privilege } => Undo::RemoveDirTree {
+                path: path.clone(),
+                privilege: *privilege,
+            },
         }
     }
-}
-
-/// What a systemd unit's state was before the run.
-///
-/// An enum rather than a bool so the undo reads as "it was disabled, put it
-/// back" instead of a bare `if enabled`, where the false branch is the one that
-/// acts and is easy to invert by accident.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum PriorUnitState {
-    /// The run enabled it, so the undo disables it again.
-    WasDisabled,
-    /// It was already enabled, so the undo leaves it alone.
-    WasEnabled,
-}
-
-/// The operation that reverses a [`Change`].
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "undo", rename_all = "snake_case")]
-pub enum Undo {
-    /// Delete a file gameready created. Refuses if the file no longer matches
-    /// `expect_sha256`, because the user edited it and clobbering their edit is
-    /// worse than leaving the file behind.
-    DeleteFile {
-        path: PathBuf,
-        expect_sha256: String,
-        /// The privilege the write was made with, so the undo matches it.
-        #[serde(default = "assumed_root")]
-        privilege: Privilege,
-    },
-
-    /// Put a pre-image back, restoring the recorded mode.
-    RestoreFile {
-        path: PathBuf,
-        from: PathBuf,
-        mode: u32,
-        #[serde(default = "assumed_root")]
-        privilege: Privilege,
-    },
-
-    /// Set a kernel parameter back to its prior value.
-    SetSysctl { key: String, value: String },
-
-    /// Write a sysfs attribute back to its prior value.
-    WriteSysfs { path: PathBuf, value: String },
-
-    /// Report packages left installed. Performs nothing unless the caller opted
-    /// into removal.
-    ReportPackages {
-        manager: String,
-        installed: Vec<String>,
-    },
-
-    /// Return a unit to the state it was in before the run.
-    RestoreUnit { unit: String, prior: PriorUnitState },
-
-    /// Remove a directory, but only if nothing else put anything in it.
-    RemoveDirIfEmpty { path: PathBuf },
 }
 
 #[cfg(test)]

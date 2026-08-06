@@ -8,7 +8,7 @@ use crate::cli::commands::selection::select_steps;
 use gameready_core::exec::CommandRunner;
 use gameready_core::infra::pkg;
 use gameready_core::journal::{Journal, RunId, StatePaths};
-use gameready_core::run::{Mode, RunReport, execute};
+use gameready_core::run::{execute, Mode, RunReport};
 
 use crate::cli::ui;
 
@@ -26,6 +26,7 @@ pub fn run(
     let mut journal =
         Journal::open(paths.clone(), RunId::generate()).context(CANNOT_OPEN_JOURNAL)?;
 
+    let mut progress = ui::ProgressView::new();
     let report = execute(
         selected,
         &facts,
@@ -33,9 +34,10 @@ pub fn run(
         &mut journal,
         mode,
         Some(pm.as_ref()),
-        &mut |_| {},
+        &mut |event| progress.on_event(event),
     )
     .context("the run could not complete")?;
+    drop(progress);
 
     let rendered = ui::Summary::new(&report, &paths.journal()).to_string();
     Ok((report, rendered))

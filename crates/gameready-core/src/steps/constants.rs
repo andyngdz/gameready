@@ -86,6 +86,28 @@ pub const LAUNCH_OPTIONS_KEY: &str = "LaunchOptions";
 /// The name the pre-image of Steam's config is filed under in a run's backups.
 pub const LOCAL_CONFIG_BACKUP: &str = "localconfig.vdf";
 
+/// GitHub API endpoint for the latest Proton-GE release.
+pub const PROTON_GE_LATEST_URL: &str =
+    "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases/latest";
+
+/// The directory inside a Steam root where custom compatibility tools live.
+///
+/// Steam discovers tools by scanning for `compatibilitytool.vdf` in each
+/// subdirectory on startup.
+pub const COMPAT_TOOLS_DIR: &str = "compatibilitytools.d";
+
+/// The manifest file Steam reads to discover a compatibility tool.
+pub const COMPAT_TOOL_VDF: &str = "compatibilitytool.vdf";
+
+/// curl binary, used for HTTP fetches.
+pub const CURL_BIN: &str = "curl";
+
+/// tar binary, used for archive extraction.
+pub const TAR_BIN: &str = "tar";
+
+/// sha512sum binary, used for checksum verification.
+pub const SHA512SUM_BIN: &str = "sha512sum";
+
 #[cfg(test)]
 #[path = "constants_test.rs"]
 mod constants_test;

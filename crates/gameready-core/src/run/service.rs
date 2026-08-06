@@ -178,7 +178,15 @@ fn apply_all(
         });
 
         journal.append(JournalEvent::StepBegin { step: step.id() })?;
-        let outcome = apply_and_verify(step.as_ref(), cx, runner, journal);
+
+        let step_id = step.id();
+        let progress: Box<dyn FnMut(&str) + '_> = Box::new(|msg: &str| {
+            on_event(RunEvent::StepProgress {
+                step: step_id.clone(),
+                message: msg.to_owned(),
+            });
+        });
+        let outcome = apply_and_verify(step.as_ref(), cx, runner, journal, Some(progress));
 
         journal.append(JournalEvent::StepEnd {
             step: step.id(),

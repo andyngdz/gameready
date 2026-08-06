@@ -167,9 +167,7 @@ impl CoreImprovement for GamingTools {
             });
         }
 
-        // Which names are new is decided before the install, not read back from
-        // it. That is what lets the undo record be durable first: a transaction
-        // interrupted halfway still has every name it could have added on disk.
+        cx.progress(&format!("Installing {}", names.join(", ")));
         cx.mutate(
             Change::PackagesInstalled {
                 manager: packages.kind().binary().to_owned(),
@@ -224,7 +222,8 @@ impl CoreImprovement for GamingTools {
                 | Change::SysctlRuntime { .. }
                 | Change::SysfsWrite { .. }
                 | Change::SystemdUnit { .. }
-                | Change::DirCreated { .. } => {}
+                | Change::DirCreated { .. }
+                | Change::DirTreeInstalled { .. } => {}
             }
         }
         Ok(())

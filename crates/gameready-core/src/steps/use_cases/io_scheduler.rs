@@ -112,9 +112,7 @@ impl CoreImprovement for IoScheduler {
     }
 
     fn apply(&self, cx: &mut ApplyCx<'_, CoreCx<'_>>) -> Result<(), StepError> {
-        // Persistence first: the rule so a reboot re-applies the choice, then
-        // the live writes. Dying between leaves the machine correct next boot
-        // rather than correct now and wrong later.
+        cx.progress("Writing udev rule");
         let rule = PathBuf::from(IO_SCHEDULER_RULE);
         let contents = Self::rule_contents(cx.run());
         let sha256_after = digest(&contents);
@@ -137,6 +135,7 @@ impl CoreImprovement for IoScheduler {
             },
         )?;
 
+        cx.progress("Setting schedulers");
         for disk in scan_disks(cx.reader())?
             .iter()
             .filter(|disk| disk.needs_change())
@@ -208,7 +207,8 @@ impl CoreImprovement for IoScheduler {
                 | Change::SysctlRuntime { .. }
                 | Change::PackagesInstalled { .. }
                 | Change::SystemdUnit { .. }
-                | Change::DirCreated { .. } => {}
+                | Change::DirCreated { .. }
+                | Change::DirTreeInstalled { .. } => {}
             }
         }
         Ok(())

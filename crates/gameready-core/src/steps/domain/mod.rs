@@ -3,6 +3,7 @@
 mod block_device;
 mod daemons;
 mod launch;
+mod proton_ge;
 mod swap;
 mod tools;
 
@@ -12,5 +13,6 @@ pub use block_device::{
 };
 pub use daemons::{COMPETING_DAEMONS, CompetingDaemon};
 pub use launch::{Edited, LaunchTarget, apply_targets};
+pub use proton_ge::{ProtonRelease, parse_checksum, parse_release, tarball_name};
 pub use swap::{SwapArea, SwapBacking, parse_proc_swaps, primary_is_zram};
 pub use tools::{GAMING_TOOLS, GamingTool};

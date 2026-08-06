@@ -132,7 +132,8 @@ fn apply_records_each_disk_previous_scheduler_for_rollback() {
             | Change::SysctlRuntime { .. }
             | Change::PackagesInstalled { .. }
             | Change::SystemdUnit { .. }
-            | Change::DirCreated { .. } => None,
+            | Change::DirCreated { .. }
+            | Change::DirTreeInstalled { .. } => None,
         })
         .collect();
     assert_eq!(previous, ["mq-deadline", "none"]);

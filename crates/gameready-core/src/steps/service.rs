@@ -2,7 +2,7 @@
 
 use crate::improvement::{CoreImprovement, ImprovementId};
 use crate::steps::use_cases::{
-    Conflicts, CpuGovernor, GamingTools, IoScheduler, MaxMapCount, Swappiness,
+    Conflicts, CpuGovernor, GamingTools, IoScheduler, MaxMapCount, ProtonGe, Swappiness,
 };
 
 /// Every system-wide improvement gameready ships, in the order they apply.
@@ -22,6 +22,7 @@ pub fn core_steps() -> Vec<Box<dyn CoreImprovement>> {
         Box::new(IoScheduler),
         Box::new(Swappiness),
         Box::new(GamingTools),
+        Box::new(ProtonGe::detect()),
         Box::new(CpuGovernor),
     ]
 }

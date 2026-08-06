@@ -37,6 +37,8 @@ pub(super) fn perform(
         Undo::RestoreUnit { unit, prior } => restore_unit(runner, unit, *prior),
 
         Undo::RemoveDirIfEmpty { path } => remove_dir(runner, path),
+
+        Undo::RemoveDirTree { path, privilege } => remove_dir_tree(runner, path, *privilege),
     }
 }
 
@@ -195,6 +197,27 @@ fn restore_unit(runner: &dyn CommandRunner, unit: &str, prior: PriorUnitState) -
     match runner.run(&cmd) {
         Ok(_) => UndoOutcome::Reverted {
             detail: format!("{unit} disabled again"),
+        },
+        Err(error) => UndoOutcome::Failed {
+            error: error.to_string(),
+        },
+    }
+}
+
+/// Recursively removes a directory tree gameready installed.
+fn remove_dir_tree(runner: &dyn CommandRunner, path: &Path, privilege: Privilege) -> UndoOutcome {
+    if !runner.path_exists(path) {
+        return UndoOutcome::AlreadyGone;
+    }
+    let cmd = match privilege {
+        Privilege::Root => Cmd::root("rm"),
+        Privilege::User => Cmd::user("rm"),
+    }
+    .arg("-rf")
+    .arg(path.to_string_lossy().into_owned());
+    match runner.run(&cmd) {
+        Ok(_) => UndoOutcome::Reverted {
+            detail: format!("removed {}", path.display()),
         },
         Err(error) => UndoOutcome::Failed {
             error: error.to_string(),

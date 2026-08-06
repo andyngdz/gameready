@@ -82,7 +82,7 @@ fn run(step: &FakeStep) -> Outcome {
     let cx = CoreCx::new(&facts, &runner);
     let mut journal = Journal::open(StatePaths::new(dir.path().to_path_buf()), RunId::generate())
         .expect("journal");
-    apply_and_verify(step, &cx, &runner, &mut journal)
+    apply_and_verify(step, &cx, &runner, &mut journal, None)
 }
 
 #[test]

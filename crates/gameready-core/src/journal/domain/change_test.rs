@@ -30,7 +30,8 @@ fn a_file_we_created_is_undone_by_deleting_it() {
         | Undo::WriteSysfs { .. }
         | Undo::ReportPackages { .. }
         | Undo::RestoreUnit { .. }
-        | Undo::RemoveDirIfEmpty { .. }) => panic!("expected a delete, got {other:?}"),
+        | Undo::RemoveDirIfEmpty { .. }
+        | Undo::RemoveDirTree { .. }) => panic!("expected a delete, got {other:?}"),
     }
 }
 
@@ -56,7 +57,8 @@ fn a_file_we_replaced_is_undone_by_restoring_its_pre_image() {
         | Undo::WriteSysfs { .. }
         | Undo::ReportPackages { .. }
         | Undo::RestoreUnit { .. }
-        | Undo::RemoveDirIfEmpty { .. }) => panic!("expected a restore, got {other:?}"),
+        | Undo::RemoveDirIfEmpty { .. }
+        | Undo::RemoveDirTree { .. }) => panic!("expected a restore, got {other:?}"),
     }
 }
 
@@ -96,7 +98,8 @@ fn installed_packages_are_reported_rather_than_removed() {
         | Undo::SetSysctl { .. }
         | Undo::WriteSysfs { .. }
         | Undo::RestoreUnit { .. }
-        | Undo::RemoveDirIfEmpty { .. }) => panic!("expected a report, got {other:?}"),
+        | Undo::RemoveDirIfEmpty { .. }
+        | Undo::RemoveDirTree { .. }) => panic!("expected a report, got {other:?}"),
     }
 }
 
@@ -135,6 +138,22 @@ fn a_unit_that_was_already_enabled_records_that_it_should_stay() {
 }
 
 #[test]
+fn a_dir_tree_installed_is_undone_by_recursive_removal() {
+    let change = Change::DirTreeInstalled {
+        path: PathBuf::from("/home/u/.steam/root/compatibilitytools.d/GE-Proton11-3"),
+        privilege: Privilege::User,
+    };
+
+    assert_eq!(
+        change.inverse(),
+        Undo::RemoveDirTree {
+            path: PathBuf::from("/home/u/.steam/root/compatibilitytools.d/GE-Proton11-3"),
+            privilege: Privilege::User,
+        }
+    );
+}
+
+#[test]
 fn every_change_round_trips_through_json() {
     // The journal is the undo record; a change that cannot be read back is a
     // change that cannot be undone after a crash.
@@ -145,6 +164,10 @@ fn every_change_round_trips_through_json() {
         },
         Change::DirCreated {
             path: PathBuf::from("/etc/gameready"),
+        },
+        Change::DirTreeInstalled {
+            path: PathBuf::from("/home/u/.steam/root/compatibilitytools.d/GE-Proton11-3"),
+            privilege: Privilege::User,
         },
     ];
 

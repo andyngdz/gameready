@@ -159,7 +159,8 @@ fn apply_records_the_previous_value_so_rollback_can_restore_it() {
         | Change::SysfsWrite { .. }
         | Change::PackagesInstalled { .. }
         | Change::SystemdUnit { .. }
-        | Change::DirCreated { .. }) => panic!("expected a sysctl record, got {other:?}"),
+        | Change::DirCreated { .. }
+        | Change::DirTreeInstalled { .. }) => panic!("expected a sysctl record, got {other:?}"),
     }
 }
 

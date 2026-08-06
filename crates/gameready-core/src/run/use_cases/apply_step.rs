@@ -6,6 +6,8 @@ use crate::exec::CommandRunner;
 use crate::improvement::{ApplyCx, CoreCx, CoreImprovement, Outcome, RollbackStatus, StepError};
 use crate::journal::{Change, Journal};
 
+type OnProgress<'a> = Option<Box<dyn FnMut(&str) + 'a>>;
+
 /// Applies one step, then proves the change took effect.
 ///
 /// A failure in either phase rolls the step back from the changes it actually
@@ -15,9 +17,13 @@ pub fn apply_and_verify(
     cx: &CoreCx<'_>,
     runner: &dyn CommandRunner,
     journal: &mut Journal,
+    on_progress: OnProgress<'_>,
 ) -> Outcome {
     let started = Instant::now();
     let mut apply_cx = ApplyCx::new(*cx, step.id(), runner, journal);
+    if let Some(callback) = on_progress {
+        apply_cx = apply_cx.with_progress(callback);
+    }
 
     if let Err(error) = step.apply(&mut apply_cx) {
         let recorded = apply_cx.recorded().to_vec();

@@ -155,6 +155,14 @@ pub enum RunEvent {
     /// A step is about to change something.
     Applying { step: ImprovementId, name: String },
 
+    /// A sub-phase within a step changed status. Steps that involve multiple
+    /// visible operations (download, verify, extract) emit these so the CLI
+    /// can render a per-phase checklist instead of a single spinner.
+    StepProgress {
+        step: ImprovementId,
+        message: String,
+    },
+
     /// A step finished.
     Finished {
         step: ImprovementId,

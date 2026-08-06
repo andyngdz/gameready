@@ -53,6 +53,8 @@ impl<'a> CoreCx<'a> {
     }
 }
 
+type ProgressCallback<'a> = std::cell::RefCell<Box<dyn FnMut(&str) + 'a>>;
+
 /// Mutating context, handed only to `apply` and `rollback`.
 ///
 /// The single way to change the system is [`ApplyCx::mutate`], which makes the
@@ -69,6 +71,7 @@ pub struct ApplyCx<'a, C> {
     runner: &'a dyn CommandRunner,
     journal: &'a mut Journal,
     recorded: Vec<Change>,
+    on_progress: Option<ProgressCallback<'a>>,
 }
 
 impl<'a, C> ApplyCx<'a, C> {
@@ -85,6 +88,7 @@ impl<'a, C> ApplyCx<'a, C> {
             runner,
             journal,
             recorded: Vec::new(),
+            on_progress: None,
         }
     }
 
@@ -122,6 +126,30 @@ impl<'a, C> ApplyCx<'a, C> {
     #[must_use]
     pub const fn reader(&self) -> &'a dyn CommandRunner {
         self.runner
+    }
+
+    /// Attaches a progress callback so steps can report sub-phases.
+    ///
+    /// The CLI renders these as a checklist with spinners, so a step that
+    /// downloads, verifies, and extracts shows each phase individually
+    /// rather than one long-running spinner.
+    #[must_use]
+    pub fn with_progress(mut self, callback: Box<dyn FnMut(&str) + 'a>) -> Self {
+        self.on_progress = Some(std::cell::RefCell::new(callback));
+        self
+    }
+
+    /// Reports a sub-phase to the CLI.
+    ///
+    /// Does nothing when no progress callback is attached, so steps that
+    /// call it are harmless in tests and dry runs.
+    pub fn progress(&self, message: &str) {
+        let Some(ref cell) = self.on_progress else {
+            return;
+        };
+        if let Ok(mut callback) = cell.try_borrow_mut() {
+            callback(message);
+        }
     }
 
     /// Performs one mutation, with its undo record on disk first.

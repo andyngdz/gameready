@@ -222,7 +222,8 @@ impl CoreImprovement for SteamLaunchOptions {
                 | Change::SysfsWrite { .. }
                 | Change::PackagesInstalled { .. }
                 | Change::SystemdUnit { .. }
-                | Change::DirCreated { .. } => {}
+                | Change::DirCreated { .. }
+                | Change::DirTreeInstalled { .. } => {}
             }
         }
         Ok(())
