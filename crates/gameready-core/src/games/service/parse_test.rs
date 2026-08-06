@@ -19,7 +19,7 @@ fn a_minimal_profile_needs_only_a_name_and_an_appid() {
 
     assert_eq!(profile.name, "Deadlock");
     assert_eq!(profile.app_id, AppId(1422450));
-    assert!(profile.wrappers.is_empty());
+    assert_eq!(profile.wrappers, default_wrappers());
     assert!(profile.env.is_empty());
     assert_eq!(profile.proton, None);
 }
@@ -58,6 +58,49 @@ fn a_launch_flag_left_out_means_off() {
     .expect("parsed");
 
     assert_eq!(profile.wrappers, vec![Wrapper::GameMode]);
+}
+
+#[test]
+fn a_profile_that_says_nothing_about_gamemode_still_gets_it() {
+    let profile = parse(indoc! {r#"
+        name = "Deadlock"
+        steam_appid = 1422450
+    "#})
+    .expect("parsed");
+
+    assert_eq!(profile.wrappers, default_wrappers());
+    assert_eq!(profile.wrappers, vec![Wrapper::GameMode]);
+}
+
+#[test]
+fn a_profile_can_turn_gamemode_off() {
+    // The only way out for a game that gamemode breaks, which is why the field
+    // is three-state rather than a plain bool.
+    let profile = parse(indoc! {r#"
+        name = "Deadlock"
+        steam_appid = 1422450
+
+        [launch]
+        gamemode = false
+    "#})
+    .expect("parsed");
+
+    assert!(profile.wrappers.is_empty());
+}
+
+#[test]
+fn turning_gamemode_off_leaves_the_other_wrappers_alone() {
+    let profile = parse(indoc! {r#"
+        name = "Deadlock"
+        steam_appid = 1422450
+
+        [launch]
+        gamemode = false
+        mangohud = true
+    "#})
+    .expect("parsed");
+
+    assert_eq!(profile.wrappers, vec![Wrapper::MangoHud]);
 }
 
 #[test]

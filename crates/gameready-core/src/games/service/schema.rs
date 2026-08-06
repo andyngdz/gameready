@@ -40,8 +40,14 @@ pub struct GameToml {
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct LaunchToml {
+    /// Absent means the default, which is on.
+    ///
+    /// Three states rather than two, because "the profile said nothing" and
+    /// "the profile said no" have to lead to different launch options once
+    /// gamemode wraps every game by default. A plain `bool` collapses them and
+    /// there would be no way to write the opt-out.
     #[serde(default)]
-    pub gamemode: bool,
+    pub gamemode: Option<bool>,
 
     #[serde(default)]
     pub mangohud: bool,

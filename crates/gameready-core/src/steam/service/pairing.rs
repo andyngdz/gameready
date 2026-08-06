@@ -1,41 +1,56 @@
 //! Matching installed games against the profiles gameready ships.
 
-use crate::games::{Catalog, GameProfile, Source, Wrapper, launch_options};
+use std::collections::BTreeMap;
+
+use crate::games::{Catalog, GameProfile, Source, Wrapper, default_wrappers, launch_options};
 use crate::steam::domain::InstalledGame;
 
-/// One installed game, and what gameready can do for it.
+/// One installed game, and what gameready will do for it.
 ///
-/// A game with no profile is kept rather than dropped. The core tuning applies
-/// to every game on the machine, so silently leaving a game out of the list
-/// would suggest gameready cannot help with it at all.
+/// Every game carries a profile, because every game gets the defaults. Whether
+/// a `game.toml` matched is carried by `source` instead, which is the only
+/// thing that actually differs between a tuned game and an untuned one.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameSetup {
     pub game: InstalledGame,
 
-    /// The matching profile, when one exists.
-    pub profile: Option<GameProfile>,
+    /// The settings in effect: a matched profile, or the defaults.
+    pub profile: GameProfile,
 
-    /// Where that profile came from, so a user can see their own copy winning.
+    /// Where the profile came from, and `None` when these are the defaults.
+    ///
+    /// Doubles as the answer to "did a file match", so a user who overrode a
+    /// shipped profile can see their own copy winning.
     pub source: Option<Source>,
 }
 
 impl GameSetup {
-    /// Whether gameready has per-game settings for this one.
+    /// Whether a `game.toml` matched, as opposed to taking the defaults.
     #[must_use]
     pub const fn has_profile(&self) -> bool {
-        self.profile.is_some()
+        self.source.is_some()
     }
 
-    /// The launch option string this game's profile asks for.
+    /// The launch option string this game should end up with.
     ///
-    /// Empty for a game with no profile, and for a profile that asks for
-    /// nothing. Both mean "leave Steam's box alone" rather than "clear it".
+    /// Empty when the profile asks for nothing, which the caller reads as
+    /// "leave Steam's box alone" rather than "clear it". A profile that turns
+    /// every default off lands here too.
     #[must_use]
     pub fn launch_options(&self) -> String {
-        self.profile
-            .as_ref()
-            .map(launch_options)
-            .unwrap_or_default()
+        launch_options(&self.profile)
+    }
+}
+
+/// The settings a game gets when no `game.toml` matched it.
+fn defaults_for(game: &InstalledGame) -> GameProfile {
+    GameProfile {
+        name: game.name.clone(),
+        app_id: game.app_id,
+        wrappers: default_wrappers(),
+        env: BTreeMap::new(),
+        proton: None,
+        override_module: None,
     }
 }
 
@@ -68,9 +83,8 @@ impl Overlay {
 
 /// Applies the overlay answer to the selected games.
 ///
-/// Only games with a profile are touched, because those are the only ones whose
-/// launch options gameready writes at all. A game already asking for mangohud
-/// is left as it is rather than gaining a second copy.
+/// A game already asking for mangohud is left as it is rather than gaining a
+/// second copy.
 #[must_use]
 pub fn with_overlay(setups: &[GameSetup], overlay: Overlay) -> Vec<GameSetup> {
     if overlay == Overlay::Hide {
@@ -81,33 +95,21 @@ pub fn with_overlay(setups: &[GameSetup], overlay: Overlay) -> Vec<GameSetup> {
         .iter()
         .map(|setup| {
             let mut setup = setup.clone();
-            if let Some(profile) = setup.profile.as_mut()
-                && !profile.wrappers.contains(&Wrapper::MangoHud)
-            {
+            if !setup.profile.wrappers.contains(&Wrapper::MangoHud) {
                 // Appended, so it ends up innermost: gamemode and gamescope have
                 // to wrap it, not the other way round.
-                profile.wrappers.push(Wrapper::MangoHud);
+                setup.profile.wrappers.push(Wrapper::MangoHud);
             }
             setup
         })
         .collect()
 }
 
-/// The setups that have a profile, which is what `init` ticks by default.
+/// Pairs every installed game with the settings it will get, keeping the scan's
+/// order.
 ///
-/// Lives here rather than in the CLI so the rule "a run with no picker takes
-/// exactly the games gameready has settings for" is one testable function
-/// instead of a filter written at each call site.
-#[must_use]
-pub fn with_profiles(setups: &[GameSetup]) -> Vec<GameSetup> {
-    setups
-        .iter()
-        .filter(|setup| setup.has_profile())
-        .cloned()
-        .collect()
-}
-
-/// Pairs every installed game with its profile, keeping the scan's order.
+/// A game with no matching `game.toml` gets the defaults rather than nothing,
+/// which is what makes gameready useful on a library it has never seen.
 #[must_use]
 pub fn pair_with_catalog(games: &[InstalledGame], catalog: &Catalog) -> Vec<GameSetup> {
     games
@@ -116,7 +118,7 @@ pub fn pair_with_catalog(games: &[InstalledGame], catalog: &Catalog) -> Vec<Game
             let entry = catalog.by_app_id(game.app_id);
             GameSetup {
                 game: game.clone(),
-                profile: entry.map(|entry| entry.profile.clone()),
+                profile: entry.map_or_else(|| defaults_for(game), |entry| entry.profile.clone()),
                 source: entry.map(|entry| entry.source),
             }
         })

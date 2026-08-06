@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use gameready_core::run::{Mode, targets_for};
-use gameready_core::steam::{GameSetup, Overlay, with_overlay, with_profiles};
+use gameready_core::steam::{GameSetup, Overlay, with_overlay};
 use gameready_core::steps::LaunchTarget;
 
 use crate::cli::ui::{LaunchChoice, choose_games, choose_how_to_apply, choose_overlay};
@@ -12,8 +12,8 @@ use crate::cli::ui::{LaunchChoice, choose_games, choose_how_to_apply, choose_ove
 pub enum Picker {
     /// Ask. The normal path.
     Ask,
-    /// Take every game that has a profile and answer nothing, for a script or a
-    /// terminal that cannot prompt.
+    /// Take every installed game and answer nothing, for a script or a terminal
+    /// that cannot prompt.
     TakeAll,
 }
 
@@ -41,7 +41,10 @@ pub fn ask_everything(
 ) -> Result<Answers> {
     let picked = match picker {
         Picker::Ask => choose_games(setups)?,
-        Picker::TakeAll => with_profiles(setups),
+        // Every game, not only the ones a profile matched: a run that cannot
+        // ask has no way to learn that the user wanted the rest, and every game
+        // now has settings to write.
+        Picker::TakeAll => setups.to_vec(),
     };
 
     let overlay = match (overlay, picker) {

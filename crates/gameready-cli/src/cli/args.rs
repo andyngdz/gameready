@@ -85,7 +85,7 @@ pub enum Command {
     /// The one command most people need. Everything it does is undoable with
     /// `gameready rollback`.
     Init {
-        /// Take every game that has a profile without showing the picker.
+        /// Take every installed game without showing the picker.
         #[arg(long)]
         yes: bool,
 

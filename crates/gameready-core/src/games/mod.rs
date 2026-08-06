@@ -9,4 +9,4 @@ mod service;
 
 pub use domain::{AppId, GameKey, GameProfile, GameRef, ProtonChoice, Wrapper};
 pub use errors::GameError;
-pub use service::{Catalog, CatalogEntry, Source, launch_options, parse_profile};
+pub use service::{Catalog, CatalogEntry, Source, default_wrappers, launch_options, parse_profile};

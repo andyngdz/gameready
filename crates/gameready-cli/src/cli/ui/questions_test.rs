@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use gameready_core::games::{AppId, GameProfile, Source, Wrapper};
+use gameready_core::games::{AppId, GameProfile, Source, Wrapper, default_wrappers};
 use gameready_core::steam::InstalledGame;
 
 use super::*;
@@ -9,15 +9,15 @@ use super::*;
 fn setup(name: &str, app_id: u32, wrappers: Option<Vec<Wrapper>>) -> GameSetup {
     GameSetup {
         game: InstalledGame::new(AppId(app_id), name.to_owned(), PathBuf::from("/games")),
-        profile: wrappers.map(|wrappers| GameProfile {
+        source: wrappers.as_ref().map(|_| Source::Builtin),
+        profile: GameProfile {
             name: name.to_owned(),
             app_id: AppId(app_id),
-            wrappers,
+            wrappers: wrappers.unwrap_or_else(default_wrappers),
             env: BTreeMap::new(),
             proton: None,
             override_module: None,
-        }),
-        source: Some(Source::Builtin),
+        },
     }
 }
 
@@ -49,8 +49,17 @@ fn the_overlay_flag_is_honoured_without_a_prompt() {
 }
 
 #[test]
-fn a_game_with_no_profile_produces_no_launch_target() {
+fn a_game_with_no_profile_still_produces_a_launch_target() {
     let setups = [setup("Hollow Knight", 367_520, None)];
+    let answers = ask_everything(&setups, Picker::TakeAll, None, Mode::Apply).expect("answered");
+
+    assert_eq!(answers.targets.len(), 1);
+    assert_eq!(answers.targets[0].options, "gamemoderun %command%");
+}
+
+#[test]
+fn a_profile_that_turns_everything_off_produces_no_launch_target() {
+    let setups = [setup("Hollow Knight", 367_520, Some(Vec::new()))];
     let answers = ask_everything(&setups, Picker::TakeAll, None, Mode::Apply).expect("answered");
 
     assert!(answers.targets.is_empty());

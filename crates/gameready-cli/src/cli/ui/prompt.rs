@@ -48,11 +48,14 @@ pub fn choose_games(setups: &[GameSetup]) -> Result<Vec<GameSetup>> {
 }
 
 /// How one game reads in the picker.
+///
+/// Names what the game gets, not whether a file matched: that is gameready's
+/// business, not the user's.
 pub(super) fn label(setup: &GameSetup) -> String {
     if setup.has_profile() {
-        format!("{}  (has a profile)", setup.game.name)
+        format!("{}  (tuned profile)", setup.game.name)
     } else {
-        format!("{}  (core tuning only)", setup.game.name)
+        format!("{}  (gamemode)", setup.game.name)
     }
 }
 

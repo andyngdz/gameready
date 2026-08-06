@@ -94,11 +94,12 @@ fn every_game_carries_its_appid_and_directory() {
 
     let games = scan_installed_games_in(steam.path()).expect("scanned");
 
-    assert_eq!(games[0].app_id.0, 1_422_450);
+    let deadlock = &games[0];
+    assert_eq!(deadlock.app_id.0, 1_422_450);
     assert!(
-        games[0].install_dir.ends_with("steamapps/common/Deadlock"),
+        deadlock.install_dir.ends_with("steamapps/common/Deadlock"),
         "{:?}",
-        games[0].install_dir
+        deadlock.install_dir
     );
 }
 

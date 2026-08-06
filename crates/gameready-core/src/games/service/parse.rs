@@ -40,6 +40,16 @@ pub fn parse_profile(path: &Path, text: &str) -> Result<GameProfile, GameError> 
     })
 }
 
+/// The wrappers every game gets when no profile says otherwise.
+///
+/// Defined as the empty `[launch]` table rather than a literal list, so the
+/// defaults are whatever [`wrappers`] does with an unset field and there is only
+/// one place to read to know what a game gets.
+#[must_use]
+pub fn default_wrappers() -> Vec<Wrapper> {
+    wrappers(&LaunchToml::default())
+}
+
 /// The wrappers a `[launch]` table asks for, outermost first.
 ///
 /// The order is fixed here rather than taken from the file. gamemode has to be
@@ -47,9 +57,13 @@ pub fn parse_profile(path: &Path, text: &str) -> Result<GameProfile, GameError> 
 /// has to sit outside the game but inside gamemode so the compositor is itself
 /// prioritised. A profile that could reorder these would mostly reorder them
 /// wrong.
+///
+/// gamemode defaults to on because it helps every game and costs nothing when
+/// it cannot: it raises the process priority for as long as the game runs and
+/// does nothing at all when the daemon is missing.
 fn wrappers(launch: &LaunchToml) -> Vec<Wrapper> {
     let mut wrappers = Vec::new();
-    if launch.gamemode {
+    if launch.gamemode.unwrap_or(true) {
         wrappers.push(Wrapper::GameMode);
     }
     if launch.gamescope {

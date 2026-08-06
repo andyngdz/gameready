@@ -2,6 +2,7 @@ use indoc::indoc;
 use tempfile::TempDir;
 
 use super::*;
+use crate::games::default_wrappers;
 
 #[test]
 fn the_shipped_profiles_load_without_any_directory_on_disk() {
@@ -32,9 +33,11 @@ fn a_user_profile_wins_over_the_shipped_one() {
     let entry = catalog.find("Deadlock").expect("found");
 
     assert_eq!(entry.source, Source::User);
-    assert!(
-        entry.profile.wrappers.is_empty(),
-        "the user's file has no [launch] table, so nothing should carry over"
+    assert_eq!(
+        entry.profile.wrappers,
+        default_wrappers(),
+        "the user's file replaces the shipped one outright, so it takes the \
+         defaults rather than inheriting what the shipped profile asked for"
     );
 }
 
