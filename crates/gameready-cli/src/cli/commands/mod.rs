@@ -7,6 +7,7 @@ mod doctor;
 pub(crate) mod init;
 mod list_games;
 mod rollback;
+mod selection;
 mod selftest;
 
 pub use apply::run as apply;

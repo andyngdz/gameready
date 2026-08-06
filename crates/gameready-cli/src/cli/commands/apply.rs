@@ -4,12 +4,11 @@ use anyhow::{Context as _, Result};
 use gameready_core::facts;
 
 use crate::cli::commands::constants::{CANNOT_OPEN_JOURNAL, CANNOT_READ_SYSTEM};
+use crate::cli::commands::selection::select_steps;
 use gameready_core::exec::CommandRunner;
-use gameready_core::improvement::ImprovementId;
 use gameready_core::infra::pkg;
 use gameready_core::journal::{Journal, RunId, StatePaths};
 use gameready_core::run::{Mode, RunReport, execute};
-use gameready_core::steps::{core_steps, find_core_step};
 
 use crate::cli::ui;
 
@@ -20,14 +19,7 @@ pub fn run(
     step: Option<&str>,
     mode: Mode,
 ) -> Result<(RunReport, String)> {
-    let selected = match step {
-        Some(requested) => {
-            let id = ImprovementId::parse(requested)
-                .with_context(|| format!("`{requested}` is not a step id"))?;
-            vec![find_core_step(&id).with_context(|| format!("no step named `{requested}`"))?]
-        }
-        None => core_steps(),
-    };
+    let selected = select_steps(step)?;
 
     let facts = facts::probe(runner).context(CANNOT_READ_SYSTEM)?;
     let pm = pkg::for_kind(facts.distro.package_manager());

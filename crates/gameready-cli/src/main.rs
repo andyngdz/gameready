@@ -84,7 +84,7 @@ fn dispatch(cli: &Cli) -> Result<(RunStatus, String)> {
             cli::commands::rollback(&runner, paths, run.as_deref(), policy)
         }
 
-        Command::Selftest { step: _ } => cli::commands::selftest(&runner, paths),
+        Command::Selftest { step } => cli::commands::selftest(&runner, paths, step.as_deref()),
     }
 }
 
