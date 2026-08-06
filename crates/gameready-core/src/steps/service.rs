@@ -1,7 +1,9 @@
 //! The catalog of built-in improvements.
 
 use crate::improvement::{CoreImprovement, ImprovementId};
-use crate::steps::use_cases::{Conflicts, CpuGovernor, GamingTools, IoScheduler, MaxMapCount};
+use crate::steps::use_cases::{
+    Conflicts, CpuGovernor, GamingTools, IoScheduler, MaxMapCount, Swappiness,
+};
 
 /// Every system-wide improvement gameready ships, in the order they apply.
 ///
@@ -18,6 +20,7 @@ pub fn core_steps() -> Vec<Box<dyn CoreImprovement>> {
         Box::new(Conflicts),
         Box::new(MaxMapCount),
         Box::new(IoScheduler),
+        Box::new(Swappiness),
         Box::new(GamingTools),
         Box::new(CpuGovernor),
     ]

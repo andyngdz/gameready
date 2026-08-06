@@ -35,6 +35,19 @@ pub fn managed_header(step: ImprovementId, run: RunId) -> String {
 /// Kernel parameter some Proton titles need raised before they will start.
 pub const VM_MAX_MAP_COUNT: &str = "vm.max_map_count";
 
+/// Kernel parameter that decides how eagerly pages are swapped out.
+pub const VM_SWAPPINESS: &str = "vm.swappiness";
+
+/// The swappiness drop-in, kept separate from [`SYSCTL_DROPIN`].
+///
+/// Its own file so each sysctl step owns exactly one created-never-edited file:
+/// writing both keys into one file would make the two steps clobber each
+/// other's contents and each other's rollback.
+pub const SWAPPINESS_DROPIN: &str = "/etc/sysctl.d/99-gameready-swappiness.conf";
+
+/// Where the kernel lists every active swap area.
+pub const PROC_SWAPS: &str = "/proc/swaps";
+
 /// Where the kernel exposes the live value of a `vm.` parameter.
 pub const PROC_SYS_VM: &str = "/proc/sys/vm";
 
