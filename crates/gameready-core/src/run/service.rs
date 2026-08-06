@@ -31,21 +31,7 @@ pub fn execute(
         None => CoreCx::new(facts, runner),
     };
 
-    let mut reports = Vec::with_capacity(steps.len());
-    let mut pending = Vec::new();
-
-    for step in steps {
-        on_event(RunEvent::Probing { step: step.id() });
-        match probe_outcome(step.as_ref(), &cx, mode) {
-            Settled::Now(outcome) => reports.push(step_report(step.as_ref(), outcome)),
-            Settled::Apply => pending.push(step),
-        }
-    }
-
-    on_event(RunEvent::Planned {
-        applicable: pending.len(),
-        skipped: reports.len(),
-    });
+    let (mut reports, mut pending) = probe_all(steps, &cx, mode, on_event);
 
     let installed_deps = resolve_and_install(
         &mut pending,
@@ -68,6 +54,39 @@ pub fn execute(
         installed_dependencies: installed_deps,
         took: started.elapsed(),
     })
+}
+
+fn probe_all(
+    steps: Vec<Box<dyn CoreImprovement>>,
+    cx: &CoreCx<'_>,
+    mode: Mode,
+    on_event: &mut dyn FnMut(RunEvent),
+) -> (Vec<StepReport>, Vec<Box<dyn CoreImprovement>>) {
+    let mut reports = Vec::with_capacity(steps.len());
+    let mut pending = Vec::new();
+
+    for step in steps {
+        on_event(RunEvent::Probing { step: step.id() });
+        match probe_outcome(step.as_ref(), cx, mode) {
+            Settled::Now(outcome) => {
+                on_event(RunEvent::Finished {
+                    step: step.id(),
+                    name: step.name().to_owned(),
+                    kind: outcome.kind(),
+                    detail: outcome.detail(),
+                });
+                reports.push(step_report(step.as_ref(), outcome));
+            }
+            Settled::Apply => pending.push(step),
+        }
+    }
+
+    on_event(RunEvent::Planned {
+        applicable: pending.len(),
+        skipped: reports.len(),
+    });
+
+    (reports, pending)
 }
 
 fn resolve_and_install(
@@ -167,7 +186,9 @@ fn apply_all(
         })?;
         on_event(RunEvent::Finished {
             step: step.id(),
-            label: outcome.label().to_owned(),
+            name: step.name().to_owned(),
+            kind: outcome.kind(),
+            detail: outcome.detail(),
         });
 
         reports.push(step_report(step.as_ref(), outcome));

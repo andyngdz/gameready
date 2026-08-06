@@ -2,13 +2,13 @@
 
 use std::fmt;
 
+use console::style;
+use gameready_core::improvement::OutcomeKind;
 use gameready_core::run::RunReport;
 
+use crate::cli::ui::colors::outcome_mark;
+
 /// The outcome of writing Steam's launch options.
-///
-/// Rendered on its own rather than folded into the main summary because it is a
-/// separate run of a separate step, and because the user has just had their
-/// Steam closed and should see plainly what that bought them.
 pub struct LaunchReport<'a> {
     report: &'a RunReport,
 }
@@ -22,17 +22,32 @@ impl<'a> LaunchReport<'a> {
 
 impl fmt::Display for LaunchReport<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "\nLaunch options")?;
         for step in &self.report.steps {
-            writeln!(f, "  {}", step.outcome.label())?;
-            if let Some(detail) = step.outcome.detail() {
-                writeln!(f, "    {detail}")?;
+            let kind = step.outcome.kind();
+            match kind {
+                OutcomeKind::Applied => {
+                    writeln!(
+                        f,
+                        "  {} Launch options set. Steam is restarting.",
+                        outcome_mark(kind)
+                    )?;
+                }
+                OutcomeKind::AlreadySet => {
+                    writeln!(
+                        f,
+                        "  {} {}",
+                        outcome_mark(kind),
+                        style("Launch options already set.").dim()
+                    )?;
+                }
+                OutcomeKind::Failed => {
+                    let detail = step.outcome.detail().unwrap_or_default();
+                    writeln!(f, "  {} Launch options: {detail}", outcome_mark(kind))?;
+                }
+                OutcomeKind::Skipped | OutcomeKind::NotApplicable => {}
             }
         }
-        writeln!(
-            f,
-            "  Steam was closed to write these; start it again when ready."
-        )
+        Ok(())
     }
 }
 

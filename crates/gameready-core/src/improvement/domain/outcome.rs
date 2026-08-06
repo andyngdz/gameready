@@ -103,7 +103,7 @@ impl Outcome {
                 verification.total_count() - verification.failed_count(),
                 verification.total_count(),
             )),
-            Self::AlreadyApplied { evidence } => Some(format!("already set: {evidence}")),
+            Self::AlreadyApplied { evidence } => Some(evidence.clone()),
             Self::NotApplicable { reason } => Some(reason.clone()),
             Self::Skipped { reason } => Some(reason.describe()),
             Self::Failed { error, rolled_back } => {
@@ -115,12 +115,42 @@ impl Outcome {
     /// Short word for the right-hand column of the progress list.
     #[must_use]
     pub const fn label(&self) -> &'static str {
+        self.kind().label()
+    }
+
+    /// Which broad bucket this outcome falls into.
+    #[must_use]
+    pub const fn kind(&self) -> OutcomeKind {
         match self {
-            Self::Applied { .. } => "applied",
-            Self::AlreadyApplied { .. } => "already set",
-            Self::Skipped { .. } => "skipped",
-            Self::NotApplicable { .. } => "not applicable",
-            Self::Failed { .. } => "failed",
+            Self::Applied { .. } => OutcomeKind::Applied,
+            Self::AlreadyApplied { .. } => OutcomeKind::AlreadySet,
+            Self::Skipped { .. } => OutcomeKind::Skipped,
+            Self::NotApplicable { .. } => OutcomeKind::NotApplicable,
+            Self::Failed { .. } => OutcomeKind::Failed,
+        }
+    }
+}
+
+/// The broad bucket an outcome falls into, without carrying the data.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OutcomeKind {
+    Applied,
+    AlreadySet,
+    Skipped,
+    NotApplicable,
+    Failed,
+}
+
+impl OutcomeKind {
+    /// Short word for the right-hand column of the progress list.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Applied => "applied",
+            Self::AlreadySet => "already set",
+            Self::Skipped => "skipped",
+            Self::NotApplicable => "not applicable",
+            Self::Failed => "failed",
         }
     }
 }
@@ -156,7 +186,7 @@ impl SkipReason {
     pub fn describe(&self) -> String {
         match self {
             Self::UserDeclined => "you declined it".to_owned(),
-            Self::Conflict { with } => format!("{with} already owns this setting"),
+            Self::Conflict { with } => format!("skipped, {with} active"),
             Self::DependencyFailed { on } => format!("{on} failed, and this builds on it"),
             Self::MissingDependency { name, detail } => {
                 format!("needs {name}, which is not available: {detail}")

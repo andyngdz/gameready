@@ -119,7 +119,7 @@ impl CoreImprovement for GamingTools {
     fn probe(&self, cx: &CoreCx<'_>) -> Result<Probe, StepError> {
         if Self::absent(cx).is_empty() {
             return Ok(Probe::AlreadyApplied {
-                evidence: "gamemoded and mangohud are both on PATH".to_owned(),
+                evidence: "installed".to_owned(),
             });
         }
 

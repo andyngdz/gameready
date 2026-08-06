@@ -33,11 +33,10 @@ fn a_scripted_run_answers_everything_without_prompting() {
 
 #[test]
 fn a_scripted_run_never_closes_steam() {
-    // Nobody is at the terminal to agree to having their game client quit.
     let setups = [setup("Deadlock", 1_422_450, Some(vec![Wrapper::GameMode]))];
     let answers = ask_everything(&setups, Picker::TakeAll, None, Mode::Apply).expect("answered");
 
-    assert!(!answers.closes_steam());
+    assert_eq!(answers.launch, LaunchChoice::ShowForCopying);
 }
 
 #[test]
@@ -55,7 +54,7 @@ fn a_game_with_no_profile_produces_no_launch_target() {
     let answers = ask_everything(&setups, Picker::TakeAll, None, Mode::Apply).expect("answered");
 
     assert!(answers.targets.is_empty());
-    assert!(!answers.closes_steam());
+    assert_eq!(answers.launch, LaunchChoice::ShowForCopying);
 }
 
 #[test]
@@ -64,7 +63,7 @@ fn a_dry_run_asks_nothing_that_would_change_the_machine() {
     let answers = ask_everything(&setups, Picker::TakeAll, None, Mode::DryRun).expect("answered");
 
     assert_eq!(answers.launch, LaunchChoice::ShowForCopying);
-    assert!(!answers.closes_steam());
+    assert_eq!(answers.launch, LaunchChoice::ShowForCopying);
 }
 
 #[test]

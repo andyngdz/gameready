@@ -47,6 +47,7 @@ pub fn run(
     let packages = pkg::for_kind(facts.distro.package_manager());
     let mut journal =
         Journal::open(paths.clone(), RunId::generate()).context(CANNOT_OPEN_JOURNAL)?;
+    let mut progress = ui::ProgressView::new();
     let report = execute(
         core_steps(),
         &facts,
@@ -54,9 +55,9 @@ pub fn run(
         &mut journal,
         request.mode,
         Some(packages.as_ref()),
-        &mut |_| {},
+        &mut |event| progress.on_event(event),
     )?;
-
+    drop(progress);
     let mut out = plan;
     out.push_str(&ui::Summary::new(&report, &paths.journal()).to_string());
 
@@ -68,19 +69,18 @@ pub fn run(
             LaunchChoice::CloseSteamAndWrite => {
                 let config =
                     locate_local_config().context("could not find your Steam user config")?;
-                let report = write_launch_options(
+                let lr = write_launch_options(
                     runner,
                     &facts,
                     &mut journal,
                     config,
                     answers.targets.clone(),
                 )?;
-                ui::LaunchReport::new(&report).to_string()
+                ui::LaunchReport::new(&lr).to_string()
             }
         };
         out.push_str(&launch_text);
     }
-
     Ok((report, out))
 }
 

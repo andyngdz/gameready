@@ -2,16 +2,14 @@
 
 use std::fmt;
 
+use console::style;
 use gameready_core::run::Mode;
 use gameready_core::steam::GameSetup;
 
+use crate::cli::ui::colors::Section;
 use crate::cli::ui::questions::Answers;
 
 /// The agreed plan, printed before the first change.
-///
-/// Every line here is something the user has already answered a question about.
-/// It exists so they can see the answers together, in the order they will
-/// happen, rather than reconstructing them from what scrolled past.
 pub struct InitPlan<'a> {
     found: &'a [GameSetup],
     answers: &'a Answers,
@@ -31,42 +29,21 @@ impl<'a> InitPlan<'a> {
 
 impl fmt::Display for InitPlan<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "\nGames found")?;
         if self.found.is_empty() {
-            writeln!(f, "{}", crate::cli::ui::NOTHING)?;
-        }
-        for setup in self.found {
-            let chosen = self
-                .answers
-                .selected
-                .iter()
-                .any(|picked| picked.game.app_id == setup.game.app_id);
-            writeln!(
-                f,
-                "  {} {:<30} {:>8}  {}",
-                if chosen { "*" } else { " " },
-                setup.game.name,
-                setup.game.app_id,
-                if setup.has_profile() {
-                    "has a profile"
-                } else {
-                    "no profile yet, core tuning still applies"
-                },
-            )?;
+            writeln!(f, "\n  {}", style("No games found.").dim())?;
+            return Ok(());
         }
 
+        let mut s = Section::new(f);
+        s.title("Game selected:")?;
+        let mark = style("*").green().bold().to_string();
+        for setup in &self.answers.selected {
+            s.marked(&mark, &setup.game.name)?;
+        }
         if !self.mode.mutates() {
-            writeln!(f, "\n  Dry run: nothing below will actually change.")?;
+            s.indented(&style("Dry run: nothing will change.").dim().to_string())?;
         }
-
-        if self.answers.closes_steam() {
-            writeln!(
-                f,
-                "\n  Steam will be closed to write launch options for {} game(s).",
-                self.answers.targets.len()
-            )?;
-        }
-        Ok(())
+        s.end()
     }
 }
 

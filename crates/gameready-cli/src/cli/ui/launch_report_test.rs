@@ -21,7 +21,7 @@ fn report(outcome: Outcome) -> RunReport {
 }
 
 #[test]
-fn a_successful_write_is_reported() {
+fn a_successful_write_says_steam_is_restarting() {
     let rendered = LaunchReport::new(&report(Outcome::Applied {
         changes: Vec::new(),
         verification: Verification::new(),
@@ -29,21 +29,18 @@ fn a_successful_write_is_reported() {
     }))
     .to_string();
 
-    assert!(rendered.contains("Launch options"), "{rendered}");
-    assert!(rendered.contains("applied"), "{rendered}");
+    assert!(rendered.contains("Launch options set"), "{rendered}");
+    assert!(rendered.contains("restarting"), "{rendered}");
 }
 
 #[test]
-fn the_user_is_told_steam_was_closed_and_can_be_restarted() {
-    // Their game client just disappeared. Saying so is the difference between a
-    // deliberate step and something that looks like a crash.
+fn already_set_is_reported_quietly() {
     let rendered = LaunchReport::new(&report(Outcome::AlreadyApplied {
         evidence: "already set".to_owned(),
     }))
     .to_string();
 
-    assert!(rendered.contains("Steam was closed"), "{rendered}");
-    assert!(rendered.contains("start it again"), "{rendered}");
+    assert!(rendered.contains("already set"), "{rendered}");
 }
 
 #[test]
@@ -54,6 +51,5 @@ fn a_failure_carries_its_detail() {
     }))
     .to_string();
 
-    assert!(rendered.contains("failed"), "{rendered}");
     assert!(rendered.contains("could not be parsed"), "{rendered}");
 }

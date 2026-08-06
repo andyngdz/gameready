@@ -31,6 +31,22 @@ pub fn is_running(runner: &dyn CommandRunner) -> bool {
         .is_ok_and(|output| output.code == 0)
 }
 
+/// Starts the Steam client in the background.
+///
+/// Called after writing launch options to put things back the way the user had
+/// them. Spawns and detaches; gameready does not wait for Steam to finish
+/// launching.
+pub fn start(runner: &dyn CommandRunner) {
+    if is_running(runner) {
+        return;
+    }
+    let _ = std::process::Command::new(STEAM_PROCESS)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn();
+}
+
 /// Asks Steam to quit, and waits until it has.
 ///
 /// `steam -shutdown` is the client's own graceful exit, the same one the menu

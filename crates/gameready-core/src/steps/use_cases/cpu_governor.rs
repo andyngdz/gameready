@@ -73,10 +73,7 @@ impl CoreImprovement for CpuGovernor {
         );
 
         Ok(Probe::NotApplicable {
-            reason: format!(
-                "{governor}, and gameready leaves it alone on purpose: gamemode \
-                 raises it for the duration of a game and puts it back afterwards"
-            ),
+            reason: format!("{governor}, gamemode handles this per-game"),
         })
     }
 

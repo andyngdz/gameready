@@ -97,7 +97,7 @@ impl CoreImprovement for SteamLaunchOptions {
         let text = self.read(cx.runner)?;
         if self.edit(&text)?.replaced.is_empty() {
             return Ok(Probe::AlreadyApplied {
-                evidence: "every selected game already has these launch options".to_owned(),
+                evidence: "launch options match".to_owned(),
             });
         }
         Ok(Probe::Applicable)

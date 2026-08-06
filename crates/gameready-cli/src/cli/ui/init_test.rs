@@ -22,25 +22,17 @@ fn setup(name: &str, app_id: u32, wrappers: Option<Vec<Wrapper>>) -> GameSetup {
 }
 
 #[test]
-fn a_game_with_a_profile_gets_its_launch_string_and_where_to_paste_it() {
+fn a_game_with_a_profile_shows_its_launch_string() {
     let selected = [setup("Deadlock", 1_422_450, Some(vec![Wrapper::GameMode]))];
     let rendered = LaunchInstructions::new(&selected).to_string();
 
     assert!(rendered.contains("gamemoderun %command%"), "{rendered}");
-    assert!(rendered.contains("Launch Options"), "{rendered}");
+    assert!(rendered.contains("Deadlock"), "{rendered}");
 }
 
 #[test]
-fn nothing_is_printed_when_no_selected_game_needs_a_launch_string() {
+fn nothing_is_printed_when_no_game_needs_launch_options() {
     let selected = [setup("Hollow Knight", 367_520, None)];
     assert!(LaunchInstructions::new(&selected).is_empty());
     assert_eq!(LaunchInstructions::new(&selected).to_string(), "");
-}
-
-#[test]
-fn the_reason_gameready_did_not_set_it_is_stated() {
-    let selected = [setup("Deadlock", 1_422_450, Some(vec![Wrapper::GameMode]))];
-    let rendered = LaunchInstructions::new(&selected).to_string();
-
-    assert!(rendered.contains("Steam has to be closed"), "{rendered}");
 }

@@ -27,14 +27,6 @@ pub struct Answers {
     pub launch: LaunchChoice,
 }
 
-impl Answers {
-    /// Whether acting on these answers will quit the user's Steam.
-    #[must_use]
-    pub fn closes_steam(&self) -> bool {
-        self.launch == LaunchChoice::CloseSteamAndWrite && !self.targets.is_empty()
-    }
-}
-
 /// Asks every question the run has, in one pass.
 ///
 /// Nothing here changes the machine, and nothing after here asks. That ordering

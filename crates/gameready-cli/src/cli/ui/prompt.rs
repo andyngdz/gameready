@@ -21,9 +21,7 @@ impl std::fmt::Display for Choice {
 
 /// Shows the game picker and returns the chosen setups.
 ///
-/// Games with a profile are ticked to begin with, because they are the ones
-/// with something per-game to apply. The rest are left for the user to add,
-/// since for them the run is core tuning only.
+/// Nothing is pre-selected: the user opts in to each game explicitly.
 pub fn choose_games(setups: &[GameSetup]) -> Result<Vec<GameSetup>> {
     if setups.is_empty() {
         return Ok(Vec::new());
@@ -38,15 +36,7 @@ pub fn choose_games(setups: &[GameSetup]) -> Result<Vec<GameSetup>> {
         })
         .collect();
 
-    let preselected: Vec<usize> = setups
-        .iter()
-        .enumerate()
-        .filter(|(_, setup)| setup.has_profile())
-        .map(|(index, _)| index)
-        .collect();
-
     let picked = MultiSelect::new("Which games should gameready set up?", choices)
-        .with_default(&preselected)
         .with_help_message("space toggles, enter confirms, esc picks none")
         .prompt_skippable()?
         .unwrap_or_default();

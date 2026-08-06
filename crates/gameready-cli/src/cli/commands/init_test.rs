@@ -6,7 +6,6 @@ use tempfile::TempDir;
 use super::{InitRequest, run};
 use crate::cli::ui::Picker;
 
-/// A machine that answers the probes init needs, with nothing applied yet.
 fn machine() -> MockRunner {
     MockRunner::new()
         .answering("uname -r", "7.0.0-29-generic\n")
@@ -29,7 +28,7 @@ fn a_dry_run_changes_nothing() {
         picker: Picker::TakeAll,
         overlay: None,
     };
-    let (report, text) = run(
+    let (report, _) = run(
         &runner,
         StatePaths::new(state.path().to_path_buf()),
         &request,
@@ -38,7 +37,6 @@ fn a_dry_run_changes_nothing() {
     .expect("init runs");
 
     assert_ne!(report.status(), gameready_core::run::RunStatus::StepFailed);
-    assert!(text.contains("Games found"), "{text}");
     assert!(
         runner.file("/etc/sysctl.d/99-gameready.conf").is_none(),
         "a dry run wrote a file"
@@ -46,31 +44,7 @@ fn a_dry_run_changes_nothing() {
 }
 
 #[test]
-fn the_game_list_is_shown_even_when_no_game_was_selected() {
-    // A user with no Steam, or who picked nothing, still gets the core tuning
-    // and should see that gameready looked.
-    let state = TempDir::new().expect("temp dir");
-    let games = TempDir::new().expect("temp dir");
-
-    let request = InitRequest {
-        games_dir: games.path(),
-        mode: Mode::DryRun,
-        picker: Picker::TakeAll,
-        overlay: None,
-    };
-    let (_, text) = run(
-        &machine(),
-        StatePaths::new(state.path().to_path_buf()),
-        &request,
-        &|| Ok(()),
-    )
-    .expect("init runs");
-
-    assert!(text.contains("Games found"), "{text}");
-}
-
-#[test]
-fn the_run_is_reported_with_its_journal_so_it_can_be_undone() {
+fn the_run_is_reported_with_its_journal() {
     let state = TempDir::new().expect("temp dir");
     let games = TempDir::new().expect("temp dir");
 
@@ -92,8 +66,7 @@ fn the_run_is_reported_with_its_journal_so_it_can_be_undone() {
 }
 
 #[test]
-fn a_scripted_run_leaves_the_screen_alone_unless_asked() {
-    // Nobody is at the terminal, so the overlay must not appear by default.
+fn a_scripted_run_does_not_add_mangohud_to_launch_options() {
     let state = TempDir::new().expect("temp dir");
     let games = TempDir::new().expect("temp dir");
 
@@ -111,13 +84,11 @@ fn a_scripted_run_leaves_the_screen_alone_unless_asked() {
     )
     .expect("init runs");
 
-    // The step that installs it names it, which is fine. What must not appear
-    // is a launch option putting it on the screen.
     assert!(!text.contains("mangohud %command%"), "{text}");
 }
 
 #[test]
-fn the_flag_turns_the_overlay_on_without_a_prompt() {
+fn the_overlay_flag_completes_without_prompting() {
     let state = TempDir::new().expect("temp dir");
     let games = TempDir::new().expect("temp dir");
 
@@ -127,7 +98,7 @@ fn the_flag_turns_the_overlay_on_without_a_prompt() {
         picker: Picker::TakeAll,
         overlay: Some(gameready_core::steam::Overlay::Show),
     };
-    let (_, text) = run(
+    let (report, _) = run(
         &machine(),
         StatePaths::new(state.path().to_path_buf()),
         &request,
@@ -135,7 +106,5 @@ fn the_flag_turns_the_overlay_on_without_a_prompt() {
     )
     .expect("init runs");
 
-    // No games are installed in this fixture, so the assertion that matters is
-    // that it completed without waiting on a prompt.
-    assert!(text.contains("Games found"), "{text}");
+    assert_ne!(report.status(), gameready_core::run::RunStatus::StepFailed);
 }

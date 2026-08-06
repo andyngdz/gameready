@@ -2,14 +2,12 @@
 
 use std::fmt;
 
+use console::style;
 use gameready_core::steam::GameSetup;
 
-/// The launch options for each selected game, for the user to set themselves.
-///
-/// Shown when the user chose to do it by hand, and on any run where nobody is
-/// there to agree to Steam being closed: a dry run, or a scripted one. gameready
-/// can write these itself, but only with Steam stopped, because Steam holds its
-/// config in memory and rewrites the file when it exits.
+use crate::cli::ui::colors::Section;
+
+/// Launch options for the user to copy into Steam.
 pub struct LaunchInstructions<'a> {
     selected: &'a [GameSetup],
 }
@@ -20,7 +18,6 @@ impl<'a> LaunchInstructions<'a> {
         Self { selected }
     }
 
-    /// Whether there is anything for the user to do.
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.selected
@@ -35,29 +32,19 @@ impl fmt::Display for LaunchInstructions<'_> {
             return Ok(());
         }
 
-        writeln!(f, "\nPer-game settings")?;
-        writeln!(
-            f,
-            "  Paste each line into the game's launch options. Steam has to be closed"
-        )?;
-        writeln!(
-            f,
-            "  for gameready to set them for you, so it did not: run `gameready init`"
-        )?;
-        writeln!(f, "  and pick the first option if you would rather it did.")?;
-
+        let mut s = Section::new(f);
+        s.title("Per-game settings")?;
         for setup in self.selected {
             let options = setup.launch_options();
             if options.is_empty() {
                 continue;
             }
-            writeln!(f)?;
-            writeln!(f, "  {}", setup.game.name)?;
-            writeln!(
-                f,
-                "    Steam > right click the game > Properties > Launch Options"
-            )?;
-            writeln!(f, "    {options}")?;
+            s.marked("-", &setup.game.name)?;
+            s.sub("- Go to Steam > right click the game > Properties > Launch Options")?;
+            s.sub(&format!(
+                "- Put this into Launch Options: {}",
+                style(&options).green()
+            ))?;
         }
         Ok(())
     }

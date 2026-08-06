@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use crate::exec::CommandRunner;
 use crate::facts::SystemFacts;
 use crate::improvement::CoreImprovement;
-use crate::infra::steam::process::shutdown;
+use crate::infra::steam::process::{shutdown, start};
 use crate::journal::Journal;
 use crate::run::{Mode, RunError, RunReport, execute};
 use crate::steps::{LaunchTarget, SteamLaunchOptions};
@@ -31,7 +31,7 @@ pub fn write_launch_options(
     shutdown(runner)?;
 
     let step: Box<dyn CoreImprovement> = Box::new(SteamLaunchOptions::new(config, targets));
-    execute(
+    let report = execute(
         vec![step],
         facts,
         runner,
@@ -39,7 +39,10 @@ pub fn write_launch_options(
         Mode::Apply,
         None,
         &mut |_| {},
-    )
+    )?;
+
+    start(runner);
+    Ok(report)
 }
 
 #[cfg(test)]

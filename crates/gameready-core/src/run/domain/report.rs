@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
-use crate::improvement::{Dependency, ImprovementId, Outcome};
+use crate::improvement::{Dependency, ImprovementId, Outcome, OutcomeKind};
 use crate::journal::RunId;
 
 use super::preflight::PreflightReport;
@@ -155,9 +155,13 @@ pub enum RunEvent {
     /// A step is about to change something.
     Applying { step: ImprovementId, name: String },
 
-    /// A step finished. The outcome is in the report; this carries the label so
-    /// the display does not have to hold the report to draw a line.
-    Finished { step: ImprovementId, label: String },
+    /// A step finished.
+    Finished {
+        step: ImprovementId,
+        name: String,
+        kind: OutcomeKind,
+        detail: Option<String>,
+    },
 }
 
 /// A prerequisite that is missing and can be installed.

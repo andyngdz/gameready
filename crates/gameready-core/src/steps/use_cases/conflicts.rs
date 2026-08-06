@@ -34,7 +34,7 @@ impl Conflicts {
         let mut live = Vec::new();
         for daemon in COMPETING_DAEMONS {
             if unit_state(cx.runner, daemon.unit)?.is_live() {
-                live.push(format!("{} ({})", daemon.unit, daemon.contention));
+                live.push(daemon.unit.to_owned());
             }
         }
         Ok(live)
@@ -80,7 +80,7 @@ impl CoreImprovement for Conflicts {
 
         match live.split_first() {
             None => Ok(Probe::AlreadyApplied {
-                evidence: "no competing priority or governor daemon is running".to_owned(),
+                evidence: "no competing daemons found".to_owned(),
             }),
             Some((first, rest)) => Ok(Probe::Conflict {
                 with: first.clone(),

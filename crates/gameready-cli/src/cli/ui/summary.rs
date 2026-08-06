@@ -3,21 +3,18 @@
 use std::fmt;
 use std::path::Path;
 
+use console::style;
 use gameready_core::run::RunReport;
 
-/// A run report paired with where its journal lives, ready to print.
-///
-/// A view struct rather than a function returning `String`. `Display` gives the
-/// `?` operator somewhere to send a formatting error, so no line has to discard
-/// a `Result`, and `println!("{}", ...)` writes straight to stdout without
-/// building the whole screen in memory first.
+use crate::cli::ui::colors::{Section, outcome_mark};
+
+/// The full report printed after a run completes.
 pub struct Summary<'a> {
     report: &'a RunReport,
     journal: &'a Path,
 }
 
 impl<'a> Summary<'a> {
-    /// Pairs a report with the journal path shown at the bottom.
     #[must_use]
     pub const fn new(report: &'a RunReport, journal: &'a Path) -> Self {
         Self { report, journal }
@@ -26,41 +23,50 @@ impl<'a> Summary<'a> {
 
 impl fmt::Display for Summary<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f)?;
+        let mut s = Section::new(f);
 
+        s.title("Config changed:")?;
         for step in &self.report.steps {
-            writeln!(f, "  {} {}", mark(step.outcome.label()), step.name)?;
-            if let Some(detail) = step.outcome.detail() {
-                writeln!(f, "      {detail}")?;
-            }
+            let mark = outcome_mark(step.outcome.kind());
+            let detail = step
+                .outcome
+                .detail()
+                .map(|d| format!(" {}", style(format!("({d})")).dim()))
+                .unwrap_or_default();
+            s.marked(&mark, &format!("{}{detail}", step.name))?;
         }
+        s.end()?;
 
-        let neither = self.report.steps.len() - self.report.applied() - self.report.failed();
-        writeln!(f)?;
-        writeln!(
-            f,
-            "Summary   {} applied, {neither} not applied, {} failed   {:.1?}",
-            self.report.applied(),
-            self.report.failed(),
-            self.report.took,
-        )?;
+        let applied = self.report.applied();
+        let failed = self.report.failed();
 
-        writeln!(f)?;
-        writeln!(
-            f,
-            "  Undo this run   gameready rollback --run {}",
-            self.report.run
-        )?;
-        writeln!(f, "  Journal         {}", self.journal.display())
-    }
-}
+        s.title("Rollback saved:")?;
+        if applied > 0 || failed > 0 {
+            s.indented(&format!(
+                "{}   gameready rollback --run {}",
+                style("Undo").dim(),
+                self.report.run
+            ))?;
+        }
+        s.indented(&format!(
+            "{} {}",
+            style("History Journal saved ->").dim(),
+            self.journal.display()
+        ))?;
 
-/// The two-character gutter for an outcome label.
-const fn mark(label: &str) -> &'static str {
-    match label.as_bytes() {
-        b"applied" => "ok",
-        b"failed" => "!!",
-        _ => "--",
+        if failed > 0 {
+            s.indented(&style(format!("{failed} failed")).red().bold().to_string())?;
+        } else if applied > 0 {
+            s.indented(
+                &style(format!("{applied} applied"))
+                    .green()
+                    .bold()
+                    .to_string(),
+            )?;
+        } else {
+            s.indented(&style("Everything is already set up.").green().to_string())?;
+        }
+        s.end()
     }
 }
 

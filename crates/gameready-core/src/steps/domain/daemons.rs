@@ -19,14 +19,14 @@ pub struct CompetingDaemon {
 pub const COMPETING_DAEMONS: [CompetingDaemon; 3] = [
     CompetingDaemon {
         unit: "ananicy-cpp.service",
-        contention: "sets process priority and scheduling class from its own rules",
+        contention: "overrides process priority",
     },
     CompetingDaemon {
         unit: "tuned.service",
-        contention: "applies a system-wide profile that includes the CPU governor",
+        contention: "overrides CPU governor",
     },
     CompetingDaemon {
         unit: "power-profiles-daemon.service",
-        contention: "owns the CPU governor and switches it with the desktop power profile",
+        contention: "overrides CPU governor",
     },
 ];
