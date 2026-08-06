@@ -5,10 +5,11 @@ steam_appid = 1422450
 [launch]
 gamemode = true
 
-[env]
-# Deadlock is a competitive shooter, so the stutter from compiling a shader
-# mid-fight costs more than the extra seconds of loading.
-DXVK_ASYNC = "1"
+# No DXVK_ASYNC here. The dxvk-async patch it belongs to was dropped from
+# GE-Proton in 7-45, because DXVK 2.0 does the same job through
+# VK_EXT_graphics_pipeline_library with none of the drawbacks. On a build that
+# still carries the patch it draws through walls while shaders compile, which
+# reads as a wallhack to anticheat. Deadlock is exactly the wrong game for that.
 
 [proton]
 prefer = "GE-Proton"

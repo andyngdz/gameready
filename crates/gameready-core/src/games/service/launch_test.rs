@@ -36,8 +36,8 @@ fn environment_assignments_come_before_the_wrappers() {
     // A shell applies them to everything that follows, so putting them after a
     // wrapper would set them for nothing.
     assert_eq!(
-        launch_options(&profile(vec![Wrapper::GameMode], &[("DXVK_ASYNC", "1")])),
-        "DXVK_ASYNC=1 gamemoderun %command%"
+        launch_options(&profile(vec![Wrapper::GameMode], &[("DXVK_HUD", "fps")])),
+        "DXVK_HUD=fps gamemoderun %command%"
     );
 }
 
@@ -58,8 +58,8 @@ fn gamescope_gets_a_separator_so_it_does_not_eat_the_command() {
 fn environment_alone_still_carries_the_command_token() {
     // Otherwise Steam would run the assignment and never the game.
     assert_eq!(
-        launch_options(&profile(Vec::new(), &[("DXVK_ASYNC", "1")])),
-        "DXVK_ASYNC=1 %command%"
+        launch_options(&profile(Vec::new(), &[("DXVK_HUD", "fps")])),
+        "DXVK_HUD=fps %command%"
     );
 }
 
@@ -76,7 +76,7 @@ fn environment_order_is_the_same_on_every_machine() {
 fn the_command_token_is_always_last() {
     let rendered = launch_options(&profile(
         vec![Wrapper::GameMode, Wrapper::Gamescope],
-        &[("DXVK_ASYNC", "1")],
+        &[("DXVK_HUD", "fps")],
     ));
     assert!(rendered.ends_with("%command%"), "{rendered}");
 }

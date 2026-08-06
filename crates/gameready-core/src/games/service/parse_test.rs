@@ -67,14 +67,14 @@ fn env_and_proton_come_through() {
         steam_appid = 1422450
 
         [env]
-        DXVK_ASYNC = "1"
+        DXVK_HUD = "fps"
 
         [proton]
         prefer = "GE-Proton"
     "#})
     .expect("parsed");
 
-    assert_eq!(profile.env.get("DXVK_ASYNC").map(String::as_str), Some("1"));
+    assert_eq!(profile.env.get("DXVK_HUD").map(String::as_str), Some("fps"));
     assert_eq!(profile.proton, Some(ProtonChoice::NewestGeProton));
 }
 
