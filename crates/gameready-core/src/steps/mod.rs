@@ -13,4 +13,6 @@ pub use domain::{
     apply_targets,
 };
 pub use service::{core_steps, find_core_step};
-pub use use_cases::{Conflicts, CpuGovernor, GamingTools, MaxMapCount, SteamLaunchOptions};
+pub use use_cases::{
+    Conflicts, CpuGovernor, GamingTools, IoScheduler, MaxMapCount, SteamLaunchOptions,
+};

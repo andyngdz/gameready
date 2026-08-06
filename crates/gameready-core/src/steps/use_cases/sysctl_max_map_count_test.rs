@@ -4,6 +4,7 @@ use super::*;
 use crate::facts::SystemFacts;
 use crate::infra::exec::MockRunner;
 use crate::journal::{Journal, RunId, StatePaths};
+use crate::steps::constants::MANAGED_HEADER;
 
 const DEFAULT_ON_THIS_MACHINE: &str = "1048576";
 const RUNTIME: &str = "/proc/sys/vm/max_map_count";

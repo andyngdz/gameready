@@ -4,6 +4,7 @@ pub(crate) mod constants;
 mod dry_runner;
 mod files;
 mod real_runner;
+mod sysfs;
 
 #[cfg(any(test, feature = "testkit"))]
 pub(crate) mod mock_runner;

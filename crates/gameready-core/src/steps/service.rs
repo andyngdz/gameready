@@ -1,7 +1,7 @@
 //! The catalog of built-in improvements.
 
 use crate::improvement::{CoreImprovement, ImprovementId};
-use crate::steps::use_cases::{Conflicts, CpuGovernor, GamingTools, MaxMapCount};
+use crate::steps::use_cases::{Conflicts, CpuGovernor, GamingTools, IoScheduler, MaxMapCount};
 
 /// Every system-wide improvement gameready ships, in the order they apply.
 ///
@@ -17,6 +17,7 @@ pub fn core_steps() -> Vec<Box<dyn CoreImprovement>> {
         // install gamemode and defer to it.
         Box::new(Conflicts),
         Box::new(MaxMapCount),
+        Box::new(IoScheduler),
         Box::new(GamingTools),
         Box::new(CpuGovernor),
     ]

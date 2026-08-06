@@ -53,7 +53,15 @@ impl<R: CommandRunner> CommandRunner for DryRunner<R> {
         self.inner.read_to_string(path)
     }
 
+    fn read_dir(&self, path: &Path) -> Result<Vec<PathBuf>, ExecError> {
+        self.inner.read_dir(path)
+    }
+
     fn write_file(&self, path: &Path, _contents: &str, _p: Privilege) -> Result<(), ExecError> {
+        Self::refuse(&format!("write {}", path.display()))
+    }
+
+    fn write_sysfs(&self, path: &Path, _value: &str, _p: Privilege) -> Result<(), ExecError> {
         Self::refuse(&format!("write {}", path.display()))
     }
 

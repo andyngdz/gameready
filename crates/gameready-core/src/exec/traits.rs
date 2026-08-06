@@ -38,6 +38,13 @@ pub trait CommandRunner: Send + Sync {
     /// Reads a file as UTF-8.
     fn read_to_string(&self, path: &Path) -> Result<String, ExecError>;
 
+    /// Lists a directory's immediate entries, as full paths, in sorted order.
+    ///
+    /// Sorted so a step that walks it reads the same list on every run. Used to
+    /// enumerate `/sys/block`, whose device entries are not known ahead of time
+    /// and cannot be hardcoded.
+    fn read_dir(&self, path: &Path) -> Result<Vec<PathBuf>, ExecError>;
+
     /// Writes a file, creating it if absent.
     ///
     /// For a root-owned destination the implementation routes through the
@@ -48,6 +55,14 @@ pub trait CommandRunner: Send + Sync {
         contents: &str,
         privilege: Privilege,
     ) -> Result<(), ExecError>;
+
+    /// Writes a value into an existing sysfs attribute.
+    ///
+    /// Separate from [`CommandRunner::write_file`] because a sysfs node is
+    /// written, not created: the `install` a root file write lands through
+    /// cannot touch one. The write goes through the escalator for a root-owned
+    /// attribute, the same as any other privileged action.
+    fn write_sysfs(&self, path: &Path, value: &str, privilege: Privilege) -> Result<(), ExecError>;
 
     /// Writes a file only its owner can read.
     ///

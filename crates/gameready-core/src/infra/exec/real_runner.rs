@@ -7,6 +7,7 @@ use crate::exec::{Cmd, CmdOutput, CommandRunner, Escalator, ExecError};
 use crate::improvement::Privilege;
 use crate::infra::exec::constants::INSTALL;
 use crate::infra::exec::files::{stage_temp_file, write_owner_only};
+use crate::infra::exec::sysfs::write_sysfs_value;
 
 /// The production [`CommandRunner`].
 ///
@@ -130,6 +131,23 @@ impl CommandRunner for RealRunner {
         })
     }
 
+    fn read_dir(&self, path: &Path) -> Result<Vec<PathBuf>, ExecError> {
+        let listing = std::fs::read_dir(path).map_err(|source| ExecError::Read {
+            path: path.to_path_buf(),
+            source,
+        })?;
+        let mut paths = Vec::new();
+        for entry in listing {
+            let entry = entry.map_err(|source| ExecError::Read {
+                path: path.to_path_buf(),
+                source,
+            })?;
+            paths.push(entry.path());
+        }
+        paths.sort();
+        Ok(paths)
+    }
+
     fn write_file(
         &self,
         path: &Path,
@@ -169,6 +187,10 @@ impl CommandRunner for RealRunner {
                 result
             }
         }
+    }
+
+    fn write_sysfs(&self, path: &Path, value: &str, privilege: Privilege) -> Result<(), ExecError> {
+        write_sysfs_value(&self.escalator, path, value, privilege)
     }
 
     fn write_private_file(&self, path: &Path, contents: &str) -> Result<(), ExecError> {

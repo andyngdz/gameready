@@ -9,7 +9,7 @@ use crate::improvement::{
 };
 use crate::journal::{Change, RunId, digest};
 use crate::steps::constants::{
-    MANAGED_HEADER, PROC_SYS_VM, SYSCTL_BIN, SYSCTL_DROPIN, VM_MAX_MAP_COUNT,
+    PROC_SYS_VM, SYSCTL_BIN, SYSCTL_DROPIN, VM_MAX_MAP_COUNT, managed_header,
 };
 
 /// The value SteamOS ships, `INT_MAX - 5`.
@@ -67,11 +67,10 @@ impl MaxMapCount {
     /// has been deleted.
     fn dropin_contents(run: RunId) -> String {
         format!(
-            "{MANAGED_HEADER} {version} - step={step} run={run}\n\
+            "{header}\n\
              # Remove this file or run `gameready rollback` to revert.\n\
              {VM_MAX_MAP_COUNT} = {TARGET}\n",
-            version = env!("CARGO_PKG_VERSION"),
-            step = Self::id_const(),
+            header = managed_header(Self::id_const(), run),
         )
     }
 }
