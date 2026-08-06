@@ -1,5 +1,6 @@
 //! Reading and writing a real Steam installation.
 
+mod appinfo;
 mod config;
 mod process;
 mod scan;

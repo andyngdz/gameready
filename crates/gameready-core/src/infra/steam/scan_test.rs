@@ -114,6 +114,22 @@ fn a_library_with_only_plumbing_scans_to_nothing() {
 }
 
 #[test]
+#[ignore = "scans this machine's real Steam library; run locally, not in CI"]
+fn the_real_scan_drops_dlc_but_keeps_the_base_game() {
+    // The fixture library has no appinfo.vdf, so DLC filtering can only be
+    // proven against a real install. Cyberpunk 2077 Bonus Content is a DLC that
+    // looks exactly like a game in the manifest; it must not survive the scan.
+    let games = scan_installed_games().expect("scanned");
+    let names: Vec<&str> = games.iter().map(|game| game.name.as_str()).collect();
+
+    assert!(names.contains(&"Cyberpunk 2077"), "{names:?}");
+    assert!(
+        !names.contains(&"Cyberpunk 2077 Bonus Content"),
+        "{names:?}"
+    );
+}
+
+#[test]
 fn a_directory_that_is_not_steam_is_reported_as_not_installed() {
     let empty = TempDir::new().expect("temp dir");
     let error = scan_installed_games_in(empty.path()).expect_err("not steam");

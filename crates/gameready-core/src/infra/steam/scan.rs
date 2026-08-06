@@ -4,6 +4,7 @@ use std::path::Path;
 
 use steamlocate::SteamDir;
 
+use super::appinfo::NonGameApps;
 use crate::games::AppId;
 use crate::steam::{InstalledGame, SteamError, is_valve_tool};
 
@@ -16,9 +17,11 @@ const COMMON: &str = "steamapps/common";
 
 /// Every game installed through Steam, across all its library folders.
 ///
-/// Valve's runtimes and redistributables are filtered out; see
-/// [`crate::steam::is_valve_tool`] for how, and why it errs towards leaving an
-/// entry in.
+/// Non-game entries are dropped two ways: Valve's runtimes and
+/// redistributables by name and appid (see [`crate::steam::is_valve_tool`]),
+/// and anything Steam types as other than a game (tools, soundtracks, bonus
+/// content), which [`NonGameApps`] reads out of `appinfo.vdf`. When that file
+/// cannot be read the second filter is skipped rather than the scan failing.
 pub fn scan_installed_games() -> Result<Vec<InstalledGame>, SteamError> {
     let steam = SteamDir::locate().map_err(|_| SteamError::NotInstalled)?;
     games_in(&steam)
@@ -45,6 +48,8 @@ fn games_in(steam: &SteamDir) -> Result<Vec<InstalledGame>, SteamError> {
         .libraries()
         .map_err(|source| SteamError::UnreadableLibrary { source })?;
 
+    let non_games = NonGameApps::read(steam.path());
+
     let mut games = Vec::new();
     for library in libraries.flatten() {
         for app in library.apps().flatten() {
@@ -55,6 +60,9 @@ fn games_in(steam: &SteamDir) -> Result<Vec<InstalledGame>, SteamError> {
                 continue;
             };
             if is_valve_tool(app_id, &name) {
+                continue;
+            }
+            if non_games.contains(app_id) {
                 continue;
             }
             games.push(InstalledGame::new(

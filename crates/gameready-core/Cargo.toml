@@ -21,6 +21,7 @@ itertools.workspace = true
 keyvalues-parser.workspace = true
 rust-embed.workspace = true
 steamlocate.workspace = true
+steam-vdf-parser.workspace = true
 rustix.workspace = true
 semver.workspace = true
 serde.workspace = true
