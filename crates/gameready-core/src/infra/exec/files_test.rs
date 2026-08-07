@@ -9,6 +9,28 @@ fn mode_of(path: &Path) -> u32 {
 }
 
 #[test]
+fn a_privileged_write_creates_the_directories_above_it() {
+    // `core.sched.scx-lavd` failed on a real machine with "invalid target
+    // '/etc/systemd/system/scx.service.d/10-gameready.conf': No such file or
+    // directory", because plain `install` will not make the drop-in directory.
+    let install = install_command(
+        Path::new("/tmp/gameready-staged-10-gameready.conf"),
+        Path::new("/etc/systemd/system/scx.service.d/10-gameready.conf"),
+    );
+
+    let rendered = install.to_string();
+    assert!(
+        rendered.contains(" -D "),
+        "without -D a step cannot write into a directory that does not exist yet: {rendered}"
+    );
+    assert!(rendered.contains(" -m 0644 "), "{rendered}");
+    assert!(
+        rendered.ends_with("/etc/systemd/system/scx.service.d/10-gameready.conf"),
+        "{rendered}"
+    );
+}
+
+#[test]
 fn a_private_file_is_readable_only_by_its_owner() {
     // Steam's config carries an encrypted app ticket and a cloud key, and a
     // backup of it is kept for every run in a directory nothing prunes.

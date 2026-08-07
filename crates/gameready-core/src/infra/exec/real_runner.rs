@@ -5,8 +5,7 @@ use std::process::Command;
 
 use crate::exec::{Cmd, CmdOutput, CommandRunner, Escalator, ExecError};
 use crate::improvement::Privilege;
-use crate::infra::exec::constants::INSTALL;
-use crate::infra::exec::files::{stage_temp_file, write_owner_only};
+use crate::infra::exec::files::{install_command, stage_temp_file, write_owner_only};
 use crate::infra::exec::sysfs::write_sysfs_value;
 
 /// The production [`CommandRunner`].
@@ -173,11 +172,7 @@ impl CommandRunner for RealRunner {
             // the same step, so the file is never briefly world-writable.
             Privilege::Root => {
                 let staged = stage_temp_file(path, contents)?;
-                let install = Cmd::root(INSTALL)
-                    .arg("-m")
-                    .arg("0644")
-                    .arg(staged.to_string_lossy().into_owned())
-                    .arg(path.to_string_lossy().into_owned());
+                let install = install_command(&staged, path);
                 let result = self.run(&install).map(|_| ());
                 // Best effort, and deliberately not propagated: the staged copy
                 // is in the temp directory and the install either happened or

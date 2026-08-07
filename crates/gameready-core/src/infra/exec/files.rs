@@ -4,7 +4,8 @@ use std::io::Write as _;
 use std::os::unix::fs::OpenOptionsExt as _;
 use std::path::{Path, PathBuf};
 
-use crate::exec::ExecError;
+use crate::exec::{Cmd, ExecError};
+use crate::infra::exec::constants::INSTALL;
 
 /// Writes a file only its owner can read, creating any missing directories.
 ///
@@ -31,6 +32,22 @@ pub fn write_owner_only(path: &Path, contents: &str) -> Result<(), ExecError> {
             path: path.to_path_buf(),
             source,
         })
+}
+
+/// Moves a staged file into place as root, creating the directories above it.
+///
+/// `-D` is load bearing. `/etc/systemd/system/scx.service.d` and the other
+/// drop-in directories do not exist until something makes them, and plain
+/// `install` answers "No such file or directory" rather than creating one. The
+/// unprivileged path through `write_file` already calls `create_dir_all`, so
+/// without this the two differ on whether a step may write a new directory.
+pub fn install_command(staged: &Path, destination: &Path) -> Cmd {
+    Cmd::root(INSTALL)
+        .arg("-D")
+        .arg("-m")
+        .arg("0644")
+        .arg(staged.to_string_lossy().into_owned())
+        .arg(destination.to_string_lossy().into_owned())
 }
 
 /// Stages content in a temporary file, for a privileged `install` to move into
