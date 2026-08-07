@@ -2,7 +2,7 @@
 
 use crate::improvement::{CoreImprovement, ImprovementId};
 use crate::steps::use_cases::{
-    Conflicts, CpuGovernor, GamingTools, IoScheduler, MaxMapCount, ProtonGe, Swappiness,
+    Conflicts, CpuGovernor, GamingTools, IoScheduler, MaxMapCount, ProtonGe, ScxLavd, Swappiness,
 };
 
 /// Every system-wide improvement gameready ships, in the order they apply.
@@ -23,6 +23,9 @@ pub fn core_steps() -> Vec<Box<dyn CoreImprovement>> {
         Box::new(Swappiness),
         Box::new(GamingTools),
         Box::new(ProtonGe::detect()),
+        // After the tools, because it may install 180MB and the user reads the
+        // one install screen for the whole run before any of it is fetched.
+        Box::new(ScxLavd),
         Box::new(CpuGovernor),
     ]
 }

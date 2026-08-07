@@ -132,6 +132,7 @@ fn apply_records_each_disk_previous_scheduler_for_rollback() {
             | Change::SysctlRuntime { .. }
             | Change::PackagesInstalled { .. }
             | Change::SystemdUnit { .. }
+            | Change::ScxScheduler { .. }
             | Change::DirCreated { .. }
             | Change::DirTreeInstalled { .. } => None,
         })

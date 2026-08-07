@@ -7,7 +7,7 @@ Verified 2026-08-07 against the Arch package index, the Launchpad API, the Fedor
 
 `scx_loader` also left the main repo: it is now developed at `github.com/sched-ext/scx-loader`, reading `/etc/scx_loader/config.toml` or `/etc/scx_loader.toml`.
 
-The Ubuntu primary archive has no scx at all: Launchpad `getPublishedSources` returns `total_size: 0` for `scx-scheds` on noble, plucky, questing and resolute. `ppa:arighi/sched-ext` does carry it, under source name `scx` (not `scx-scheds`), at 1.1.1-1 for resolute and 1.0.21~rc2-1 for noble. Adding that PPA is a persistent system change and needs its own journal entry, the same as the Fedora COPR.
+The Ubuntu primary archive has no scx at all: Launchpad `getPublishedSources` returns `total_size: 0` for `scx-scheds` on noble, plucky, questing and resolute. `ppa:arighi/sched-ext` does carry it, under source name `scx` (not `scx-scheds`), at 1.1.1-1 for resolute and 1.0.21~rc2-1 for noble. Re-checked 2026-08-07 with `getPublishedBinaries`: the PPA publishes ONE binary package, also named `scx` (plus `scx-dbgsym`). It does not split schedulers from tooling the way Arch and the COPR do, so a step must ask for `scx` alone on apt and for both `scx-scheds` and `scx-tools` on pacman and dnf. Adding that PPA is a persistent system change and needs its own journal entry, the same as the Fedora COPR.
 
 No `sched-ext/scx` GitHub release ships a binary asset; the last five (v1.1.2 back to v1.0.19) carry only source tarballs.
 

@@ -54,6 +54,36 @@ pub const PROC_SYS_VM: &str = "/proc/sys/vm";
 /// The tool that reads and writes kernel parameters.
 pub const SYSCTL_BIN: &str = "sysctl";
 
+/// Where the kernel reports whether a sched_ext scheduler is attached.
+///
+/// Reads `disabled` when the kernel is scheduling on its own. A kernel built
+/// without sched_ext has no such file at all, which is how the step tells
+/// "nothing loaded" apart from "cannot load anything".
+pub const SCHED_EXT_STATE: &str = "/sys/kernel/sched_ext/state";
+
+/// What [`SCHED_EXT_STATE`] reads when nothing is attached.
+pub const SCHED_EXT_DISABLED: &str = "disabled";
+
+/// Where the kernel names the attached scheduler.
+///
+/// The `root/` directory only exists while a scheduler is attached, so
+/// [`SCHED_EXT_STATE`] is always read first.
+pub const SCHED_EXT_OPS: &str = "/sys/kernel/sched_ext/root/ops";
+
+/// The scheduler gameready loads, as `scxctl` spells it.
+///
+/// Bare `lavd`, not `scx_lavd`: the loader takes the short name and prefixes it
+/// when it runs the binary.
+pub const SCX_LAVD: &str = "lavd";
+
+/// The tool that loads and unloads a sched_ext CPU scheduler.
+///
+/// A command-line client for `scx_loader`, which owns the D-Bus interface and
+/// the polkit rule. Going through the loader rather than running `scx_lavd`
+/// directly means gameready does not have to ship a unit of its own, and a user
+/// who later drives the loader by hand is not fighting a second owner.
+pub const SCXCTL_BIN: &str = "scxctl";
+
 /// The directory the kernel lists every whole block device under.
 pub const SYS_BLOCK: &str = "/sys/block";
 

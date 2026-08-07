@@ -1,6 +1,7 @@
 //! Reading a run out of the journal and reversing it.
 
 mod perform;
+mod perform_files;
 
 use crate::exec::CommandRunner;
 use crate::journal::{Change, Journal, JournalEvent, JournalRecord, RunId};

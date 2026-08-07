@@ -62,6 +62,12 @@ pub enum Undo {
     /// Return a unit to the state it was in before the run.
     RestoreUnit { unit: String, prior: PriorUnitState },
 
+    /// Put the CPU scheduler back where it was.
+    ///
+    /// `None` unloads whatever gameready started, which hands scheduling back
+    /// to the kernel's own scheduler immediately, with no reboot.
+    RestoreScxScheduler { previous: Option<String> },
+
     /// Remove a directory, but only if nothing else put anything in it.
     RemoveDirIfEmpty { path: PathBuf },
 

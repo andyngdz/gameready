@@ -96,6 +96,18 @@ pub enum Change {
         was_active: bool,
     },
 
+    /// A sched_ext CPU scheduler loaded at runtime.
+    ///
+    /// This one evaporates on reboot by itself, like
+    /// [`SysctlRuntime`](Self::SysctlRuntime), and there is deliberately no
+    /// paired file that makes it persist. The undo unloads it now so nobody has
+    /// to reboot to get their old scheduler back.
+    ScxScheduler {
+        /// What was loaded before, if anything. `None` means the kernel was on
+        /// its own scheduler and the undo is to hand it back.
+        previous: Option<String>,
+    },
+
     /// A directory gameready created.
     DirCreated { path: PathBuf },
 
@@ -181,6 +193,10 @@ impl Change {
                 } else {
                     PriorUnitState::WasDisabled
                 },
+            },
+
+            Self::ScxScheduler { previous } => Undo::RestoreScxScheduler {
+                previous: previous.clone(),
             },
 
             Self::DirCreated { path } => Undo::RemoveDirIfEmpty { path: path.clone() },

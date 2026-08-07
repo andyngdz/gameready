@@ -193,6 +193,7 @@ impl CoreImprovement for GamingTools {
                 | Change::SysctlRuntime { .. }
                 | Change::SysfsWrite { .. }
                 | Change::SystemdUnit { .. }
+                | Change::ScxScheduler { .. }
                 | Change::DirCreated { .. }
                 | Change::DirTreeInstalled { .. } => {}
             }
