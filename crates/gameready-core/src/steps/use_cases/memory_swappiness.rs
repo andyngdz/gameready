@@ -7,11 +7,11 @@ use crate::improvement::{
     ApplyCx, Check, CoreCx, CoreImprovement, Improvement, ImprovementId, ParseFailure,
     PlannedAction, Privilege, Probe, StepError, StepPlan, Tag, Verification,
 };
-use crate::journal::{Change, RunId, digest};
+use crate::journal::{digest, Change, RunId};
 use crate::steps::constants::{
-    PROC_SWAPS, PROC_SYS_VM, SWAPPINESS_DROPIN, SYSCTL_BIN, VM_SWAPPINESS, managed_header,
+    managed_header, PROC_SWAPS, PROC_SYS_VM, SWAPPINESS_DROPIN, SYSCTL_BIN, VM_SWAPPINESS,
 };
-use crate::steps::domain::{SwapArea, parse_proc_swaps, primary_is_zram};
+use crate::steps::domain::{parse_proc_swaps, primary_is_zram, SwapArea};
 
 /// The value zram guidance settles on. A swapped page costs a compress into RAM
 /// rather than a disk seek, so the kernel should reach for swap early. Kernel

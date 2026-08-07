@@ -6,7 +6,7 @@ use crate::improvement::{CoreCx, CoreImprovement};
 use crate::infra::steam::config::SteamConfigs;
 use crate::infra::steam::process::{is_running, shutdown, start};
 use crate::journal::Journal;
-use crate::run::{InstallConsent, Mode, RunError, RunReport, execute};
+use crate::run::{execute, InstallConsent, Mode, RunError, RunReport};
 use crate::steps::{CompatTarget, LaunchTarget, SteamLaunchOptions, SteamProton};
 
 /// What is to be written into them.

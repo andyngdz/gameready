@@ -129,11 +129,9 @@ fn apply_writes_the_config_and_journals_a_backup() {
     let recorded = applied(&runner, &dir, "GE-Proton11-3");
 
     match recorded.as_slice() {
-        [
-            Change::FileWritten {
-                backup, existed, ..
-            },
-        ] => {
+        [Change::FileWritten {
+            backup, existed, ..
+        }] => {
             assert!(existed, "the config already existed");
             assert!(backup.is_some(), "no pre-image was recorded");
         }
@@ -194,10 +192,8 @@ fn verify_passes_once_the_config_says_what_was_asked_for() {
 
     let facts = SystemFacts::fixture(Family::Debian);
     let cx = CoreCx::new(&facts, &runner);
-    assert!(
-        step("GE-Proton11-3")
-            .verify(&cx)
-            .expect("verified")
-            .passed()
-    );
+    assert!(step("GE-Proton11-3")
+        .verify(&cx)
+        .expect("verified")
+        .passed());
 }

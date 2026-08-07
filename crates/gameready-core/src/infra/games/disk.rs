@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::games::{GameError, GameProfile, parse_profile};
+use crate::games::{parse_profile, GameError, GameProfile};
 
 /// Where a packaged gameready drops its profiles.
 pub const SYSTEM_GAMES_DIR: &str = "/usr/share/gameready/games";

@@ -11,7 +11,7 @@ use crate::improvement::{
     Probe, StepError, StepPlan, Tag, Verification,
 };
 use crate::journal::Change;
-use crate::steps::constants::{COMPAT_TOOL_VDF, COMPAT_TOOLS_DIR, CURL_BIN, TAR_BIN};
+use crate::steps::constants::{COMPAT_TOOLS_DIR, COMPAT_TOOL_VDF, CURL_BIN, TAR_BIN};
 use crate::steps::domain::tarball_name;
 
 use proton_ge_fetch::{download_verified, fetch_release};

@@ -3,7 +3,7 @@ use gameready_core::journal::StatePaths;
 use gameready_core::run::Mode;
 use tempfile::TempDir;
 
-use super::{InitRequest, run};
+use super::{run, InitRequest};
 use crate::cli::commands::prompt_recorder::PromptRecorder;
 use crate::cli::escalation::Escalation;
 use crate::cli::ui::Picker;

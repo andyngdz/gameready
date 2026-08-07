@@ -126,22 +126,18 @@ fn apply_writes_the_config_and_journals_a_backup() {
     let recorded = applied(&runner, &dir, "gamemoderun %command%");
 
     match recorded.as_slice() {
-        [
-            Change::FileWritten {
-                backup, existed, ..
-            },
-        ] => {
+        [Change::FileWritten {
+            backup, existed, ..
+        }] => {
             assert!(existed, "the config already existed");
             assert!(backup.is_some(), "no pre-image was recorded");
         }
         other => panic!("expected one file write, got {other:?}"),
     }
-    assert!(
-        runner
-            .file(CONFIG)
-            .expect("config")
-            .contains("gamemoderun %command%")
-    );
+    assert!(runner
+        .file(CONFIG)
+        .expect("config")
+        .contains("gamemoderun %command%"));
 }
 
 #[test]
@@ -200,10 +196,8 @@ fn verify_passes_once_the_config_says_what_was_asked_for() {
 
     let facts = SystemFacts::fixture(Family::Debian);
     let cx = CoreCx::new(&facts, &runner);
-    assert!(
-        step("gamemoderun %command%")
-            .verify(&cx)
-            .expect("verified")
-            .passed()
-    );
+    assert!(step("gamemoderun %command%")
+        .verify(&cx)
+        .expect("verified")
+        .passed());
 }

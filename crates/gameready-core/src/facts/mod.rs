@@ -7,4 +7,4 @@ mod service;
 
 pub use domain::{Distro, Family, PackageManagerKind, RootFilesystem, SystemFacts};
 pub use errors::FactsError;
-pub use service::{OS_RELEASE, parse_kernel_release, parse_os_release, probe};
+pub use service::{parse_kernel_release, parse_os_release, probe, OS_RELEASE};

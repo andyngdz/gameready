@@ -7,7 +7,7 @@ use crate::improvement::{
 use crate::journal::Change;
 use crate::pkg::PackageManager;
 use crate::steps::domain::GAMING_TOOLS;
-use crate::steps::use_cases::gaming_tools_survey::{ToolSurvey, absent, present};
+use crate::steps::use_cases::gaming_tools_survey::{absent, present, ToolSurvey};
 
 /// Puts the three standard gaming tools on the system.
 ///

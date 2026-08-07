@@ -4,6 +4,6 @@ pub(crate) mod change;
 mod record;
 mod undo;
 
-pub use change::{Change, digest};
-pub use record::{JOURNAL_VERSION, JournalEvent, JournalRecord, RunId};
+pub use change::{digest, Change};
+pub use record::{JournalEvent, JournalRecord, RunId, JOURNAL_VERSION};
 pub use undo::{PriorUnitState, Undo};

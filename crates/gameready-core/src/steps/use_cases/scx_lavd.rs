@@ -8,8 +8,8 @@ use crate::improvement::{
     PlannedPackage, Privilege, Probe, StepError, StepPlan, Tag, Verification,
 };
 use crate::journal::Change;
-use crate::steps::constants::{LAVD_SCHEDULER, SCHED_EXT_STATE, SCX_UNIT_PATH, SCXCTL_BIN};
-use crate::steps::domain::{SchedExt, restore_scheduler};
+use crate::steps::constants::{LAVD_SCHEDULER, SCHED_EXT_STATE, SCXCTL_BIN, SCX_UNIT_PATH};
+use crate::steps::domain::{restore_scheduler, SchedExt};
 use crate::steps::use_cases::scx_lavd_loader::Loader;
 use crate::steps::use_cases::scx_lavd_packages::ScxPackages;
 use crate::steps::use_cases::scx_state::read_sched_ext;

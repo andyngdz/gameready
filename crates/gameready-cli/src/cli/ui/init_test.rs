@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use gameready_core::games::{AppId, GameProfile, Source, Wrapper, default_wrappers};
-use gameready_core::run::{InstallConsent, targets_for};
+use gameready_core::games::{default_wrappers, AppId, GameProfile, Source, Wrapper};
+use gameready_core::run::{targets_for, InstallConsent};
 use gameready_core::steam::{GameSetup, InstalledGame};
 use gameready_core::steps::CompatTarget;
 

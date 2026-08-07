@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use steamlocate::SteamDir;
 
 use crate::steam::SteamError;
-use crate::steps::{COMPAT_TOOL_VDF, COMPAT_TOOLS_DIR};
+use crate::steps::{COMPAT_TOOLS_DIR, COMPAT_TOOL_VDF};
 
 /// The files Steam keeps the settings gameready writes in.
 ///

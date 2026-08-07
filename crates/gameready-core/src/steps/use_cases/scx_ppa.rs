@@ -8,7 +8,7 @@ use crate::improvement::{
     ApplyCx, Check, CoreCx, CoreImprovement, Improvement, ImprovementId, PlannedAction, Privilege,
     Probe, StepError, StepPlan, Tag, Verification,
 };
-use crate::journal::{Change, digest};
+use crate::journal::{digest, Change};
 use crate::pkg::PackageState;
 use crate::steps::constants::{
     ADD_APT_REPOSITORY_BIN, APT_ASSUME_YES, APT_REMOVE, SCX_PPA, SCX_PPA_PIN,

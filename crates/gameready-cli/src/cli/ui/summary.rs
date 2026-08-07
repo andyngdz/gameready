@@ -6,7 +6,7 @@ use std::path::Path;
 use console::style;
 use gameready_core::run::RunReport;
 
-use crate::cli::ui::colors::{Section, outcome_mark};
+use crate::cli::ui::colors::{outcome_mark, Section};
 
 /// The full report printed after a run completes.
 pub struct Summary<'a> {

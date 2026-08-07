@@ -5,7 +5,7 @@
 //! bounding it is what makes the step something a user can say yes to.
 
 use crate::journal::RunId;
-use crate::steps::constants::{SCX_PPA_ORIGIN, managed_header};
+use crate::steps::constants::{managed_header, SCX_PPA_ORIGIN};
 use crate::steps::use_cases::scx_ppa::ScxPpa;
 
 /// The pin itself, without the marker.

@@ -10,8 +10,8 @@ use crate::rollback::service::perform_files::{
     delete_file, remove_dir, remove_dir_tree, restore_file,
 };
 use crate::steps::{
-    ADD_APT_REPOSITORY_BIN, APT_ASSUME_YES, APT_REMOVE, SYSCTL_BIN,
-    restore_scheduler as restore_scheduler_cmd,
+    restore_scheduler as restore_scheduler_cmd, ADD_APT_REPOSITORY_BIN, APT_ASSUME_YES, APT_REMOVE,
+    SYSCTL_BIN,
 };
 use crate::systemd::{DISABLE, NOW, SYSTEMCTL};
 

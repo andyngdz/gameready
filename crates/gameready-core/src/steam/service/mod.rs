@@ -3,5 +3,5 @@
 mod pairing;
 mod vdf;
 
-pub use pairing::{GameSetup, Overlay, pair_with_catalog, with_overlay};
-pub use vdf::{Edit, SetResult, set_block, set_scalar};
+pub use pairing::{pair_with_catalog, with_overlay, GameSetup, Overlay};
+pub use vdf::{set_block, set_scalar, Edit, SetResult};

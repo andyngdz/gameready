@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use gameready_core::games::{AppId, GameProfile, ProtonChoice, Source, Wrapper, default_wrappers};
+use gameready_core::games::{default_wrappers, AppId, GameProfile, ProtonChoice, Source, Wrapper};
 use gameready_core::run::PreflightReport;
 use gameready_core::steam::InstalledGame;
 

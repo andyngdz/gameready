@@ -9,7 +9,7 @@ use gameready_core::exec::CommandRunner;
 use gameready_core::improvement::CoreCx;
 use gameready_core::infra::pkg;
 use gameready_core::journal::{Journal, RunId, StatePaths};
-use gameready_core::run::{Mode, RunReport, apply_plan, plan_run};
+use gameready_core::run::{apply_plan, plan_run, Mode, RunReport};
 
 use crate::cli::escalation::Escalation;
 use crate::cli::ui::{self, Picker};

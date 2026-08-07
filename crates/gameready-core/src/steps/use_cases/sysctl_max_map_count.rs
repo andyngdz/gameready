@@ -7,9 +7,9 @@ use crate::improvement::{
     ApplyCx, Check, CoreCx, CoreImprovement, Improvement, ImprovementId, ParseFailure,
     PlannedAction, Privilege, Probe, StepError, StepPlan, Tag, Verification,
 };
-use crate::journal::{Change, RunId, digest};
+use crate::journal::{digest, Change, RunId};
 use crate::steps::constants::{
-    PROC_SYS_VM, SYSCTL_BIN, SYSCTL_DROPIN, VM_MAX_MAP_COUNT, managed_header,
+    managed_header, PROC_SYS_VM, SYSCTL_BIN, SYSCTL_DROPIN, VM_MAX_MAP_COUNT,
 };
 
 /// The value SteamOS ships, `INT_MAX - 5`.

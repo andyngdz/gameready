@@ -6,7 +6,7 @@ use gameready_core::facts;
 use gameready_core::improvement::CoreCx;
 use gameready_core::infra::pkg;
 use gameready_core::journal::{Journal, RunId, StatePaths};
-use gameready_core::run::{RunStatus, StepSelftest, selftest};
+use gameready_core::run::{selftest, RunStatus, StepSelftest};
 
 use crate::cli::commands::constants::CANNOT_READ_SYSTEM;
 use crate::cli::commands::selection::select_steps;

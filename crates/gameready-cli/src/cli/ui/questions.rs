@@ -2,12 +2,12 @@
 
 use anyhow::Result;
 use gameready_core::facts::PackageManagerKind;
-use gameready_core::run::{InstallConsent, Mode, RunPlan, compat_targets_for, targets_for};
-use gameready_core::steam::{GameSetup, Overlay, with_overlay};
+use gameready_core::run::{compat_targets_for, targets_for, InstallConsent, Mode, RunPlan};
+use gameready_core::steam::{with_overlay, GameSetup, Overlay};
 use gameready_core::steps::{CompatTarget, LaunchTarget};
 
 use crate::cli::ui::{
-    LaunchChoice, SteamWork, choose_games, choose_how_to_apply, choose_overlay, consent_to_install,
+    choose_games, choose_how_to_apply, choose_overlay, consent_to_install, LaunchChoice, SteamWork,
 };
 
 /// Whether there is a person at the terminal to answer.

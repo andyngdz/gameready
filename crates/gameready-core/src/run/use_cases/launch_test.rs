@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use super::*;
-use crate::games::{GameProfile, Source, Wrapper, default_wrappers};
+use crate::games::{default_wrappers, GameProfile, Source, Wrapper};
 use crate::steam::InstalledGame;
 
 fn setup(name: &str, app_id: u32, wrappers: Option<Vec<Wrapper>>) -> GameSetup {

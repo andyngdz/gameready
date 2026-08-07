@@ -20,7 +20,7 @@ pub(crate) mod prompt_recorder;
 pub use apply::run as apply;
 pub use doctor::run as doctor;
 pub use explain::run as explain;
-pub use init::{InitRequest, run as init};
+pub use init::{run as init, InitRequest};
 pub use list_games::run as list_games;
 pub use rollback::run as rollback;
 pub use selftest::run as selftest;

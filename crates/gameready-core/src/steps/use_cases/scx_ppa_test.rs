@@ -68,10 +68,7 @@ fn the_plan_shows_the_pin_that_holds_the_repository_back() {
 
     let plan = ScxPpa.plan(&cx).expect("planned");
     match &plan.actions[..] {
-        [
-            PlannedAction::CreateFile { path, contents },
-            PlannedAction::RunCommand { display },
-        ] => {
+        [PlannedAction::CreateFile { path, contents }, PlannedAction::RunCommand { display }] => {
             assert_eq!(path, SCX_PPA_PIN);
             assert!(contents.contains("Pin-Priority: 1"), "{contents}");
             assert!(display.contains(SCX_PPA), "{display}");
@@ -107,10 +104,7 @@ fn apply_pins_before_it_adds_so_there_is_never_an_unpinned_window() {
     ScxPpa.apply(&mut apply).expect("applied");
 
     match apply.recorded() {
-        [
-            Change::FileWritten { path, .. },
-            Change::AptRepository { spec },
-        ] => {
+        [Change::FileWritten { path, .. }, Change::AptRepository { spec }] => {
             assert_eq!(path, Path::new(SCX_PPA_PIN));
             assert_eq!(spec, SCX_PPA);
         }

@@ -6,9 +6,9 @@ use crate::improvement::{
     ApplyCx, Check, CoreCx, CoreImprovement, Improvement, ImprovementId, PlannedAction, Privilege,
     Probe, StepError, StepPlan, Tag, Verification,
 };
-use crate::journal::{Change, digest};
+use crate::journal::{digest, Change};
 use crate::steps::constants::{LOCAL_CONFIG_BACKUP, NOT_SET};
-use crate::steps::domain::{Edited, LaunchTarget, apply_targets};
+use crate::steps::domain::{apply_targets, Edited, LaunchTarget};
 use crate::steps::use_cases::restore_backup::restore_from_backup;
 
 /// Sets the launch options of the selected games.

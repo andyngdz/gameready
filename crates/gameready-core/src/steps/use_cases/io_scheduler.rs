@@ -8,9 +8,9 @@ use crate::improvement::{
     ApplyCx, Check, CoreCx, CoreImprovement, Improvement, ImprovementId, PlannedAction, Privilege,
     Probe, StepError, StepPlan, Tag, Verification,
 };
-use crate::journal::{Change, RunId, digest};
-use crate::steps::constants::{IO_SCHEDULER_RULE, managed_header};
-use crate::steps::use_cases::io_scheduler_devices::{DiskScheduler, scan_disks, summary};
+use crate::journal::{digest, Change, RunId};
+use crate::steps::constants::{managed_header, IO_SCHEDULER_RULE};
+use crate::steps::use_cases::io_scheduler_devices::{scan_disks, summary, DiskScheduler};
 
 /// The udev rules, one per disk class, that re-apply the choice on every boot.
 ///

@@ -14,10 +14,10 @@ use gameready_core::exec::CommandRunner;
 use gameready_core::facts::{Family, SystemFacts};
 use gameready_core::improvement::{CoreCx, Privilege};
 use gameready_core::infra::exec::MockRunner;
-use gameready_core::journal::{Journal, RunId, StatePaths, load};
-use gameready_core::rollback::{PackagePolicy, UndoOutcome, execute, latest_run, plan};
-use gameready_core::run::{InstallConsent, Mode, execute as run_steps};
-use gameready_core::steps::{SYSCTL_DROPIN, core_steps};
+use gameready_core::journal::{load, Journal, RunId, StatePaths};
+use gameready_core::rollback::{execute, latest_run, plan, PackagePolicy, UndoOutcome};
+use gameready_core::run::{execute as run_steps, InstallConsent, Mode};
+use gameready_core::steps::{core_steps, SYSCTL_DROPIN};
 use tempfile::TempDir;
 
 const RUNTIME: &str = "/proc/sys/vm/max_map_count";

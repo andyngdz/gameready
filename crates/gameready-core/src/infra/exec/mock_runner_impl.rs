@@ -48,10 +48,10 @@ impl CommandRunner for MockRunner {
         })?;
         let mut children = BTreeSet::new();
         for file in state.files.keys() {
-            if let Ok(rest) = file.strip_prefix(path)
-                && let Some(first) = rest.components().next()
-            {
-                children.insert(path.join(first.as_os_str()));
+            if let Ok(rest) = file.strip_prefix(path) {
+                if let Some(first) = rest.components().next() {
+                    children.insert(path.join(first.as_os_str()));
+                }
             }
         }
         Ok(children.into_iter().collect())

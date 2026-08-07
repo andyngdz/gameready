@@ -2,7 +2,7 @@
 
 use crate::games::ProtonChoice;
 use crate::steam::GameSetup;
-use crate::steps::{CompatTarget, PROTON_EXPERIMENTAL, newest_ge_proton};
+use crate::steps::{newest_ge_proton, CompatTarget, PROTON_EXPERIMENTAL};
 
 /// The Proton pins for the selected games.
 ///

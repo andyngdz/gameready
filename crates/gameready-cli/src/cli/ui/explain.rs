@@ -6,8 +6,8 @@ use console::style;
 use gameready_core::improvement::{CoreCx, CoreImprovement, Privilege, Probe, StepPlan};
 use gameready_core::steps::core_steps;
 
-use crate::cli::ui::UNDO;
 use crate::cli::ui::colors::Section;
+use crate::cli::ui::UNDO;
 
 /// Everything `explain` found out about one step, ready to print.
 ///

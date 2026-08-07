@@ -66,10 +66,7 @@ fn loading_through_the_unit_writes_the_dropin_before_it_starts_anything() {
     Loader::Unit.load(&mut apply).expect("loaded");
 
     match apply.recorded() {
-        [
-            Change::FileWritten { path, .. },
-            Change::SystemdUnit { unit, .. },
-        ] => {
+        [Change::FileWritten { path, .. }, Change::SystemdUnit { unit, .. }] => {
             assert_eq!(path, Path::new(SCX_UNIT_DROPIN));
             assert_eq!(unit, SCX_SERVICE_NAME);
         }

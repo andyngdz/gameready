@@ -4,11 +4,9 @@ use super::{LaunchChoice, SteamWork};
 fn each_choice_says_what_it_will_do_to_steam() {
     // The user is agreeing to have their game client closed, so the option that
     // does it has to say so before they pick it.
-    assert!(
-        LaunchChoice::CloseSteamAndWrite
-            .to_string()
-            .contains("Close Steam")
-    );
+    assert!(LaunchChoice::CloseSteamAndWrite
+        .to_string()
+        .contains("Close Steam"));
 }
 
 #[test]

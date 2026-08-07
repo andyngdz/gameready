@@ -106,11 +106,9 @@ fn every_game_carries_its_appid_and_directory() {
 #[test]
 fn a_library_with_only_plumbing_scans_to_nothing() {
     let steam = steam_with(&[(1_493_710, "Proton Experimental")]);
-    assert!(
-        scan_installed_games_in(steam.path())
-            .expect("scanned")
-            .is_empty()
-    );
+    assert!(scan_installed_games_in(steam.path())
+        .expect("scanned")
+        .is_empty());
 }
 
 #[test]

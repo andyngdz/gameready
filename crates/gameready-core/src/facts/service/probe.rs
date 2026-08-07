@@ -5,7 +5,7 @@ use std::path::Path;
 use crate::exec::{Cmd, CommandRunner};
 use crate::facts::domain::SystemFacts;
 use crate::facts::errors::FactsError;
-use crate::facts::service::os_release::{OS_RELEASE, parse as parse_os_release};
+use crate::facts::service::os_release::{parse as parse_os_release, OS_RELEASE};
 use crate::improvement::KernelVersion;
 
 /// Probes the running system.

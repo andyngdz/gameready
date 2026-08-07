@@ -4,7 +4,7 @@ use std::path::Path;
 
 use crate::infra::games::load_catalog;
 use crate::infra::steam::scan::scan_installed_games;
-use crate::steam::{GameSetup, pair_with_catalog};
+use crate::steam::{pair_with_catalog, GameSetup};
 
 /// Every installed game, paired with the profile that matches its appid.
 ///

@@ -3,7 +3,7 @@
 use crate::exec::CommandRunner;
 use crate::infra::steam::process::{is_running, shutdown, start};
 use crate::journal::Journal;
-use crate::rollback::{PackagePolicy, RollbackError, RollbackPlan, RollbackReport, execute};
+use crate::rollback::{execute, PackagePolicy, RollbackError, RollbackPlan, RollbackReport};
 use crate::steps::{SteamLaunchOptions, SteamProton};
 
 /// Reverses a run, quitting Steam first when the run changed a file Steam owns.

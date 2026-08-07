@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use crate::exec::{Cmd, CmdOutput, CommandRunner};
 use crate::improvement::{ParseFailure, StepError};
 use crate::steps::constants::{CURL_BIN, PROTON_GE_LATEST_URL, SHA512SUM_BIN};
-use crate::steps::domain::{ProtonRelease, parse_checksum, parse_release, tarball_name};
+use crate::steps::domain::{parse_checksum, parse_release, tarball_name, ProtonRelease};
 
 const FETCH_FLAGS: &str = "-sfL";
 const DOWNLOAD_FLAGS: &str = "-sfLo";

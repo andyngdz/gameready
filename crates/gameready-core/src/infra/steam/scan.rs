@@ -6,7 +6,7 @@ use steamlocate::SteamDir;
 
 use super::appinfo::NonGameApps;
 use crate::games::AppId;
-use crate::steam::{InstalledGame, SteamError, is_valve_tool};
+use crate::steam::{is_valve_tool, InstalledGame, SteamError};
 
 /// Steam's index of where its library folders are. Its presence is what makes a
 /// directory a Steam installation rather than any directory.

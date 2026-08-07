@@ -2,7 +2,7 @@
 
 use crate::improvement::{CoreCx, PlannedPackage, StepError};
 use crate::pkg::{PackageManager, PackageState};
-use crate::steps::domain::{GAMING_TOOLS, GamingTool};
+use crate::steps::domain::{GamingTool, GAMING_TOOLS};
 
 /// The tools whose executable is not on `PATH`.
 ///

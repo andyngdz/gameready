@@ -1,7 +1,7 @@
 //! Turning a set of per-game launch options into one edited config.
 
 use crate::games::AppId;
-use crate::steam::{SetResult, VdfError, set_scalar};
+use crate::steam::{set_scalar, SetResult, VdfError};
 use crate::steps::constants::{LAUNCH_OPTIONS_KEY, STEAM_APPS_PATH};
 
 /// One game's launch options, as they should end up in Steam's config.

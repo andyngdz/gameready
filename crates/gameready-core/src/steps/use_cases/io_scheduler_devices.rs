@@ -7,7 +7,7 @@ use itertools::Itertools as _;
 use crate::exec::CommandRunner;
 use crate::improvement::StepError;
 use crate::steps::constants::{QUEUE_ROTATIONAL, QUEUE_SCHEDULER, SYS_BLOCK};
-use crate::steps::domain::{BlockDevice, SchedulerState, is_tunable_disk, parse_scheduler_line};
+use crate::steps::domain::{is_tunable_disk, parse_scheduler_line, BlockDevice, SchedulerState};
 
 /// One disk, where its scheduler lives, its current state, and its target.
 pub(super) struct DiskScheduler {

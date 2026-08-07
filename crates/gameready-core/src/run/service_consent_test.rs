@@ -5,7 +5,7 @@
 
 use tempfile::TempDir;
 
-use super::service_test::{Fake, facts};
+use super::service_test::{facts, Fake};
 use super::*;
 use crate::facts::PackageManagerKind;
 use crate::improvement::{Dependency, DependencyKind, PackageSpec, Probe, SkipReason};

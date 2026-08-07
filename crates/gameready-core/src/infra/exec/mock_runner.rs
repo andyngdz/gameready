@@ -179,10 +179,10 @@ impl MockRunner {
             });
         }
 
-        if let Some((path, contents)) = self.effects.get(&rendered)
-            && let Ok(mut state) = self.state.lock()
-        {
-            state.files.insert(path.clone(), contents.clone());
+        if let Some((path, contents)) = self.effects.get(&rendered) {
+            if let Ok(mut state) = self.state.lock() {
+                state.files.insert(path.clone(), contents.clone());
+            }
         }
 
         Ok(self.responses.get(&rendered).cloned().unwrap_or(CmdOutput {

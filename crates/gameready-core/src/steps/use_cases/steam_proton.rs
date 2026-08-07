@@ -6,9 +6,9 @@ use crate::improvement::{
     ApplyCx, Check, CoreCx, CoreImprovement, Improvement, ImprovementId, PlannedAction, Privilege,
     Probe, StepError, StepPlan, Tag, Verification,
 };
-use crate::journal::{Change, digest};
+use crate::journal::{digest, Change};
 use crate::steps::constants::{CONFIG_BACKUP, NOT_SET};
-use crate::steps::domain::{CompatEdited, CompatTarget, apply_compat_targets};
+use crate::steps::domain::{apply_compat_targets, CompatEdited, CompatTarget};
 use crate::steps::use_cases::restore_backup::restore_from_backup;
 
 /// Writes Steam's compatibility tool mapping for the selected games.

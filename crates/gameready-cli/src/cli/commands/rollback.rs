@@ -7,7 +7,7 @@ use gameready_core::journal::{self, Journal, RunId, StatePaths};
 use crate::cli::escalation::Escalation;
 use crate::cli::ui;
 use gameready_core::infra::steam::undo_with_steam_closed;
-use gameready_core::rollback::{PackagePolicy, RollbackError, latest_run, plan};
+use gameready_core::rollback::{latest_run, plan, PackagePolicy, RollbackError};
 use gameready_core::run::RunStatus;
 
 /// Reverses a previous run's changes, newest change first.

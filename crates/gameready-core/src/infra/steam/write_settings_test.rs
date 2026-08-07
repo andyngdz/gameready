@@ -112,18 +112,14 @@ fn both_files_are_written_once_steam_is_stopped() {
     .expect("written");
 
     assert_eq!(report.steps.len(), 2, "both Steam steps should have run");
-    assert!(
-        runner
-            .file(LOCAL)
-            .expect("local config")
-            .contains("gamemoderun %command%")
-    );
-    assert!(
-        runner
-            .file(INSTALL)
-            .expect("install config")
-            .contains("GE-Proton11-3")
-    );
+    assert!(runner
+        .file(LOCAL)
+        .expect("local config")
+        .contains("gamemoderun %command%"));
+    assert!(runner
+        .file(INSTALL)
+        .expect("install config")
+        .contains("GE-Proton11-3"));
 }
 
 #[test]
@@ -195,10 +191,8 @@ fn a_run_with_only_a_proton_pin_leaves_the_launch_options_alone() {
     .expect("written");
 
     assert_eq!(runner.file(LOCAL).as_deref(), Some(local_text().as_str()));
-    assert!(
-        runner
-            .file(INSTALL)
-            .expect("install config")
-            .contains("GE-Proton11-3")
-    );
+    assert!(runner
+        .file(INSTALL)
+        .expect("install config")
+        .contains("GE-Proton11-3"));
 }

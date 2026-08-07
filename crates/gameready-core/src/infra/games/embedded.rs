@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use rust_embed::Embed;
 
-use crate::games::{GameError, GameProfile, parse_profile};
+use crate::games::{parse_profile, GameError, GameProfile};
 
 /// Everything under the repository's `games/` directory.
 ///

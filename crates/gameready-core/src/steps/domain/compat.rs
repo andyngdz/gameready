@@ -1,7 +1,7 @@
 //! Turning a set of per-game Proton choices into one edited config.
 
 use crate::games::AppId;
-use crate::steam::{SetResult, VdfError, set_block};
+use crate::steam::{set_block, SetResult, VdfError};
 use crate::steps::constants::{
     COMPAT_CONFIG_KEY, COMPAT_MAPPING_PATH, COMPAT_NAME_KEY, COMPAT_PRIORITY, COMPAT_PRIORITY_KEY,
 };

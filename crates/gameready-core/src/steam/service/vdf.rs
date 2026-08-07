@@ -10,7 +10,7 @@
 
 use std::borrow::Cow;
 
-use keyvalues_parser::{Obj, Value, Vdf, parse};
+use keyvalues_parser::{parse, Obj, Value, Vdf};
 
 use crate::steam::errors::VdfError;
 

@@ -11,10 +11,10 @@ use std::path::{Path, PathBuf};
 use crate::exec::Cmd;
 use crate::facts::PackageManagerKind;
 use crate::improvement::{ApplyCx, CoreCx, Privilege, StepError};
-use crate::journal::{Change, digest};
+use crate::journal::{digest, Change};
 use crate::steps::constants::{
-    LAVD_SCHEDULER, SCX_LAVD_BIN, SCX_SCHEDULER_OVERRIDE, SCX_SERVICE_NAME, SCX_UNIT_DROPIN,
-    SCX_UNIT_PATH, SCXCTL_BIN,
+    LAVD_SCHEDULER, SCXCTL_BIN, SCX_LAVD_BIN, SCX_SCHEDULER_OVERRIDE, SCX_SERVICE_NAME,
+    SCX_UNIT_DROPIN, SCX_UNIT_PATH,
 };
 use crate::steps::domain::load_scheduler;
 use crate::systemd::{ENABLE, NOW, SYSTEMCTL};

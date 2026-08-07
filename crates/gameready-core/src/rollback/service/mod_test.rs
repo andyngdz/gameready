@@ -3,7 +3,7 @@ use tempfile::TempDir;
 
 use crate::improvement::ImprovementId;
 use crate::infra::exec::MockRunner;
-use crate::journal::{Change, Journal, JournalEvent, StatePaths, Undo, digest};
+use crate::journal::{digest, Change, Journal, JournalEvent, StatePaths, Undo};
 
 use super::*;
 
@@ -89,11 +89,9 @@ fn executing_reverses_both_changes() {
     assert_eq!(report.reverted(), 2);
     assert_eq!(report.failed(), 0);
     assert!(runner.file(DROPIN).is_none());
-    assert!(
-        runner
-            .commands()
-            .contains(&"sudo sysctl -w vm.max_map_count=1048576".to_owned())
-    );
+    assert!(runner
+        .commands()
+        .contains(&"sudo sysctl -w vm.max_map_count=1048576".to_owned()));
 }
 
 #[test]

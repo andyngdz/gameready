@@ -10,7 +10,7 @@ use gameready_core::improvement::CoreCx;
 use gameready_core::infra::pkg;
 use gameready_core::infra::steam::{discover_setups, installed_compat_tools, locate_steam_dir};
 use gameready_core::journal::{Journal, RunId, StatePaths};
-use gameready_core::run::{Mode, RunPlan, RunReport, apply_plan, plan_run};
+use gameready_core::run::{apply_plan, plan_run, Mode, RunPlan, RunReport};
 use gameready_core::steam::{GameSetup, Overlay};
 use gameready_core::steps::core_steps;
 

@@ -107,12 +107,10 @@ fn a_tool_already_on_path_is_left_out_of_the_plan() {
 
     let plan = GamingTools.plan(&cx).expect("planned");
     match &plan.actions[..] {
-        [
-            PlannedAction::InstallPackages {
-                packages,
-                already_present,
-            },
-        ] => {
+        [PlannedAction::InstallPackages {
+            packages,
+            already_present,
+        }] => {
             assert_eq!(
                 packages.iter().map(|p| p.name.as_str()).collect::<Vec<_>>(),
                 vec!["gamemode"]
@@ -217,11 +215,9 @@ fn a_failed_install_leaves_a_journal_that_names_every_package() {
         .expect_err("the install was cut short");
 
     match apply.recorded() {
-        [
-            Change::PackagesInstalled {
-                newly_installed, ..
-            },
-        ] => assert_eq!(newly_installed.len(), 2),
+        [Change::PackagesInstalled {
+            newly_installed, ..
+        }] => assert_eq!(newly_installed.len(), 2),
         other => panic!("expected one recorded install, got {other:?}"),
     }
 }

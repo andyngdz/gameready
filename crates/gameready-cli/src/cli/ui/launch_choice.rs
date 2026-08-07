@@ -6,12 +6,12 @@ use anyhow::{Context as _, Result};
 use gameready_core::exec::CommandRunner;
 use gameready_core::facts::SystemFacts;
 use gameready_core::infra::steam::{
-    SteamSettings, configs_under, locate_steam_dir, write_steam_settings,
+    configs_under, locate_steam_dir, write_steam_settings, SteamSettings,
 };
 use gameready_core::journal::Journal;
 use inquire::Select;
 
-use crate::cli::ui::{LaunchInstructions, LaunchReport, questions::Answers};
+use crate::cli::ui::{questions::Answers, LaunchInstructions, LaunchReport};
 
 /// What the user wants done about the per-game settings Steam holds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

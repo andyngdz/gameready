@@ -1,14 +1,14 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use gameready_core::games::{AppId, GameProfile, Source, Wrapper, default_wrappers};
+use gameready_core::games::{default_wrappers, AppId, GameProfile, Source, Wrapper};
 use gameready_core::steam::InstalledGame;
 
 use gameready_core::facts::PackageManagerKind;
 use gameready_core::run::{PreflightReport, RunPlan};
 
 use super::*;
-use crate::cli::ui::{Picker, Questions, ask_everything};
+use crate::cli::ui::{ask_everything, Picker, Questions};
 
 fn setup(name: &str, app_id: u32, wrappers: Option<Vec<Wrapper>>) -> GameSetup {
     GameSetup {

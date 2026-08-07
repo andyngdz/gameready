@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::games::{Catalog, GameProfile, Source, Wrapper, default_wrappers, launch_options};
+use crate::games::{default_wrappers, launch_options, Catalog, GameProfile, Source, Wrapper};
 use crate::steam::domain::InstalledGame;
 
 /// One installed game, and what gameready will do for it.

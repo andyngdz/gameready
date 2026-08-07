@@ -6,7 +6,7 @@ use crate::improvement::{
 };
 use crate::journal::Change;
 use crate::steps::domain::COMPETING_DAEMONS;
-use crate::systemd::{SystemdError, unit_state};
+use crate::systemd::{unit_state, SystemdError};
 
 /// Names the daemons that already own the settings gamemode changes.
 ///

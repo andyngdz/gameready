@@ -1,6 +1,6 @@
 //! Turning a step id into the steps a command runs.
 
-use anyhow::{Context as _, Result, anyhow};
+use anyhow::{anyhow, Context as _, Result};
 use gameready_core::improvement::{CoreImprovement, ImprovementId};
 use gameready_core::steps::{core_steps, find_core_step};
 
