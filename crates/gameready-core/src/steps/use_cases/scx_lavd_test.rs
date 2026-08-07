@@ -97,8 +97,13 @@ fn a_system_whose_repositories_have_no_scx_says_where_to_get_it() {
 
     match ScxLavd.probe(&cx).expect("probed") {
         Probe::NotApplicable { reason } => {
-            assert!(reason.contains("ppa:arighi/sched-ext"), "{reason}");
-            assert!(reason.contains("COPR"), "{reason}");
+            // Ubuntu is told about the step in this same run that fixes it,
+            // not sent away to add a repository by hand.
+            assert!(reason.contains("core.repo.scx-ppa"), "{reason}");
+            assert!(
+                reason.contains("the next time you run gameready"),
+                "{reason}"
+            );
         }
         other @ (Probe::Applicable
         | Probe::AlreadyApplied { .. }

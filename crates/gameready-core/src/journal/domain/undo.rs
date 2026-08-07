@@ -62,6 +62,9 @@ pub enum Undo {
     /// Return a unit to the state it was in before the run.
     RestoreUnit { unit: String, prior: PriorUnitState },
 
+    /// Take a third-party repository back off the system.
+    RemoveAptRepository { spec: String },
+
     /// Put the CPU scheduler back where it was.
     ///
     /// `None` unloads whatever gameready started, which hands scheduling back

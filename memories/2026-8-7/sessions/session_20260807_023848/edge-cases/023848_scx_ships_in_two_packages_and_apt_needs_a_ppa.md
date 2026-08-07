@@ -9,6 +9,20 @@ Verified 2026-08-07 against the Arch package index, the Launchpad API, the Fedor
 
 The Ubuntu primary archive has no scx at all: Launchpad `getPublishedSources` returns `total_size: 0` for `scx-scheds` on noble, plucky, questing and resolute. `ppa:arighi/sched-ext` does carry it, under source name `scx` (not `scx-scheds`), at 1.1.1-1 for resolute and 1.0.21~rc2-1 for noble. Re-checked 2026-08-07 with `getPublishedBinaries`: the PPA publishes ONE binary package, also named `scx` (plus `scx-dbgsym`). It does not split schedulers from tooling the way Arch and the COPR do, so a step must ask for `scx` alone on apt and for both `scx-scheds` and `scx-tools` on pacman and dnf. Adding that PPA is a persistent system change and needs its own journal entry, the same as the Fedora COPR.
 
+Verified 2026-08-07 by downloading `scx_1.1.1-1_amd64.deb` from Launchpad and
+listing it: the Ubuntu package uses a completely different mechanism, not just a
+different split. It carries 17 scheduler binaries in `/usr/sbin`, a
+`/usr/lib/systemd/system/scx.service` whose ExecStart is
+`${SCX_SCHEDULER_OVERRIDE:-$SCX_SCHEDULER}`, and `/etc/default/scx` defaulting to
+`SCX_SCHEDULER=scx_cosmos`. There is no `scxctl`, no `scx_loader`, no D-Bus and
+no polkit anywhere in it. A step that shells out to `scxctl` cannot work on
+Ubuntu at any version. Point the unit at a scheduler with a drop-in setting
+`SCX_SCHEDULER_OVERRIDE`, never by editing `/etc/default/scx`, which the package
+owns. The unit route survives a reboot; the scxctl route does not.
+
+The PPA's Release file stamps `Origin: LP-PPA-arighi-sched-ext`, which is what an
+apt pin has to match to hold the repository to scx only.
+
 No `sched-ext/scx` GitHub release ships a binary asset; the last five (v1.1.2 back to v1.0.19) carry only source tarballs.
 
 `scx_lavd` is the right scheduler for gaming; Valve ships it on SteamOS.

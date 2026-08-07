@@ -196,6 +196,7 @@ impl CoreImprovement for ProtonGe {
                 | Change::SysfsWrite { .. }
                 | Change::PackagesInstalled { .. }
                 | Change::SystemdUnit { .. }
+                | Change::AptRepository { .. }
                 | Change::ScxScheduler { .. }
                 | Change::DirCreated { .. } => {}
             }

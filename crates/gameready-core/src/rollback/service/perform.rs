@@ -9,7 +9,11 @@ use crate::rollback::domain::{PackagePolicy, UndoOutcome};
 use crate::rollback::service::perform_files::{
     delete_file, remove_dir, remove_dir_tree, restore_file,
 };
-use crate::steps::{SYSCTL_BIN, restore_scheduler as restore_scheduler_cmd};
+use crate::steps::{
+    ADD_APT_REPOSITORY_BIN, APT_ASSUME_YES, APT_REMOVE, SYSCTL_BIN,
+    restore_scheduler as restore_scheduler_cmd,
+};
+use crate::systemd::{DISABLE, NOW, SYSTEMCTL};
 
 /// Reverses one recorded change.
 pub(super) fn perform(
@@ -38,6 +42,8 @@ pub(super) fn perform(
         Undo::ReportPackages { installed, .. } => report_packages(installed, packages),
 
         Undo::RestoreUnit { unit, prior } => restore_unit(runner, unit, *prior),
+
+        Undo::RemoveAptRepository { spec } => remove_repository(runner, spec),
 
         Undo::RestoreScxScheduler { previous } => restore_scheduler(runner, previous.as_deref()),
 
@@ -98,10 +104,29 @@ fn restore_unit(runner: &dyn CommandRunner, unit: &str, prior: PriorUnitState) -
         };
     }
 
-    let cmd = Cmd::root("systemctl").arg("disable").arg("--now").arg(unit);
+    let cmd = Cmd::root(SYSTEMCTL).arg(DISABLE).arg(NOW).arg(unit);
     match runner.run(&cmd) {
         Ok(_) => UndoOutcome::Reverted {
             detail: format!("{unit} disabled again"),
+        },
+        Err(error) => UndoOutcome::Failed {
+            error: error.to_string(),
+        },
+    }
+}
+
+/// Takes a third-party repository back off the system.
+///
+/// The same tool that added it removes it, so nothing here has to know which
+/// files were written or where the signing key landed.
+fn remove_repository(runner: &dyn CommandRunner, spec: &str) -> UndoOutcome {
+    let cmd = Cmd::root(ADD_APT_REPOSITORY_BIN)
+        .arg(APT_ASSUME_YES)
+        .arg(APT_REMOVE)
+        .arg(spec);
+    match runner.run(&cmd) {
+        Ok(_) => UndoOutcome::Reverted {
+            detail: format!("{spec} removed"),
         },
         Err(error) => UndoOutcome::Failed {
             error: error.to_string(),

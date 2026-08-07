@@ -1,14 +1,19 @@
 //! Hand CPU scheduling to scx_lavd while gaming.
 
+use std::path::Path;
+
+use crate::exec::Cmd;
 use crate::improvement::{
     ApplyCx, Check, CoreCx, CoreImprovement, Improvement, ImprovementId, PlannedAction,
     PlannedPackage, Privilege, Probe, StepError, StepPlan, Tag, Verification,
 };
 use crate::journal::Change;
-use crate::steps::constants::{SCHED_EXT_STATE, SCX_LAVD, SCXCTL_BIN};
-use crate::steps::domain::{SchedExt, load_scheduler, restore_scheduler};
+use crate::steps::constants::{LAVD_SCHEDULER, SCHED_EXT_STATE, SCX_UNIT_PATH, SCXCTL_BIN};
+use crate::steps::domain::{SchedExt, restore_scheduler};
+use crate::steps::use_cases::scx_lavd_loader::Loader;
 use crate::steps::use_cases::scx_lavd_packages::ScxPackages;
 use crate::steps::use_cases::scx_state::read_sched_ext;
+use crate::systemd::{DISABLE, NOW, SYSTEMCTL};
 
 /// Loads the gaming-oriented sched_ext scheduler.
 ///
@@ -32,7 +37,10 @@ impl ScxLavd {
     /// stay separate: a kernel without sched_ext is a permanent no, and missing
     /// packages are a no only until they are installed.
     fn probe_tooling(cx: &CoreCx<'_>) -> Result<Probe, StepError> {
-        if cx.runner.which(SCXCTL_BIN).is_some() {
+        // Either mechanism being present is enough. Ubuntu has the unit and no
+        // scxctl; Arch and Fedora have scxctl and no unit.
+        if cx.runner.which(SCXCTL_BIN).is_some() || cx.runner.path_exists(Path::new(SCX_UNIT_PATH))
+        {
             return Ok(Probe::Applicable);
         }
 
@@ -70,8 +78,7 @@ impl Improvement for ScxLavd {
          times when something else wants the CPU: a browser, a voice chat, a \
          build. On an otherwise idle machine expect no difference, and on games \
          that lean on one or two cores it has measured slower than the default. \
-         It loads and unloads while the machine runs, and it does not survive a \
-         reboot."
+         Rollback hands the CPU straight back, with no reboot needed."
     }
 
     fn privilege(&self) -> Privilege {
@@ -91,9 +98,11 @@ impl CoreImprovement for ScxLavd {
                 reason: format!("this kernel has no sched_ext; {SCHED_EXT_STATE} is not there"),
             }),
 
-            SchedExt::Running { .. } if state.is_running(SCX_LAVD) => Ok(Probe::AlreadyApplied {
-                evidence: format!("{SCX_LAVD} is already the scheduler"),
-            }),
+            SchedExt::Running { .. } if state.is_running(LAVD_SCHEDULER) => {
+                Ok(Probe::AlreadyApplied {
+                    evidence: format!("{LAVD_SCHEDULER} is already the scheduler"),
+                })
+            }
 
             // Somebody else loaded a scheduler. Replacing it would take over a
             // choice this run did not make, so the step stands down and says
@@ -101,7 +110,7 @@ impl CoreImprovement for ScxLavd {
             SchedExt::Running { .. } => Ok(Probe::Conflict {
                 with: state.describe().to_owned(),
                 detail: format!(
-                    "{} is already scheduling this machine; stop it first if you want {SCX_LAVD}",
+                    "{} is already scheduling this machine; stop it first if you want {LAVD_SCHEDULER}",
                     state.describe()
                 ),
             }),
@@ -111,11 +120,20 @@ impl CoreImprovement for ScxLavd {
     }
 
     fn plan(&self, cx: &CoreCx<'_>) -> Result<StepPlan, StepError> {
-        let plan = StepPlan::new(self.id(), format!("run {SCX_LAVD} in gaming mode")).action(
-            PlannedAction::RunCommand {
-                display: load_scheduler(SCX_LAVD).to_string(),
-            },
-        );
+        let loader = Loader::detect(cx);
+        let lasts = if loader.survives_reboot() {
+            "and on every boot after it"
+        } else {
+            "until the next reboot"
+        };
+
+        let plan = StepPlan::new(
+            self.id(),
+            format!("run {LAVD_SCHEDULER} in gaming mode, {lasts}"),
+        )
+        .action(PlannedAction::RunCommand {
+            display: loader.describe(),
+        });
 
         let Some(packages) = cx.packages else {
             return Ok(plan);
@@ -135,30 +153,27 @@ impl CoreImprovement for ScxLavd {
     fn apply(&self, cx: &mut ApplyCx<'_, CoreCx<'_>>) -> Result<(), StepError> {
         ScxPackages::install_missing(cx)?;
 
-        let previous = read_sched_ext(cx.cx.runner).previous();
-        cx.progress(&format!("Loading {SCX_LAVD}"));
-        cx.mutate(Change::ScxScheduler { previous }, |runner| {
-            let load = load_scheduler(SCX_LAVD);
-            runner.run(&load).map_err(|source| StepError::Command {
-                command: load.to_string(),
-                code: 1,
-                stderr: source.to_string(),
-            })?;
-            Ok(())
-        })
+        // Detected after the install, not before: on a machine with neither
+        // mechanism present the packages are what decide which one it gets.
+        let loader = Loader::detect(&cx.cx);
+        cx.progress(&format!("Loading {LAVD_SCHEDULER}"));
+        loader.load(cx)
     }
 
     fn verify(&self, cx: &CoreCx<'_>) -> Result<Verification, StepError> {
         let state = read_sched_ext(cx.runner);
         Ok(Verification::new().check(Check::equals(
             "kernel scheduler",
-            SCX_LAVD,
+            LAVD_SCHEDULER,
             state.describe(),
         )))
     }
 
     fn rollback(&self, undo: &[Change], cx: &mut ApplyCx<'_, CoreCx<'_>>) -> Result<(), StepError> {
-        for change in undo {
+        // Reverse order: the unit stops before the drop-in that aims it is
+        // removed, so an interrupted rollback never leaves a file naming a
+        // scheduler nothing is running.
+        for change in undo.iter().rev() {
             match change {
                 Change::ScxScheduler { previous } => {
                     let back = restore_scheduler(previous.as_deref());
@@ -170,17 +185,34 @@ impl CoreImprovement for ScxLavd {
                             stderr: source.to_string(),
                         })?;
                 }
+                Change::SystemdUnit { unit, .. } => {
+                    let stop = Cmd::root(SYSTEMCTL).arg(DISABLE).arg(NOW).arg(unit);
+                    cx.reader()
+                        .run(&stop)
+                        .map_err(|source| StepError::Command {
+                            command: stop.to_string(),
+                            code: 1,
+                            stderr: source.to_string(),
+                        })?;
+                }
+                Change::FileWritten { path, .. } => {
+                    cx.reader()
+                        .remove_file(path, Privilege::Root)
+                        .map_err(|source| StepError::Write {
+                            path: path.clone(),
+                            source: std::io::Error::other(source.to_string()),
+                        })?;
+                }
                 // Removing a package is not the inverse of installing one, so
                 // the packages stay and the summary says so.
                 Change::PackagesInstalled { .. } => {}
                 // Listed rather than wildcarded, so a new change this step
                 // starts recording fails to compile here instead of being
                 // silently skipped by rollback.
-                Change::FileWritten { .. }
+                Change::AptRepository { .. }
                 | Change::FileRemoved { .. }
                 | Change::SysctlRuntime { .. }
                 | Change::SysfsWrite { .. }
-                | Change::SystemdUnit { .. }
                 | Change::DirCreated { .. }
                 | Change::DirTreeInstalled { .. } => {}
             }

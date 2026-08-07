@@ -1,10 +1,12 @@
 //! What this system has of the scx packages, and what it would take to get them.
 
+use crate::facts::PackageManagerKind;
 use crate::improvement::{ApplyCx, CoreCx, PlannedPackage, StepError};
 use crate::journal::Change;
 use crate::pkg::{PackageManager, PackageState};
-use crate::steps::constants::SCX_LAVD;
+use crate::steps::constants::LAVD_SCHEDULER;
 use crate::steps::domain::{SCX_SCHEDS, SCX_TOOLS};
+use crate::steps::use_cases::scx_ppa::ScxPpa;
 
 /// What a package is for, said once so the plan screen and the survey agree.
 const SCHEDS_WHAT: &str = "the sched_ext CPU schedulers, scx_lavd among them";
@@ -60,11 +62,24 @@ impl ScxPackages {
     }
 
     /// Why this system cannot get scx, in terms a user can act on.
+    ///
+    /// Apt gets a different answer because gameready has a step that fixes it.
+    /// Every step is probed before any step applies, so the repository this run
+    /// is about to add is not there yet when this one is asked: the honest
+    /// answer names the second run rather than pretending one will do.
     pub fn why_not(&self, cx: &CoreCx<'_>) -> String {
+        if cx.facts.distro.package_manager() == PackageManagerKind::Apt {
+            return format!(
+                "scx is not in this system's repositories yet ({}); the \"{}\" step in this \
+                 run adds the PPA that carries it, and this step applies the next time you \
+                 run gameready",
+                cx.facts.distro.name,
+                ScxPpa::id_const(),
+            );
+        }
         format!(
-            "scx is not in this system's repositories ({}); on Ubuntu it comes from \
-             ppa:arighi/sched-ext and on Fedora from the CachyOS COPR, and gameready \
-             does not add either for you",
+            "scx is not in this system's repositories ({}); on Fedora it comes from the \
+             CachyOS COPR, which gameready does not add for you",
             cx.facts.distro.name,
         )
     }
@@ -75,7 +90,7 @@ impl ScxPackages {
             .map(|candidate| PlannedPackage {
                 name: candidate.name.clone(),
                 what: candidate.what.to_owned(),
-                why: format!("{SCX_LAVD} cannot be loaded without it"),
+                why: format!("{LAVD_SCHEDULER} cannot be loaded without it"),
                 approx_bytes: candidate.approx_bytes,
             })
             .collect()

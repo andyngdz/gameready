@@ -3,6 +3,16 @@
 /// The one binary this feature drives.
 pub const SYSTEMCTL: &str = "systemctl";
 
+/// Turns a unit on at boot and starts it in the same call.
+pub const ENABLE: &str = "enable";
+
+/// Turns a unit off at boot and stops it in the same call.
+pub const DISABLE: &str = "disable";
+
+/// Makes `enable` and `disable` act on the running system too, not only on the
+/// next boot.
+pub const NOW: &str = "--now";
+
 /// Asks whether a unit starts at boot. Also the existence check: a name with no
 /// unit file behind it fails here with an empty answer.
 pub const IS_ENABLED: &str = "is-enabled";

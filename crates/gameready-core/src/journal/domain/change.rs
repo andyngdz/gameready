@@ -96,6 +96,14 @@ pub enum Change {
         was_active: bool,
     },
 
+    /// A third-party package repository added to the system.
+    ///
+    /// Held as the spec its tooling accepts (`ppa:owner/name`) rather than as
+    /// the files that were written, because the tool that adds one is the only
+    /// thing that reliably knows which files those are, and it is also the
+    /// thing that removes them.
+    AptRepository { spec: String },
+
     /// A sched_ext CPU scheduler loaded at runtime.
     ///
     /// This one evaporates on reboot by itself, like
@@ -194,6 +202,8 @@ impl Change {
                     PriorUnitState::WasDisabled
                 },
             },
+
+            Self::AptRepository { spec } => Undo::RemoveAptRepository { spec: spec.clone() },
 
             Self::ScxScheduler { previous } => Undo::RestoreScxScheduler {
                 previous: previous.clone(),

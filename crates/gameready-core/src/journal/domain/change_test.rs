@@ -30,6 +30,7 @@ fn a_file_we_created_is_undone_by_deleting_it() {
         | Undo::WriteSysfs { .. }
         | Undo::ReportPackages { .. }
         | Undo::RestoreUnit { .. }
+        | Undo::RemoveAptRepository { .. }
         | Undo::RestoreScxScheduler { .. }
         | Undo::RemoveDirIfEmpty { .. }
         | Undo::RemoveDirTree { .. }) => panic!("expected a delete, got {other:?}"),
@@ -58,6 +59,7 @@ fn a_file_we_replaced_is_undone_by_restoring_its_pre_image() {
         | Undo::WriteSysfs { .. }
         | Undo::ReportPackages { .. }
         | Undo::RestoreUnit { .. }
+        | Undo::RemoveAptRepository { .. }
         | Undo::RestoreScxScheduler { .. }
         | Undo::RemoveDirIfEmpty { .. }
         | Undo::RemoveDirTree { .. }) => panic!("expected a restore, got {other:?}"),
@@ -100,6 +102,7 @@ fn installed_packages_are_reported_rather_than_removed() {
         | Undo::SetSysctl { .. }
         | Undo::WriteSysfs { .. }
         | Undo::RestoreUnit { .. }
+        | Undo::RemoveAptRepository { .. }
         | Undo::RestoreScxScheduler { .. }
         | Undo::RemoveDirIfEmpty { .. }
         | Undo::RemoveDirTree { .. }) => panic!("expected a report, got {other:?}"),
@@ -195,6 +198,7 @@ fn a_loaded_scheduler_is_undone_by_handing_the_cpu_back() {
         | Undo::WriteSysfs { .. }
         | Undo::ReportPackages { .. }
         | Undo::RestoreUnit { .. }
+        | Undo::RemoveAptRepository { .. }
         | Undo::RemoveDirIfEmpty { .. }
         | Undo::RemoveDirTree { .. }) => panic!("expected a scheduler restore, got {other:?}"),
     }
@@ -216,7 +220,30 @@ fn a_scheduler_that_replaced_another_is_undone_by_switching_back() {
         | Undo::WriteSysfs { .. }
         | Undo::ReportPackages { .. }
         | Undo::RestoreUnit { .. }
+        | Undo::RemoveAptRepository { .. }
         | Undo::RemoveDirIfEmpty { .. }
         | Undo::RemoveDirTree { .. }) => panic!("expected a scheduler restore, got {other:?}"),
+    }
+}
+
+#[test]
+fn a_repository_we_added_is_undone_by_removing_it() {
+    // The spec is recorded rather than the files it wrote, because the tool
+    // that adds a PPA is the only thing that reliably knows which those are.
+    let change = Change::AptRepository {
+        spec: "ppa:arighi/sched-ext".to_owned(),
+    };
+
+    match change.inverse() {
+        Undo::RemoveAptRepository { spec } => assert_eq!(spec, "ppa:arighi/sched-ext"),
+        other @ (Undo::DeleteFile { .. }
+        | Undo::RestoreFile { .. }
+        | Undo::SetSysctl { .. }
+        | Undo::WriteSysfs { .. }
+        | Undo::ReportPackages { .. }
+        | Undo::RestoreUnit { .. }
+        | Undo::RestoreScxScheduler { .. }
+        | Undo::RemoveDirIfEmpty { .. }
+        | Undo::RemoveDirTree { .. }) => panic!("expected a repository removal, got {other:?}"),
     }
 }
