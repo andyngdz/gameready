@@ -17,8 +17,10 @@ const ZRAM_PRIMARY: &str = indoc! {"
 fn a_disk_swap_file_is_not_zram() {
     let areas = parse_proc_swaps(DISK_ONLY);
     assert_eq!(areas.len(), 1);
-    assert_eq!(areas[0].backing, SwapBacking::Disk);
-    assert_eq!(areas[0].priority, -1);
+
+    let swap_file = &areas[0];
+    assert_eq!(swap_file.backing, SwapBacking::Disk);
+    assert_eq!(swap_file.priority, -1);
     assert!(!primary_is_zram(&areas));
 }
 

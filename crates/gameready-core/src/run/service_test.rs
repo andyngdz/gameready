@@ -1,30 +1,37 @@
 use tempfile::TempDir;
 
 use super::*;
+use crate::facts::SystemFacts;
 use crate::improvement::{
-    ApplyCx, Check, CoreCx, Improvement, ImprovementId, Privilege, StepError, StepPlan,
-    Verification,
+    ApplyCx, Check, Dependency, Improvement, PlannedAction, PlannedPackage, Privilege, Probe,
+    RollbackStatus, StepError, StepPlan, Verification,
 };
 use crate::infra::exec::MockRunner;
-use crate::journal::{Change, RunId, StatePaths};
+use crate::journal::{RunId, StatePaths};
 use crate::run::RunStatus;
 
 /// A step whose behaviour each test dials in, so the executor's contract is
 /// tested rather than any one real step's logic.
-struct Fake {
-    id: &'static str,
-    probe_result: Probe,
-    applies: bool,
-    verifies: bool,
+pub(super) struct Fake {
+    pub(super) id: &'static str,
+    pub(super) probe_result: Probe,
+    pub(super) applies: bool,
+    pub(super) verifies: bool,
+    pub(super) deps: Vec<Dependency>,
+    /// Packages this step installs in its own `apply`, the way
+    /// `core.pkg.tools` does, rather than declaring them as prerequisites.
+    pub(super) self_installs: Vec<String>,
 }
 
 impl Fake {
-    fn applicable(id: &'static str) -> Self {
+    pub(super) fn applicable(id: &'static str) -> Self {
         Self {
             id,
             probe_result: Probe::Applicable,
             applies: true,
             verifies: true,
+            deps: Vec::new(),
+            self_installs: Vec::new(),
         }
     }
 }
@@ -42,6 +49,9 @@ impl Improvement for Fake {
     fn privilege(&self) -> Privilege {
         Privilege::User
     }
+    fn dependencies(&self) -> &[Dependency] {
+        &self.deps
+    }
 }
 
 impl CoreImprovement for Fake {
@@ -50,7 +60,23 @@ impl CoreImprovement for Fake {
     }
 
     fn plan(&self, _cx: &CoreCx<'_>) -> Result<StepPlan, StepError> {
-        Ok(StepPlan::new(self.id(), "a fake change"))
+        let plan = StepPlan::new(self.id(), "a fake change");
+        if self.self_installs.is_empty() {
+            return Ok(plan);
+        }
+        Ok(plan.action(PlannedAction::InstallPackages {
+            packages: self
+                .self_installs
+                .iter()
+                .map(|name| PlannedPackage {
+                    name: name.clone(),
+                    what: "a fake package".to_owned(),
+                    why: "so the plan has something to ask about".to_owned(),
+                    approx_bytes: 1_000_000,
+                })
+                .collect(),
+            already_present: Vec::new(),
+        }))
     }
 
     fn apply(&self, cx: &mut ApplyCx<'_, CoreCx<'_>>) -> Result<(), StepError> {
@@ -94,7 +120,7 @@ impl CoreImprovement for Fake {
     }
 }
 
-fn facts() -> SystemFacts {
+pub(super) fn facts() -> SystemFacts {
     SystemFacts::fixture(crate::facts::Family::Debian)
 }
 
@@ -104,11 +130,10 @@ fn run_with(steps: Vec<Box<dyn CoreImprovement>>, mode: Mode, runner: &MockRunne
         .expect("journal opens");
     execute(
         steps,
-        &facts(),
-        runner,
+        &CoreCx::new(&facts(), runner),
         &mut journal,
         mode,
-        None,
+        InstallConsent::Declined,
         &mut |_| {},
     )
     .expect("run completes")
@@ -150,6 +175,8 @@ fn a_step_whose_verification_fails_is_rolled_back_not_reported_as_applied() {
         probe_result: Probe::Applicable,
         applies: true,
         verifies: false,
+        deps: Vec::new(),
+        self_installs: Vec::new(),
     };
     let report = run_with(vec![Box::new(step)], Mode::Apply, &runner);
 
@@ -179,6 +206,8 @@ fn a_failing_step_does_not_stop_the_ones_after_it() {
         probe_result: Probe::Applicable,
         applies: false,
         verifies: true,
+        deps: Vec::new(),
+        self_installs: Vec::new(),
     };
     let report = run_with(
         vec![Box::new(failing), Box::new(Fake::applicable("test.b"))],
@@ -201,6 +230,8 @@ fn an_already_applied_step_is_not_reapplied() {
         },
         applies: true,
         verifies: true,
+        deps: Vec::new(),
+        self_installs: Vec::new(),
     };
     let report = run_with(vec![Box::new(step)], Mode::Apply, &runner);
 
@@ -225,6 +256,8 @@ fn an_unreadable_probe_never_becomes_permission_to_apply() {
         },
         applies: true,
         verifies: true,
+        deps: Vec::new(),
+        self_installs: Vec::new(),
     };
     let report = run_with(vec![Box::new(step)], Mode::Apply, &runner);
 
@@ -253,19 +286,19 @@ fn events_arrive_in_phase_order() {
 
     execute(
         vec![Box::new(Fake::applicable("test.a"))],
-        &facts(),
-        &runner,
+        &CoreCx::new(&facts(), &runner),
         &mut journal,
         Mode::Apply,
-        None,
+        InstallConsent::Declined,
         &mut |event| seen.push(event),
     )
     .expect("run completes");
 
-    // Everything is probed before anything applies, so the plan the user sees
-    // is complete before the first change.
+    // Everything is probed and resolved before anything applies, so the plan
+    // the user sees is complete before the first change.
     assert!(matches!(seen[0], RunEvent::Probing { .. }));
     assert!(matches!(seen[1], RunEvent::Planned { .. }));
-    assert!(matches!(seen[2], RunEvent::Applying { .. }));
-    assert!(matches!(seen[3], RunEvent::Finished { .. }));
+    assert!(matches!(seen[2], RunEvent::DependenciesResolved { .. }));
+    assert!(matches!(seen[3], RunEvent::Applying { .. }));
+    assert!(matches!(seen[4], RunEvent::Finished { .. }));
 }

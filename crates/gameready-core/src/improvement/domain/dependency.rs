@@ -44,6 +44,33 @@ impl Dependency {
             DependencyKind::Binary { .. } | DependencyKind::Package { .. }
         )
     }
+
+    /// Rough installed size, or zero when this is not a package at all.
+    ///
+    /// One number across all three families: the sizes are hand-written
+    /// estimates, and pretending they differ per distro would be false
+    /// accuracy.
+    #[must_use]
+    pub const fn approx_bytes(&self) -> u64 {
+        match &self.kind {
+            DependencyKind::Binary { provided_by, .. } => provided_by.approx_bytes,
+            DependencyKind::Package { spec } => spec.approx_bytes,
+            DependencyKind::Kernel { .. } | DependencyKind::Feature { .. } => 0,
+        }
+    }
+
+    /// What this is called on the given package tooling.
+    ///
+    /// `None` for a kernel version or a kernel feature, which no package
+    /// manager has a name for.
+    #[must_use]
+    pub const fn package_name(&self, packages: PackageManagerKind) -> Option<&'static str> {
+        match &self.kind {
+            DependencyKind::Binary { provided_by, .. } => provided_by.name_for(packages),
+            DependencyKind::Package { spec } => spec.name_for(packages),
+            DependencyKind::Kernel { .. } | DependencyKind::Feature { .. } => None,
+        }
+    }
 }
 
 /// The kinds of prerequisite a step can declare. Split by how each one is

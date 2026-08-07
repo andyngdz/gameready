@@ -3,6 +3,7 @@
 mod conflicts;
 mod cpu_governor;
 mod gaming_tools;
+mod gaming_tools_survey;
 mod io_scheduler;
 mod io_scheduler_devices;
 mod memory_swappiness;

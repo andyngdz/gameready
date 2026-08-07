@@ -3,10 +3,18 @@ use gameready_core::improvement::OutcomeKind;
 use super::*;
 
 #[test]
-fn applied_and_already_set_use_the_same_mark() {
+fn already_set_does_not_borrow_the_mark_that_means_changed() {
     let applied = outcome_mark(OutcomeKind::Applied);
     let already = outcome_mark(OutcomeKind::AlreadySet);
-    assert_eq!(applied, already);
+    assert_ne!(applied, already);
+}
+
+#[test]
+fn already_set_is_not_confusable_with_skipped_either() {
+    assert_ne!(
+        outcome_mark(OutcomeKind::AlreadySet),
+        outcome_mark(OutcomeKind::Skipped)
+    );
 }
 
 #[test]

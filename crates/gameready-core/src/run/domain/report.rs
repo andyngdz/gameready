@@ -44,6 +44,18 @@ pub struct StepReport {
     pub outcome: Outcome,
 }
 
+impl StepReport {
+    /// Records how one step ended, copying the title off the step itself.
+    #[must_use]
+    pub fn for_step(step: &dyn crate::improvement::CoreImprovement, outcome: Outcome) -> Self {
+        Self {
+            step: step.id(),
+            name: step.name().to_owned(),
+            outcome,
+        }
+    }
+}
+
 /// Everything one invocation did.
 ///
 /// The single value `--json` serialises and the summary screen renders, so the

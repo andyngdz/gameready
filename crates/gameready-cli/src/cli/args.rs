@@ -85,7 +85,12 @@ pub enum Command {
     /// The one command most people need. Everything it does is undoable with
     /// `gameready rollback`.
     Init {
-        /// Take every installed game without showing the picker.
+        /// Answer every question in advance: take every installed game, and
+        /// install whatever the steps need without asking.
+        ///
+        /// For scripts and terminals that cannot prompt. Installed packages
+        /// stay behind after `gameready rollback`, so this agrees to something
+        /// you cannot fully undo.
         #[arg(long)]
         yes: bool,
 
@@ -112,6 +117,14 @@ pub enum Command {
         /// Apply only this step, by id.
         #[arg(long)]
         step: Option<String>,
+
+        /// Install whatever the steps need without asking.
+        ///
+        /// For scripts and terminals that cannot prompt. Installed packages
+        /// stay behind after `gameready rollback`, so this agrees to something
+        /// you cannot fully undo.
+        #[arg(long)]
+        yes: bool,
 
         /// Compute the plan without changing anything.
         #[arg(long)]

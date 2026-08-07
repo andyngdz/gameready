@@ -6,8 +6,8 @@ mod traits;
 
 pub use domain::{
     ApplyCx, Check, CoreCx, Dependency, DependencyKind, ImprovementId, KernelVersion, Outcome,
-    OutcomeKind, PackageSpec, PlannedAction, Privilege, Probe, RollbackStatus, SkipReason,
-    StepPlan, Tag, Verification,
+    OutcomeKind, PackageSpec, PlannedAction, PlannedPackage, Privilege, Probe, RollbackStatus,
+    SkipReason, StepPlan, Tag, Verification,
 };
 pub use errors::{ImprovementIdError, ParseFailure, StepError};
 pub use traits::{CoreImprovement, Improvement};

@@ -177,7 +177,13 @@ fn apply_records_dir_tree_installed() {
             assert_eq!(path, &PathBuf::from(format!("{COMPAT}/{TAG}")));
             assert_eq!(*privilege, Privilege::User);
         }
-        other => panic!("expected DirTreeInstalled, got {other:?}"),
+        other @ (Change::FileWritten { .. }
+        | Change::FileRemoved { .. }
+        | Change::SysctlRuntime { .. }
+        | Change::SysfsWrite { .. }
+        | Change::PackagesInstalled { .. }
+        | Change::SystemdUnit { .. }
+        | Change::DirCreated { .. }) => panic!("expected DirTreeInstalled, got {other:?}"),
     }
 }
 

@@ -4,10 +4,10 @@ use std::path::PathBuf;
 
 use crate::exec::CommandRunner;
 use crate::facts::SystemFacts;
-use crate::improvement::CoreImprovement;
+use crate::improvement::{CoreCx, CoreImprovement};
 use crate::infra::steam::process::{shutdown, start};
 use crate::journal::Journal;
-use crate::run::{Mode, RunError, RunReport, execute};
+use crate::run::{InstallConsent, Mode, RunError, RunReport, execute};
 use crate::steps::{LaunchTarget, SteamLaunchOptions};
 
 /// Quits Steam, then sets the launch options of every target.
@@ -31,13 +31,14 @@ pub fn write_launch_options(
     shutdown(runner)?;
 
     let step: Box<dyn CoreImprovement> = Box::new(SteamLaunchOptions::new(config, targets));
+    // Declined rather than granted because this path has no package tooling and
+    // installs nothing: writing a config file is the whole job.
     let report = execute(
         vec![step],
-        facts,
-        runner,
+        &CoreCx::new(facts, runner),
         journal,
         Mode::Apply,
-        None,
+        InstallConsent::Declined,
         &mut |_| {},
     )?;
 

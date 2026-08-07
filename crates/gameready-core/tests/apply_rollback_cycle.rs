@@ -12,11 +12,11 @@
 
 use gameready_core::exec::CommandRunner;
 use gameready_core::facts::{Family, SystemFacts};
-use gameready_core::improvement::Privilege;
+use gameready_core::improvement::{CoreCx, Privilege};
 use gameready_core::infra::exec::MockRunner;
 use gameready_core::journal::{Journal, RunId, StatePaths, load};
 use gameready_core::rollback::{PackagePolicy, UndoOutcome, execute, latest_run, plan};
-use gameready_core::run::{Mode, execute as run_steps};
+use gameready_core::run::{InstallConsent, Mode, execute as run_steps};
 use gameready_core::steps::{SYSCTL_DROPIN, core_steps};
 use tempfile::TempDir;
 
@@ -50,11 +50,10 @@ fn apply(runner: &MockRunner, paths: &StatePaths) -> RunId {
     let mut journal = Journal::open(paths.clone(), run).expect("journal opens");
     run_steps(
         core_steps(),
-        &facts(),
-        runner,
+        &CoreCx::new(&facts(), runner),
         &mut journal,
         Mode::Apply,
-        None,
+        InstallConsent::Declined,
         &mut |_| {},
     )
     .expect("run completes");

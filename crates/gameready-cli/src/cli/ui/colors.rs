@@ -8,9 +8,15 @@ use gameready_core::improvement::OutcomeKind;
 const SEPARATOR: &str = "--------------------------------------";
 
 /// The gutter mark for a step outcome.
+///
+/// Applied and already-set carry different marks on purpose. A tick next to a
+/// step the run did not touch tells the user their machine changed, and the
+/// next thing they do with that belief is roll back something that was never
+/// applied.
 pub(crate) fn outcome_mark(kind: OutcomeKind) -> String {
     match kind {
-        OutcomeKind::Applied | OutcomeKind::AlreadySet => style("\u{2713}").green().to_string(),
+        OutcomeKind::Applied => style("\u{2713}").green().to_string(),
+        OutcomeKind::AlreadySet => style("=").green().dim().to_string(),
         OutcomeKind::Failed => style("\u{2718}").red().bold().to_string(),
         OutcomeKind::Skipped | OutcomeKind::NotApplicable => style("~").dim().to_string(),
     }
@@ -43,6 +49,11 @@ impl<'a, W: fmt::Write> Section<'a, W> {
     /// A 2-space-indented line with no mark.
     pub(crate) fn indented(&mut self, text: &str) -> fmt::Result {
         writeln!(self.w, "  {text}")
+    }
+
+    /// A blank line inside a section.
+    pub(crate) fn blank(&mut self) -> fmt::Result {
+        writeln!(self.w)
     }
 
     /// A 5-space-indented sub-line under a marked line.

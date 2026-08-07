@@ -4,8 +4,11 @@ use std::path::PathBuf;
 use gameready_core::games::{AppId, GameProfile, Source, Wrapper, default_wrappers};
 use gameready_core::steam::InstalledGame;
 
+use gameready_core::facts::PackageManagerKind;
+use gameready_core::run::{PreflightReport, RunPlan};
+
 use super::*;
-use crate::cli::ui::{Picker, ask_everything};
+use crate::cli::ui::{Picker, Questions, ask_everything};
 
 fn setup(name: &str, app_id: u32, wrappers: Option<Vec<Wrapper>>) -> GameSetup {
     GameSetup {
@@ -32,7 +35,26 @@ fn plan_for(setups: &[GameSetup], mode: Mode) -> String {
 /// and a helper that could only pass the same list twice could not tell whether
 /// it did.
 fn plan_for_selection(found: &[GameSetup], selected: &[GameSetup], mode: Mode) -> String {
-    let answers = ask_everything(selected, Picker::TakeAll, None, mode).expect("answered");
+    let plan = RunPlan {
+        settled: Vec::new(),
+        pending: Vec::new(),
+        preflight: PreflightReport {
+            dependencies: Vec::new(),
+            total_install_bytes: 0,
+        },
+        step_installs: Vec::new(),
+        step_present: Vec::new(),
+        started: std::time::Instant::now(),
+    };
+    let answers = ask_everything(&Questions {
+        setups: selected,
+        plan: &plan,
+        packages: PackageManagerKind::Apt,
+        picker: Picker::TakeAll,
+        overlay: None,
+        mode,
+    })
+    .expect("answered");
     InitPlan::new(found, &answers, mode).to_string()
 }
 

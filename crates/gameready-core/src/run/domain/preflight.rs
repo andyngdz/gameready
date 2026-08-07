@@ -3,7 +3,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::facts::PackageManagerKind;
-use crate::improvement::{Dependency, DependencyKind, ImprovementId};
+use crate::improvement::{Dependency, ImprovementId};
+use crate::run::domain::plan::PlannedInstall;
 
 /// One dependency after probing: present, missing but installable, or
 /// unavailable on this distro.
@@ -30,6 +31,20 @@ pub enum DependencyStatus {
     /// Not available for this distro family, or kernel too old. The step that
     /// needs it becomes `NotApplicable`.
     Unavailable,
+}
+
+/// Whether the user agreed to let the run install the missing packages.
+///
+/// Passed in rather than decided here, because the answer belongs to whoever
+/// can ask, and a run that installs on a default nobody chose is the failure
+/// this type exists to make impossible.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InstallConsent {
+    /// Install what is missing, then run every step.
+    Granted,
+    /// Install nothing. Steps that needed a missing package are skipped; the
+    /// rest of the run goes ahead.
+    Declined,
 }
 
 /// Everything the resolver learned about the dependencies of a set of steps.
@@ -79,29 +94,49 @@ impl PreflightReport {
     /// Steps that must be demoted to `NotApplicable` because one of their
     /// dependencies is unavailable.
     pub fn blocked_steps(&self) -> Vec<ImprovementId> {
-        let mut blocked = Vec::new();
-        for rd in &self.dependencies {
-            if rd.status == DependencyStatus::Unavailable {
-                for step_id in &rd.wanted_by {
-                    if !blocked.contains(step_id) {
-                        blocked.push(step_id.clone());
-                    }
+        self.steps_wanting(DependencyStatus::Unavailable)
+    }
+
+    /// Steps that cannot run unless something is installed first.
+    ///
+    /// These are the steps a declined install screen takes away, which is why
+    /// the screen names them before asking.
+    pub fn steps_needing_install(&self) -> Vec<ImprovementId> {
+        self.steps_wanting(DependencyStatus::Missing)
+    }
+
+    fn steps_wanting(&self, status: DependencyStatus) -> Vec<ImprovementId> {
+        let mut steps = Vec::new();
+        for resolved in self.dependencies.iter().filter(|rd| rd.status == status) {
+            for step_id in &resolved.wanted_by {
+                if !steps.contains(step_id) {
+                    steps.push(step_id.clone());
                 }
             }
         }
-        blocked
+        steps
     }
 
     /// Package names that need to be installed, resolved for this distro.
     pub fn packages_to_install(&self, pm: PackageManagerKind) -> Vec<String> {
         self.missing()
             .iter()
-            .filter_map(|rd| match &rd.dependency.kind {
-                DependencyKind::Binary { provided_by, .. } => {
-                    provided_by.name_for(pm).map(String::from)
-                }
-                DependencyKind::Package { spec } => spec.name_for(pm).map(String::from),
-                DependencyKind::Kernel { .. } | DependencyKind::Feature { .. } => None,
+            .filter_map(|rd| rd.dependency.package_name(pm).map(String::from))
+            .collect()
+    }
+
+    /// The missing dependencies as install lines a screen can render.
+    pub fn planned_installs(&self, pm: PackageManagerKind) -> Vec<PlannedInstall> {
+        self.missing()
+            .iter()
+            .filter_map(|rd| {
+                let package = rd.dependency.package_name(pm)?.to_owned();
+                Some(PlannedInstall {
+                    package,
+                    what: rd.dependency.what.to_owned(),
+                    why: rd.dependency.why.to_owned(),
+                    approx_bytes: rd.dependency.approx_bytes(),
+                })
             })
             .collect()
     }

@@ -1,9 +1,15 @@
-//! Asking how the launch options should be applied.
+//! Asking how the launch options should be applied, and applying them.
 
 use std::fmt;
 
-use anyhow::Result;
+use anyhow::{Context as _, Result};
+use gameready_core::exec::CommandRunner;
+use gameready_core::facts::SystemFacts;
+use gameready_core::infra::steam::{locate_local_config, write_launch_options};
+use gameready_core::journal::Journal;
 use inquire::Select;
+
+use crate::cli::ui::{LaunchInstructions, LaunchReport, questions::Answers};
 
 /// What the user wants done about Steam's launch options.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -17,6 +23,34 @@ pub enum LaunchChoice {
 
     /// Print the exact string and leave Steam alone.
     ShowForCopying,
+}
+
+impl LaunchChoice {
+    /// Carries out the choice and returns the text describing what happened.
+    ///
+    /// Nothing to set is not an error and not a screen: a machine with no
+    /// matching game has nothing to say here.
+    pub fn carry_out(
+        self,
+        runner: &dyn CommandRunner,
+        facts: &SystemFacts,
+        journal: &mut Journal,
+        answers: &Answers,
+    ) -> Result<String> {
+        if answers.targets.is_empty() {
+            return Ok(String::new());
+        }
+        match self {
+            Self::ShowForCopying => Ok(LaunchInstructions::new(&answers.selected).to_string()),
+            Self::CloseSteamAndWrite => {
+                let config =
+                    locate_local_config().context("could not find your Steam user config")?;
+                let written =
+                    write_launch_options(runner, facts, journal, config, answers.targets.clone())?;
+                Ok(LaunchReport::new(&written).to_string())
+            }
+        }
+    }
 }
 
 impl fmt::Display for LaunchChoice {

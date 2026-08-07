@@ -20,6 +20,7 @@ use gameready_core::run::{RunReport, RunStatus};
 use gameready_core::steam::Overlay;
 
 use crate::cli::args::{Cli, Command, Effect};
+use crate::cli::ui::Picker::{Ask, TakeAll};
 
 /// The name every per-user directory is built from. Named once because the
 /// state directory and the config directory both derive from it, and two copies
@@ -46,14 +47,12 @@ fn dispatch(cli: &Cli) -> Result<(RunStatus, String)> {
     let runner = build_runner(cli.command.effect())?;
 
     match &cli.command {
+        // `--yes` is the caller answering in advance, which is the only way a
+        // run in a script or a pipe gets past a question nobody can be asked.
         Command::Init {
             yes, fps_overlay, ..
         } => {
-            let picker = if *yes {
-                cli::ui::Picker::TakeAll
-            } else {
-                cli::ui::Picker::Ask
-            };
+            let picker = if *yes { TakeAll } else { Ask };
             reported(cli, init(cli, &runner, paths, picker, *fps_overlay)?)
         }
 
@@ -64,11 +63,16 @@ fn dispatch(cli: &Cli) -> Result<(RunStatus, String)> {
             Ok((RunStatus::Clean, cli::commands::list_games(&games)?))
         }
 
-        Command::Apply { step, dry_run: _ } => {
+        Command::Apply {
+            step,
+            yes,
+            dry_run: _,
+        } => {
             let mode = cli.command.mode();
+            let picker = if *yes { TakeAll } else { Ask };
             reported(
                 cli,
-                cli::commands::apply(&runner, paths, step.as_deref(), mode)?,
+                cli::commands::apply(&runner, paths, step.as_deref(), mode, picker)?,
             )
         }
 

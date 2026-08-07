@@ -5,8 +5,9 @@ use crate::improvement::{
     Probe, StepError, StepPlan, Tag, Verification,
 };
 use crate::journal::Change;
-use crate::pkg::{PackageManager, PackageState};
-use crate::steps::domain::{GAMING_TOOLS, GamingTool};
+use crate::pkg::PackageManager;
+use crate::steps::domain::GAMING_TOOLS;
+use crate::steps::use_cases::gaming_tools_survey::{ToolSurvey, absent, present};
 
 /// Puts the three standard gaming tools on the system.
 ///
@@ -19,53 +20,11 @@ use crate::steps::domain::{GAMING_TOOLS, GamingTool};
 #[derive(Debug, Default, Clone, Copy)]
 pub struct GamingTools;
 
-/// One absent tool and what the package manager says about it.
-struct Candidate {
-    package: String,
-    state: PackageState,
-}
-
 impl GamingTools {
     /// The step's stable id.
     #[must_use]
     pub const fn id_const() -> ImprovementId {
         ImprovementId::from_static("core.pkg.tools")
-    }
-
-    /// The tools whose executable is not on `PATH`.
-    ///
-    /// Probed by looking up the binary rather than by asking the package
-    /// manager, because a user who built one of these by hand has it and does
-    /// not need the package.
-    fn absent(cx: &CoreCx<'_>) -> Vec<&'static GamingTool> {
-        GAMING_TOOLS
-            .iter()
-            .filter(|tool| cx.runner.which(tool.binary).is_none())
-            .collect()
-    }
-
-    /// What the package manager says about each absent tool.
-    ///
-    /// A tool with no name on this family is left out entirely: that is known
-    /// without asking the system, and querying a name that does not exist would
-    /// only produce a confusing error.
-    fn candidates(
-        cx: &CoreCx<'_>,
-        packages: &dyn PackageManager,
-    ) -> Result<Vec<Candidate>, StepError> {
-        let family = cx.facts.distro.package_manager();
-        let mut candidates = Vec::new();
-
-        for tool in Self::absent(cx) {
-            let Some(package) = tool.spec.name_for(family) else {
-                continue;
-            };
-            candidates.push(Candidate {
-                package: package.to_owned(),
-                state: packages.state(cx.runner, package)?,
-            });
-        }
-        Ok(candidates)
     }
 
     /// The package tooling, or an error naming what is missing.
@@ -79,13 +38,9 @@ impl GamingTools {
         })
     }
 
-    /// The names that will actually be installed, in table order.
-    fn installable(candidates: &[Candidate]) -> Vec<String> {
-        candidates
-            .iter()
-            .filter(|candidate| candidate.state.needs_install())
-            .map(|candidate| candidate.package.clone())
-            .collect()
+    /// What this machine is missing and what it would take to get it.
+    fn survey(cx: &CoreCx<'_>) -> Result<ToolSurvey, StepError> {
+        ToolSurvey::read(cx, Self::packages(cx)?)
     }
 }
 
@@ -117,9 +72,18 @@ impl Improvement for GamingTools {
 
 impl CoreImprovement for GamingTools {
     fn probe(&self, cx: &CoreCx<'_>) -> Result<Probe, StepError> {
-        if Self::absent(cx).is_empty() {
+        if absent(cx).is_empty() {
+            // Naming the binaries rather than saying "installed", which reads
+            // in the summary as though this run had just installed them.
             return Ok(Probe::AlreadyApplied {
-                evidence: "installed".to_owned(),
+                evidence: format!(
+                    "{} already on PATH",
+                    GAMING_TOOLS
+                        .iter()
+                        .map(|tool| tool.binary)
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
             });
         }
 
@@ -130,8 +94,7 @@ impl CoreImprovement for GamingTools {
             });
         };
 
-        let candidates = Self::candidates(cx, packages)?;
-        if Self::installable(&candidates).is_empty() {
+        if ToolSurvey::read(cx, packages)?.installable().is_empty() {
             // A package can be missing from a family's repositories entirely,
             // and a user on that family should read that rather than watch the
             // step fail.
@@ -146,19 +109,27 @@ impl CoreImprovement for GamingTools {
     }
 
     fn plan(&self, cx: &CoreCx<'_>) -> Result<StepPlan, StepError> {
-        let candidates = Self::candidates(cx, Self::packages(cx)?)?;
-        let names = Self::installable(&candidates);
+        let packages = Self::survey(cx)?.planned();
+        let summary = format!(
+            "install {}",
+            packages
+                .iter()
+                .map(|package| package.name.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
 
         Ok(
-            StepPlan::new(self.id(), format!("install {}", names.join(", ")))
-                .action(PlannedAction::InstallPackages { names }),
+            StepPlan::new(self.id(), summary).action(PlannedAction::InstallPackages {
+                packages,
+                already_present: present(cx),
+            }),
         )
     }
 
     fn apply(&self, cx: &mut ApplyCx<'_, CoreCx<'_>>) -> Result<(), StepError> {
         let packages = Self::packages(&cx.cx)?;
-        let candidates = Self::candidates(&cx.cx, packages)?;
-        let names = Self::installable(&candidates);
+        let names = ToolSurvey::read(&cx.cx, packages)?.installable();
 
         if names.is_empty() {
             return Err(StepError::PreconditionLost {

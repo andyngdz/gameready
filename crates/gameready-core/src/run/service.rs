@@ -1,131 +1,121 @@
-//! Running a set of improvements.
+//! Carrying out a plan that has already been agreed to.
 
-use std::time::Instant;
-
-use crate::exec::CommandRunner;
-use crate::facts::SystemFacts;
-use crate::improvement::{
-    CoreCx, CoreImprovement, ImprovementId, Outcome, Probe, RollbackStatus, SkipReason,
-};
+use crate::improvement::{CoreCx, CoreImprovement, ImprovementId, Outcome, SkipReason};
 use crate::journal::{Change, Journal, JournalEvent};
-use crate::pkg::PackageManager;
-use crate::run::domain::{Mode, RunEvent, RunReport, StepReport};
+use crate::run::domain::{InstallConsent, Mode, RunEvent, RunPlan, RunReport, StepReport};
 use crate::run::errors::RunError;
 use crate::run::use_cases::apply_step::apply_and_verify;
-use crate::run::use_cases::resolve::resolve_dependencies;
+use crate::run::use_cases::plan::plan_run;
 
-/// Probes, resolves dependencies, installs prerequisites, applies, and verifies
-/// a set of steps.
+/// Plans a run and carries it out in one call.
+///
+/// `consent` is required rather than defaulted, so a caller that never asked
+/// the user cannot install packages by leaving an argument off.
 pub fn execute(
     steps: Vec<Box<dyn CoreImprovement>>,
-    facts: &SystemFacts,
-    runner: &dyn CommandRunner,
+    cx: &CoreCx<'_>,
     journal: &mut Journal,
     mode: Mode,
-    pkg_manager: Option<&dyn PackageManager>,
+    consent: InstallConsent,
     on_event: &mut dyn FnMut(RunEvent),
 ) -> Result<RunReport, RunError> {
-    let started = Instant::now();
-    let cx = match pkg_manager {
-        Some(pm) => CoreCx::new(facts, runner).with_packages(pm),
-        None => CoreCx::new(facts, runner),
-    };
-
-    let (mut reports, mut pending) = probe_all(steps, &cx, mode, on_event);
-
-    let installed_deps = resolve_and_install(
-        &mut pending,
-        &mut reports,
-        &cx,
-        journal,
-        mode,
-        pkg_manager,
-        on_event,
-    )?;
-
-    if mode.mutates() {
-        apply_all(pending, &cx, runner, journal, &mut reports, on_event)?;
-    }
-
-    Ok(RunReport {
-        run: journal.run(),
-        mode,
-        steps: reports,
-        installed_dependencies: installed_deps,
-        took: started.elapsed(),
-    })
+    let plan = plan_run(steps, cx, on_event);
+    apply_plan(plan, cx, journal, mode, consent, on_event)
 }
 
-fn probe_all(
-    steps: Vec<Box<dyn CoreImprovement>>,
-    cx: &CoreCx<'_>,
-    mode: Mode,
-    on_event: &mut dyn FnMut(RunEvent),
-) -> (Vec<StepReport>, Vec<Box<dyn CoreImprovement>>) {
-    let mut reports = Vec::with_capacity(steps.len());
-    let mut pending = Vec::new();
-
-    for step in steps {
-        on_event(RunEvent::Probing { step: step.id() });
-        match probe_outcome(step.as_ref(), cx, mode) {
-            Settled::Now(outcome) => {
-                on_event(RunEvent::Finished {
-                    step: step.id(),
-                    name: step.name().to_owned(),
-                    kind: outcome.kind(),
-                    detail: outcome.detail(),
-                });
-                reports.push(step_report(step.as_ref(), outcome));
-            }
-            Settled::Apply => pending.push(step),
-        }
-    }
-
-    on_event(RunEvent::Planned {
-        applicable: pending.len(),
-        skipped: reports.len(),
-    });
-
-    (reports, pending)
-}
-
-fn resolve_and_install(
-    pending: &mut Vec<Box<dyn CoreImprovement>>,
-    reports: &mut Vec<StepReport>,
+/// Installs what the user agreed to, then runs every step that can still run.
+///
+/// Nothing here asks anything. By the time a plan reaches this function every
+/// decision it needed has already been made.
+pub fn apply_plan(
+    plan: RunPlan,
     cx: &CoreCx<'_>,
     journal: &mut Journal,
     mode: Mode,
-    pkg_manager: Option<&dyn PackageManager>,
+    consent: InstallConsent,
     on_event: &mut dyn FnMut(RunEvent),
-) -> Result<Vec<String>, RunError> {
-    let pm = match pkg_manager {
-        Some(pm) if !pending.is_empty() => pm,
-        _ => return Ok(Vec::new()),
-    };
+) -> Result<RunReport, RunError> {
+    let waiting_on_install = plan.steps_needing_install();
+    let RunPlan {
+        mut settled,
+        mut pending,
+        preflight,
+        started,
+        ..
+    } = plan;
 
-    let preflight = resolve_dependencies(pending, cx.facts, cx.runner, pm);
-    demote_blocked(pending, reports, &preflight);
-
-    on_event(RunEvent::DependenciesResolved {
-        report: preflight.clone(),
-    });
-
-    if !mode.mutates() || !preflight.needs_install() {
-        return Ok(Vec::new());
+    if !mode.mutates() {
+        settle_as_dry_run(pending, &mut settled);
+        return Ok(report(journal, mode, settled, Vec::new(), started));
     }
 
-    let packages = preflight.packages_to_install(cx.facts.distro.package_manager());
-    on_event(RunEvent::InstallingDependencies {
-        count: packages.len(),
-    });
+    let installed = match consent {
+        InstallConsent::Granted if preflight.needs_install() => {
+            install(&preflight, cx, journal, on_event)?
+        }
+        InstallConsent::Granted => Vec::new(),
+        InstallConsent::Declined => {
+            decline(&mut pending, &mut settled, &waiting_on_install);
+            Vec::new()
+        }
+    };
 
-    let outcome = pm.install(cx.runner, &packages)?;
+    apply_all(pending, cx, journal, &mut settled, on_event)?;
 
+    Ok(report(journal, mode, settled, installed, started))
+}
+
+fn report(
+    journal: &Journal,
+    mode: Mode,
+    steps: Vec<StepReport>,
+    installed_dependencies: Vec<String>,
+    started: std::time::Instant,
+) -> RunReport {
+    RunReport {
+        run: journal.run(),
+        mode,
+        steps,
+        installed_dependencies,
+        took: started.elapsed(),
+    }
+}
+
+/// Records every step a real run would have applied, without applying it.
+fn settle_as_dry_run(pending: Vec<Box<dyn CoreImprovement>>, settled: &mut Vec<StepReport>) {
+    for step in pending {
+        settled.push(StepReport::for_step(
+            step.as_ref(),
+            Outcome::Skipped {
+                reason: SkipReason::DryRun,
+            },
+        ));
+    }
+}
+
+/// Installs the missing packages in one transaction and journals what was new.
+fn install(
+    preflight: &crate::run::domain::PreflightReport,
+    cx: &CoreCx<'_>,
+    journal: &mut Journal,
+    on_event: &mut dyn FnMut(RunEvent),
+) -> Result<Vec<String>, RunError> {
+    let Some(packages) = cx.packages else {
+        return Ok(Vec::new());
+    };
+
+    let names = preflight.packages_to_install(cx.facts.distro.package_manager());
+    on_event(RunEvent::InstallingDependencies { count: names.len() });
+
+    let outcome = packages.install(cx.runner, &names)?;
+
+    // Only what was genuinely new goes in the journal: recording a package the
+    // machine already had would make rollback offer to remove it.
     if outcome.changed_anything() {
         journal.append(JournalEvent::Changed {
             step: ImprovementId::from_static("preflight.dependencies"),
             change: Change::PackagesInstalled {
-                manager: pm.kind().binary().to_owned(),
+                manager: packages.kind().binary().to_owned(),
                 requested: outcome.requested.clone(),
                 newly_installed: outcome.newly_installed.clone(),
             },
@@ -139,21 +129,24 @@ fn resolve_and_install(
     Ok(outcome.newly_installed)
 }
 
-fn demote_blocked(
+/// Moves every step that would have installed something out of the pending
+/// list.
+///
+/// Covers both routes: a step whose prerequisite was missing, and a step whose
+/// own job is putting a package on the machine. The rest of the run goes ahead,
+/// because a user who said no to a package did not say no to the steps that
+/// need nothing.
+fn decline(
     pending: &mut Vec<Box<dyn CoreImprovement>>,
-    reports: &mut Vec<StepReport>,
-    preflight: &crate::run::domain::PreflightReport,
+    settled: &mut Vec<StepReport>,
+    waiting: &[ImprovementId],
 ) {
-    let blocked = preflight.blocked_steps();
-    if blocked.is_empty() {
-        return;
-    }
     pending.retain(|step| {
-        if blocked.contains(&step.id()) {
-            reports.push(step_report(
+        if waiting.contains(&step.id()) {
+            settled.push(StepReport::for_step(
                 step.as_ref(),
-                Outcome::NotApplicable {
-                    reason: "a required dependency is unavailable on this system".to_owned(),
+                Outcome::Skipped {
+                    reason: SkipReason::UserDeclined,
                 },
             ));
             false
@@ -166,9 +159,8 @@ fn demote_blocked(
 fn apply_all(
     pending: Vec<Box<dyn CoreImprovement>>,
     cx: &CoreCx<'_>,
-    runner: &dyn CommandRunner,
     journal: &mut Journal,
-    reports: &mut Vec<StepReport>,
+    settled: &mut Vec<StepReport>,
     on_event: &mut dyn FnMut(RunEvent),
 ) -> Result<(), RunError> {
     for step in pending {
@@ -186,7 +178,7 @@ fn apply_all(
                 message: msg.to_owned(),
             });
         });
-        let outcome = apply_and_verify(step.as_ref(), cx, runner, journal, Some(progress));
+        let outcome = apply_and_verify(step.as_ref(), cx, cx.runner, journal, Some(progress));
 
         journal.append(JournalEvent::StepEnd {
             step: step.id(),
@@ -199,45 +191,15 @@ fn apply_all(
             detail: outcome.detail(),
         });
 
-        reports.push(step_report(step.as_ref(), outcome));
+        settled.push(StepReport::for_step(step.as_ref(), outcome));
     }
     Ok(())
-}
-
-enum Settled {
-    Now(Outcome),
-    Apply,
-}
-
-fn probe_outcome(step: &dyn CoreImprovement, cx: &CoreCx<'_>, mode: Mode) -> Settled {
-    match step.probe(cx) {
-        Ok(Probe::Applicable) if mode.mutates() => Settled::Apply,
-        Ok(Probe::Applicable) => Settled::Now(Outcome::Skipped {
-            reason: SkipReason::DryRun,
-        }),
-        Ok(Probe::AlreadyApplied { evidence }) => {
-            Settled::Now(Outcome::AlreadyApplied { evidence })
-        }
-        Ok(Probe::NotApplicable { reason }) => Settled::Now(Outcome::NotApplicable { reason }),
-        Ok(Probe::Conflict { with, detail: _ }) => Settled::Now(Outcome::Skipped {
-            reason: SkipReason::Conflict { with },
-        }),
-        Ok(Probe::Unknown { reason }) => Settled::Now(Outcome::NotApplicable { reason }),
-        Err(error) => Settled::Now(Outcome::Failed {
-            error: error.to_string(),
-            rolled_back: RollbackStatus::NotAttempted,
-        }),
-    }
-}
-
-fn step_report(step: &dyn CoreImprovement, outcome: Outcome) -> StepReport {
-    StepReport {
-        step: step.id(),
-        name: step.name().to_owned(),
-        outcome,
-    }
 }
 
 #[cfg(test)]
 #[path = "service_test.rs"]
 mod service_test;
+
+#[cfg(test)]
+#[path = "service_consent_test.rs"]
+mod service_consent_test;

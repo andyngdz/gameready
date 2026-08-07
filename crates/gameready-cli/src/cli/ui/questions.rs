@@ -1,20 +1,46 @@
 //! Everything the run needs to ask, asked before anything is changed.
 
 use anyhow::Result;
-use gameready_core::run::{Mode, targets_for};
+use gameready_core::facts::PackageManagerKind;
+use gameready_core::run::{InstallConsent, Mode, RunPlan, targets_for};
 use gameready_core::steam::{GameSetup, Overlay, with_overlay};
 use gameready_core::steps::LaunchTarget;
 
-use crate::cli::ui::{LaunchChoice, choose_games, choose_how_to_apply, choose_overlay};
+use crate::cli::ui::{
+    LaunchChoice, choose_games, choose_how_to_apply, choose_overlay, consent_to_install,
+};
 
 /// Whether there is a person at the terminal to answer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Picker {
     /// Ask. The normal path.
     Ask,
-    /// Take every installed game and answer nothing, for a script or a terminal
-    /// that cannot prompt.
+    /// Take every installed game, say yes to the prerequisites, and answer
+    /// nothing, for a script or a terminal that cannot prompt.
     TakeAll,
+}
+
+/// Everything the run already worked out, ready to be put to the user.
+pub struct Questions<'a> {
+    /// The games found on this machine.
+    pub setups: &'a [GameSetup],
+    /// What the steps would do and what they need first.
+    pub plan: &'a RunPlan,
+    /// This machine's package tooling, for naming packages the way it does.
+    pub packages: PackageManagerKind,
+    /// Whether anyone is there to answer.
+    pub picker: Picker,
+    /// `Some` only when a flag already settled the overlay.
+    pub overlay: Option<Overlay>,
+    /// Whether this run may change anything.
+    pub mode: Mode,
+}
+
+impl Questions<'_> {
+    /// Whether the run may install what its steps need.
+    fn consent(&self) -> Result<InstallConsent> {
+        consent_to_install(self.plan, self.packages, self.picker, self.mode)
+    }
 }
 
 /// What the user decided, before a single change was made.
@@ -25,6 +51,8 @@ pub struct Answers {
     pub targets: Vec<LaunchTarget>,
     /// How those launch options should be applied.
     pub launch: LaunchChoice,
+    /// Whether the run may install the packages its steps need.
+    pub consent: InstallConsent,
 }
 
 /// Asks every question the run has, in one pass.
@@ -33,21 +61,16 @@ pub struct Answers {
 /// is the point: a question that arrives once packages are installed and the
 /// sysctl is written is a question the user cannot really answer, because the
 /// alternative is no longer available.
-pub fn ask_everything(
-    setups: &[GameSetup],
-    picker: Picker,
-    overlay: Option<Overlay>,
-    mode: Mode,
-) -> Result<Answers> {
-    let picked = match picker {
-        Picker::Ask => choose_games(setups)?,
+pub fn ask_everything(questions: &Questions<'_>) -> Result<Answers> {
+    let picked = match questions.picker {
+        Picker::Ask => choose_games(questions.setups)?,
         // Every game, not only the ones a profile matched: a run that cannot
         // ask has no way to learn that the user wanted the rest, and every game
         // now has settings to write.
-        Picker::TakeAll => setups.to_vec(),
+        Picker::TakeAll => questions.setups.to_vec(),
     };
 
-    let overlay = match (overlay, picker) {
+    let overlay = match (questions.overlay, questions.picker) {
         (Some(chosen), _) => chosen,
         (None, Picker::Ask) if !picked.is_empty() => choose_overlay()?,
         (None, Picker::Ask | Picker::TakeAll) => Overlay::default_answer(),
@@ -59,7 +82,7 @@ pub fn ask_everything(
     let launch = if targets.is_empty() {
         LaunchChoice::ShowForCopying
     } else {
-        match (picker, mode.mutates()) {
+        match (questions.picker, questions.mode.mutates()) {
             (Picker::Ask, true) => choose_how_to_apply(targets.len())?,
             (Picker::TakeAll, _) | (Picker::Ask, false) => LaunchChoice::ShowForCopying,
         }
@@ -69,6 +92,7 @@ pub fn ask_everything(
         selected,
         targets,
         launch,
+        consent: questions.consent()?,
     })
 }
 

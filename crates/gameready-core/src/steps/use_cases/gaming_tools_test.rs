@@ -52,7 +52,18 @@ fn probe_reports_already_applied_when_every_binary_is_on_path() {
     let cx = CoreCx::new(&facts, &runner).with_packages(&Apt);
 
     let probe = GamingTools.probe(&cx).expect("probed");
-    assert!(matches!(probe, Probe::AlreadyApplied { .. }), "{probe:?}");
+    match &probe {
+        // The evidence reaches the summary verbatim, so it has to read as a
+        // fact about the machine rather than as something this run did.
+        Probe::AlreadyApplied { evidence } => assert!(
+            evidence.contains("already on PATH") && evidence.contains("mangohud"),
+            "{evidence}"
+        ),
+        Probe::Applicable
+        | Probe::NotApplicable { .. }
+        | Probe::Conflict { .. }
+        | Probe::Unknown { .. } => panic!("expected already applied, got {probe:?}"),
+    }
     // The package manager is never consulted once every binary is present, so a
     // user who built gamescope by hand is not told to install it.
     assert!(runner.commands().is_empty());
@@ -95,12 +106,23 @@ fn a_tool_already_on_path_is_left_out_of_the_plan() {
     let cx = CoreCx::new(&facts, &runner).with_packages(&Apt);
 
     let plan = GamingTools.plan(&cx).expect("planned");
-    assert_eq!(
-        plan.actions,
-        vec![PlannedAction::InstallPackages {
-            names: vec!["gamemode".to_owned()],
-        }]
-    );
+    match &plan.actions[..] {
+        [
+            PlannedAction::InstallPackages {
+                packages,
+                already_present,
+            },
+        ] => {
+            assert_eq!(
+                packages.iter().map(|p| p.name.as_str()).collect::<Vec<_>>(),
+                vec!["gamemode"]
+            );
+            // The tool that is already here is named rather than dropped, so
+            // the step's own title does not read as a broken promise.
+            assert_eq!(already_present, &vec!["mangohud".to_owned()]);
+        }
+        other => panic!("expected one install action, got {other:?}"),
+    }
 }
 
 #[test]

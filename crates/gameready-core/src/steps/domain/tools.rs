@@ -18,7 +18,16 @@ pub struct GamingTool {
 
     /// What the tool does, for the plan and summary screens. One sentence, for
     /// someone who has not heard of it.
+    ///
+    /// Kept under about 65 characters: the screen prints it after a 12-column
+    /// label, and nothing wraps it, so a longer sentence breaks mid-word
+    /// against the left margin on an 80-column terminal.
     pub what: &'static str,
+
+    /// Why this run wants it, as opposed to what it is. Separate because the
+    /// screen that asks to install it has to answer both, and "what mangohud
+    /// is" does not tell anyone why gameready is fetching it.
+    pub why: &'static str,
 }
 
 /// Rough installed sizes, so the plan screen can total them honestly.
@@ -48,13 +57,13 @@ pub const GAMING_TOOLS: [GamingTool; 2] = [
         // The package is `gamemode`; the daemon it installs is `gamemoded`.
         binary: "gamemoded",
         spec: PackageSpec::uniform("gamemode", GAMEMODE_BYTES),
-        what: "raises the CPU governor and process priority while a game runs, \
-               and puts both back when it exits",
+        what: "raises the CPU governor and priority while a game runs",
+        why: "every launch option gameready writes starts with gamemoderun",
     },
     GamingTool {
         binary: "mangohud",
         spec: PackageSpec::uniform("mangohud", MANGOHUD_BYTES),
-        what: "draws frame rate, frame times, and temperatures over the game, \
-               so a change can be measured rather than guessed at",
+        what: "draws frame rate, frame times and temperatures over the game",
+        why: "so you can check whether any of this actually helped",
     },
 ];

@@ -14,6 +14,7 @@ fn listing_games_never_mutates() {
 fn a_dry_run_does_not_mutate() {
     let command = Command::Apply {
         step: None,
+        yes: false,
         dry_run: true,
     };
     assert_eq!(command.effect(), Effect::Reads);
@@ -44,6 +45,7 @@ fn every_mutating_command_is_covered() {
         },
         Command::Apply {
             step: None,
+            yes: false,
             dry_run: false,
         },
         Command::Rollback {

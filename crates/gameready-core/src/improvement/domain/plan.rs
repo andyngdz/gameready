@@ -41,6 +41,27 @@ impl StepPlan {
     }
 }
 
+/// One package a step will install, with the text needed to ask about it.
+///
+/// A name on its own cannot be agreed to: someone who has never heard of
+/// mangohud has nothing to decide with. The step is the only place that knows
+/// what the package is and why this run wants it, so it says so here rather
+/// than leaving the screen to invent a reason from the step's title.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlannedPackage {
+    /// The name this distro's tooling uses.
+    pub name: String,
+
+    /// What it is, in one sentence, for someone who has not heard of it.
+    pub what: String,
+
+    /// Why this run wants it, in one sentence.
+    pub why: String,
+
+    /// Rough download size in bytes.
+    pub approx_bytes: u64,
+}
+
 /// A single change a step intends to make.
 ///
 /// Deliberately concrete rather than a free-text string: the confirmation
@@ -69,7 +90,15 @@ pub enum PlannedAction {
     },
 
     /// Install packages through the system package manager.
-    InstallPackages { names: Vec<String> },
+    InstallPackages {
+        /// What will be fetched.
+        packages: Vec<PlannedPackage>,
+
+        /// Packages this step wanted that the machine already has. Carried so a
+        /// screen can show that a step called "install gamemode and mangohud"
+        /// is only going to fetch one of them.
+        already_present: Vec<String>,
+    },
 
     /// Enable and start a systemd unit.
     EnableUnit { unit: String },

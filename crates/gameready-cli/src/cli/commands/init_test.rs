@@ -44,7 +44,7 @@ fn a_dry_run_changes_nothing() {
 }
 
 #[test]
-fn the_run_is_reported_with_its_journal() {
+fn a_dry_run_is_reported_as_a_preview_rather_than_as_a_saved_run() {
     let state = TempDir::new().expect("temp dir");
     let games = TempDir::new().expect("temp dir");
 
@@ -62,7 +62,10 @@ fn the_run_is_reported_with_its_journal() {
     )
     .expect("init runs");
 
-    assert!(text.contains("Journal"), "{text}");
+    // A dry run appends nothing, so naming the journal here would point the
+    // user at a record of a run that was never written.
+    assert!(text.contains("Dry run"), "{text}");
+    assert!(!text.contains("Journal"), "{text}");
 }
 
 #[test]

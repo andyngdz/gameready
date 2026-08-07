@@ -9,6 +9,8 @@ use gameready_core::improvement::OutcomeKind;
 use gameready_core::run::RunEvent;
 use indicatif::ProgressBar;
 
+use crate::cli::ui::colors::outcome_mark;
+
 /// Renders step progress as a checklist on stderr.
 pub struct ProgressView {
     spinner: Option<ProgressBar>,
@@ -90,14 +92,13 @@ impl ProgressView {
     }
 
     /// Prints the last phase with a symbol matching the outcome.
+    ///
+    /// The marks come from `outcome_mark` rather than a table of their own, so
+    /// a mark cannot mean one thing while a step runs and another in the
+    /// summary printed a second later.
     fn finish_phase_with(&mut self, kind: OutcomeKind) {
         if let Some(phase) = self.last_phase.take() {
-            let styled = match kind {
-                OutcomeKind::Applied | OutcomeKind::AlreadySet => style("✓").green(),
-                OutcomeKind::Failed => style("✗").red(),
-                OutcomeKind::Skipped | OutcomeKind::NotApplicable => style("-").dim(),
-            };
-            self.settle(format!("  {styled} {phase}"));
+            self.settle(format!("  {} {phase}", outcome_mark(kind)));
         }
     }
 }
