@@ -31,8 +31,25 @@ they are already present on the system:
 
 ## Install
 
-Download the static binary from the
-[latest release](https://github.com/andyngdz/gameready/releases/latest):
+```bash
+curl -fsSL https://andyngdz.github.io/gameready/install.sh | sh
+```
+
+That downloads the static x86_64 binary from the
+[latest release](https://github.com/andyngdz/gameready/releases/latest), checks
+it against the published sha256, and puts it in `~/.local/bin`. Two variables
+change what it does:
+
+```bash
+GAMEREADY_VERSION=v0.1.0 sh -c "$(curl -fsSL https://andyngdz.github.io/gameready/install.sh)"
+GAMEREADY_INSTALL_DIR=/usr/local/bin sh -c "$(curl -fsSL https://andyngdz.github.io/gameready/install.sh)"
+```
+
+A directory you cannot write to is installed into through `sudo`. The script
+lives at [docs/install.sh](docs/install.sh); read it before piping it to a
+shell.
+
+To skip the script, download the asset and its checksum by hand:
 
 ```bash
 curl -LO https://github.com/andyngdz/gameready/releases/latest/download/gameready-linux-x86_64
