@@ -5,6 +5,7 @@ mod config;
 mod process;
 mod scan;
 mod setup;
+mod undo_settings;
 mod write_settings;
 
 pub use config::{
@@ -14,4 +15,5 @@ pub use config::{
 pub use process::{is_running, shutdown, start};
 pub use scan::{scan_installed_games, scan_installed_games_in};
 pub use setup::discover_setups;
+pub use undo_settings::undo_with_steam_closed;
 pub use write_settings::{SteamSettings, write_steam_settings};

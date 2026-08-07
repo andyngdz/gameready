@@ -4,7 +4,7 @@ use crate::exec::CommandRunner;
 use crate::facts::SystemFacts;
 use crate::improvement::{CoreCx, CoreImprovement};
 use crate::infra::steam::config::SteamConfigs;
-use crate::infra::steam::process::{shutdown, start};
+use crate::infra::steam::process::{is_running, shutdown, start};
 use crate::journal::Journal;
 use crate::run::{InstallConsent, Mode, RunError, RunReport, execute};
 use crate::steps::{CompatTarget, LaunchTarget, SteamLaunchOptions, SteamProton};
@@ -37,7 +37,10 @@ pub fn write_steam_settings(
     configs: SteamConfigs,
     settings: SteamSettings,
 ) -> Result<RunReport, RunError> {
-    shutdown(runner)?;
+    let was_running = is_running(runner);
+    if was_running {
+        shutdown(runner)?;
+    }
 
     let steps: Vec<Box<dyn CoreImprovement>> = vec![
         Box::new(SteamLaunchOptions::new(configs.local, settings.launch)),
@@ -54,7 +57,9 @@ pub fn write_steam_settings(
         &mut |_| {},
     )?;
 
-    start(runner);
+    if was_running {
+        start(runner);
+    }
     Ok(report)
 }
 

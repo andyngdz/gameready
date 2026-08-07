@@ -10,6 +10,9 @@ pub enum RollbackError {
     #[error(transparent)]
     Journal(#[from] JournalError),
 
+    #[error(transparent)]
+    Steam(#[from] crate::steam::SteamError),
+
     #[error("no run with id `{run}` in the journal")]
     UnknownRun { run: String },
 

@@ -5,7 +5,8 @@ use gameready_core::exec::CommandRunner;
 use gameready_core::journal::{self, Journal, RunId, StatePaths};
 
 use crate::cli::ui;
-use gameready_core::rollback::{PackagePolicy, RollbackError, execute, latest_run, plan};
+use gameready_core::infra::steam::undo_with_steam_closed;
+use gameready_core::rollback::{PackagePolicy, RollbackError, latest_run, plan};
 use gameready_core::run::RunStatus;
 
 /// Reverses a previous run's changes, newest change first.
@@ -35,7 +36,7 @@ pub fn run(
     // Journalled under a new run id, so a rollback that itself fails partway is
     // inspectable rather than invisible.
     let mut journal = Journal::open(paths.clone(), RunId::generate())?;
-    let report = execute(&undo_plan, runner, &mut journal, packages)?;
+    let report = undo_with_steam_closed(&undo_plan, runner, &mut journal, packages)?;
 
     let status = if report.failed() == 0 {
         RunStatus::Clean
