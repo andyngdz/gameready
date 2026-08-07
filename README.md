@@ -3,8 +3,8 @@
 A command line tool that applies gaming-related system tuning on Linux and can
 undo it.
 
-Status: early. The engine, journal, and rollback work, with one step
-implemented end to end. See [milestones](#milestones).
+Status: the engine, all planned steps, and the full `init` flow work.
+See [milestones](#milestones).
 
 ## Scope
 
@@ -31,7 +31,16 @@ they are already present on the system:
 
 ## Install
 
-Not packaged yet. Build from source:
+Download the static binary from the
+[latest release](https://github.com/andyngdz/gameready/releases/latest):
+
+```bash
+curl -LO https://github.com/andyngdz/gameready/releases/latest/download/gameready-linux-x86_64
+chmod +x gameready-linux-x86_64
+sudo mv gameready-linux-x86_64 /usr/local/bin/gameready
+```
+
+Or build from source (needs Rust 1.90 or newer):
 
 ```bash
 git clone https://github.com/andyngdz/gameready
@@ -40,7 +49,7 @@ cargo build --release
 ./target/release/gameready --help
 ```
 
-Needs Rust 1.90 or newer.
+Arch users can build from the [PKGBUILD](pkg/arch/PKGBUILD).
 
 ## Use
 
@@ -107,20 +116,21 @@ cargo test --features docker-tests -- --ignored  # per-distro containers, slow
 gameready selftest --all                         # real system, real rollback
 ```
 
-Steps are tested against an in-memory system, covering the command sequence,
-journal records, and rollback path without root. Distro detection and package
-paths run against Arch, Debian, Ubuntu, and Fedora containers. Changes to kernel
-state are covered by `gameready selftest`, which applies a step, verifies it,
-rolls it back, and verifies it reverted.
+See [TESTING.md](TESTING.md) for what each layer covers and how to work with
+snapshots.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Milestones
 
-- **M1** engine, journal, rollback, one step (in progress)
-- **M2** system detection, CLI shell, `doctor`, container test matrix
-- **M3** package and service steps
-- **M4** Steam scanning, per-game profiles, launch options
-- **M5** sched_ext, I/O scheduler, swappiness policy, Proton-GE
-- **M6** full `init` flow, docs, packaging
+- **M1** engine, journal, rollback, one step (done)
+- **M2** system detection, CLI shell, `doctor`, container test matrix (done)
+- **M3** package and service steps (done)
+- **M4** Steam scanning, per-game profiles, launch options (done)
+- **M5** sched_ext, I/O scheduler, swappiness policy, Proton-GE (done)
+- **M6** full `init` flow, docs, packaging (done)
 
 ## License
 
