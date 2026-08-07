@@ -137,22 +137,14 @@ impl CoreImprovement for ProtonGe {
                     let mkdir = Cmd::user("mkdir")
                         .arg("-p")
                         .arg(self.compat_dir.to_string_lossy().into_owned());
-                    runner.run(&mkdir).map_err(|source| StepError::Command {
-                        command: mkdir.to_string(),
-                        code: 1,
-                        stderr: source.to_string(),
-                    })?;
+                    runner.run(&mkdir).map_err(StepError::Exec)?;
                 }
                 let extract = Cmd::user(TAR_BIN)
                     .arg("xzf")
                     .arg(&temp_str)
                     .arg("-C")
                     .arg(self.compat_dir.to_string_lossy().into_owned());
-                runner.run(&extract).map_err(|source| StepError::Command {
-                    command: extract.to_string(),
-                    code: 1,
-                    stderr: source.to_string(),
-                })?;
+                runner.run(&extract).map_err(StepError::Exec)?;
                 let _ = runner.remove_file(&temp_path, Privilege::User);
                 Ok(())
             },
@@ -184,11 +176,7 @@ impl CoreImprovement for ProtonGe {
                     }
                     .arg("-rf")
                     .arg(path.to_string_lossy().into_owned());
-                    cx.reader().run(&rm).map_err(|source| StepError::Command {
-                        command: rm.to_string(),
-                        code: 1,
-                        stderr: source.to_string(),
-                    })?;
+                    cx.reader().run(&rm).map_err(StepError::Exec)?;
                 }
                 Change::FileWritten { .. }
                 | Change::FileRemoved { .. }

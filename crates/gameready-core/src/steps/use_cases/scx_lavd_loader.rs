@@ -86,14 +86,7 @@ fn load_with_scxctl(cx: &mut ApplyCx<'_, CoreCx<'_>>) -> Result<(), StepError> {
     let previous = crate::steps::use_cases::scx_state::read_sched_ext(cx.reader()).previous();
     cx.mutate(Change::ScxScheduler { previous }, |runner| {
         let load = load_scheduler(LAVD_SCHEDULER);
-        runner
-            .run(&load)
-            .map(|_| ())
-            .map_err(|source| StepError::Command {
-                command: load.to_string(),
-                code: 1,
-                stderr: source.to_string(),
-            })
+        runner.run(&load).map(|_| ()).map_err(StepError::Exec)
     })
 }
 
@@ -118,10 +111,7 @@ fn load_with_unit(cx: &mut ApplyCx<'_, CoreCx<'_>>) -> Result<(), StepError> {
         |runner| {
             runner
                 .write_file(&dropin, &contents, Privilege::Root)
-                .map_err(|source| StepError::Write {
-                    path: dropin.clone(),
-                    source: std::io::Error::other(source.to_string()),
-                })
+                .map_err(StepError::Exec)
         },
     )?;
 
@@ -136,14 +126,7 @@ fn load_with_unit(cx: &mut ApplyCx<'_, CoreCx<'_>>) -> Result<(), StepError> {
                 .arg(ENABLE)
                 .arg(NOW)
                 .arg(SCX_SERVICE_NAME);
-            runner
-                .run(&start)
-                .map(|_| ())
-                .map_err(|source| StepError::Command {
-                    command: start.to_string(),
-                    code: 1,
-                    stderr: source.to_string(),
-                })
+            runner.run(&start).map(|_| ()).map_err(StepError::Exec)
         },
     )
 }

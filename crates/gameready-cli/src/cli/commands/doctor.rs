@@ -31,7 +31,7 @@ pub fn run(runner: &dyn CommandRunner) -> Result<String> {
     writeln!(out, "\nSteps")?;
     for step in core_steps() {
         let state = step.probe(&cx).map_or_else(
-            |error| format!("probe failed: {error}"),
+            |error| format!("probe failed: {}", error.describe()),
             |probe| probe.describe(),
         );
         writeln!(out, "  {}  {state}", step.id())?;

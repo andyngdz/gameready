@@ -4,6 +4,8 @@ use gameready_core::run::Mode;
 use tempfile::TempDir;
 
 use super::{InitRequest, run};
+use crate::cli::commands::prompt_recorder::PromptRecorder;
+use crate::cli::escalation::Escalation;
 use crate::cli::ui::Picker;
 
 fn machine() -> MockRunner {
@@ -32,7 +34,7 @@ fn a_dry_run_changes_nothing() {
         &runner,
         StatePaths::new(state.path().to_path_buf()),
         &request,
-        &|| Ok(()),
+        Escalation::NotNeeded,
     )
     .expect("init runs");
 
@@ -58,7 +60,7 @@ fn a_dry_run_is_reported_as_a_preview_rather_than_as_a_saved_run() {
         &machine(),
         StatePaths::new(state.path().to_path_buf()),
         &request,
-        &|| Ok(()),
+        Escalation::NotNeeded,
     )
     .expect("init runs");
 
@@ -83,11 +85,44 @@ fn a_scripted_run_does_not_add_mangohud_to_launch_options() {
         &machine(),
         StatePaths::new(state.path().to_path_buf()),
         &request,
-        &|| Ok(()),
+        Escalation::NotNeeded,
     )
     .expect("init runs");
 
     assert!(!text.contains("mangohud %command%"), "{text}");
+}
+
+#[test]
+fn init_primes_after_the_last_question() {
+    let state = TempDir::new().expect("temp dir");
+    let games = TempDir::new().expect("temp dir");
+    let runner = machine();
+    let recorder = PromptRecorder::new(&runner);
+    let prompt = || recorder.answer();
+
+    let request = InitRequest {
+        games_dir: games.path(),
+        mode: Mode::Apply,
+        picker: Picker::TakeAll,
+        overlay: None,
+    };
+    run(
+        &runner,
+        StatePaths::new(state.path().to_path_buf()),
+        &request,
+        Escalation::Ask(&prompt),
+    )
+    .expect("init runs");
+
+    assert_eq!(recorder.times_asked(), 1, "the password is asked for once");
+    assert!(
+        !recorder.ran_anything_privileged_first(),
+        "nothing privileged may run before the cache is warm"
+    );
+    assert!(
+        recorder.reached_a_privileged_command(),
+        "otherwise the assertion above passes on a run that never needed root"
+    );
 }
 
 #[test]
@@ -105,7 +140,7 @@ fn the_overlay_flag_completes_without_prompting() {
         &machine(),
         StatePaths::new(state.path().to_path_buf()),
         &request,
-        &|| Ok(()),
+        Escalation::NotNeeded,
     )
     .expect("init runs");
 

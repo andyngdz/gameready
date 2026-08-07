@@ -15,6 +15,7 @@ use gameready_core::steam::{GameSetup, Overlay};
 use gameready_core::steps::core_steps;
 
 use crate::cli::commands::constants::{CANNOT_OPEN_JOURNAL, CANNOT_READ_SYSTEM};
+use crate::cli::escalation::Escalation;
 use crate::cli::ui::{self, Answers, Picker, Questions};
 
 /// What the flags asked for, before any question is put to the user.
@@ -101,7 +102,7 @@ pub fn run(
     runner: &dyn CommandRunner,
     paths: StatePaths,
     request: &InitRequest<'_>,
-    authorize: &dyn Fn() -> Result<()>,
+    escalation: Escalation<'_>,
 ) -> Result<(RunReport, String)> {
     let facts = facts::probe(runner).context(CANNOT_READ_SYSTEM)?;
     let packages = pkg::for_kind(facts.distro.package_manager());
@@ -118,13 +119,7 @@ pub fn run(
     let (answers, mut out) = request.ask(&setups, &run_plan, family, &compat_tools())?;
 
     // Nothing above this line changed anything. Nothing below it asks.
-    //
-    // A dry run skips this: asking for a password to change nothing is a
-    // question with no purpose, and on a machine whose sudo cannot cache it is
-    // a question that stops the preview working at all.
-    if request.mode.mutates() {
-        authorize()?;
-    }
+    escalation.ask()?;
 
     let mut journal =
         Journal::open(paths.clone(), RunId::generate()).context(CANNOT_OPEN_JOURNAL)?;

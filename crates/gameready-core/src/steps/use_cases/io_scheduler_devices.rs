@@ -33,10 +33,7 @@ impl DiskScheduler {
 pub(super) fn scan_disks(runner: &dyn CommandRunner) -> Result<Vec<DiskScheduler>, StepError> {
     let entries = runner
         .read_dir(Path::new(SYS_BLOCK))
-        .map_err(|source| StepError::Read {
-            path: PathBuf::from(SYS_BLOCK),
-            source: std::io::Error::other(source.to_string()),
-        })?;
+        .map_err(StepError::Exec)?;
 
     let mut disks = Vec::new();
     for entry in entries {

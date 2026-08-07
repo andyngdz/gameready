@@ -23,19 +23,13 @@ pub fn restore_from_backup(
                 backup: Some(backup),
                 ..
             } => {
-                let original =
-                    cx.reader()
-                        .read_to_string(backup)
-                        .map_err(|source| StepError::Read {
-                            path: backup.clone(),
-                            source: std::io::Error::other(source.to_string()),
-                        })?;
+                let original = cx
+                    .reader()
+                    .read_to_string(backup)
+                    .map_err(StepError::Exec)?;
                 cx.reader()
                     .write_file(path, &original, Privilege::User)
-                    .map_err(|source| StepError::Write {
-                        path: path.clone(),
-                        source: std::io::Error::other(source.to_string()),
-                    })?;
+                    .map_err(StepError::Exec)?;
             }
             // Listed rather than wildcarded, so a change a caller starts
             // recording fails to compile here instead of being silently

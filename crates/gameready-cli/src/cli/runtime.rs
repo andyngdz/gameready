@@ -26,11 +26,12 @@ pub enum Machine {
 }
 
 impl Machine {
-    /// The machine this run works against, priming the credential cache when
-    /// the command will change something.
+    /// The machine this run works against, and the way it becomes root.
     ///
-    /// A command that only reads falls back to an unprivileged runner, so
-    /// `doctor` works in a container with no `sudo` at all.
+    /// Picking the escalator is all this does; filling its credential cache is
+    /// [`Self::authorize`], which the command calls once it has stopped asking
+    /// questions. A command that only reads falls back to an unprivileged
+    /// runner, so `doctor` works in a container with no `sudo` at all.
     pub fn detect(effect: Effect) -> Result<Self> {
         if let Some(root) = std::env::var_os(FAKE_ROOT) {
             let fixture = FixtureRunner::open(std::path::PathBuf::from(root))

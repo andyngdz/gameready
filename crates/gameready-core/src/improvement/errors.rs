@@ -1,9 +1,12 @@
 //! Errors an improvement can fail with.
 
+use std::error::Error as _;
 use std::path::PathBuf;
 
+use itertools::Itertools as _;
 use thiserror::Error;
 
+use crate::exec::ExecError;
 use crate::improvement::domain::ImprovementId;
 
 /// Rejects an id built at runtime before it can reach the journal.
@@ -27,33 +30,21 @@ pub enum ImprovementIdError {
 /// context that decision needs rather than a flattened message.
 #[derive(Debug, Error)]
 pub enum StepError {
-    #[error("reading `{path}` failed")]
-    Read {
-        path: PathBuf,
-        #[source]
-        source: std::io::Error,
-    },
-
-    #[error("writing `{path}` failed")]
-    Write {
-        path: PathBuf,
-        #[source]
-        source: std::io::Error,
-    },
-
-    #[error("`{command}` exited with status {code}")]
+    /// A command the step judged to have failed on its own terms, rather than
+    /// by exiting non-zero. `Exec` covers the ordinary case; this is for a step
+    /// that ran something successfully and rejected what came back.
+    #[error("`{command}` exited with status {code}: {stderr}")]
     Command {
         command: String,
         code: i32,
         stderr: String,
     },
 
-    #[error("`{command}` could not be started")]
-    Spawn {
-        command: String,
-        #[source]
-        source: std::io::Error,
-    },
+    /// A command or a filesystem operation failed. Transparent because
+    /// [`ExecError`] already names the path, the command, the exit status, and
+    /// the stderr; repeating any of that here would print it twice.
+    #[error(transparent)]
+    Exec(#[from] ExecError),
 
     /// The change was made but reading it back did not show the expected value.
     /// The executor rolls the step back on this rather than reporting success.
@@ -94,6 +85,35 @@ pub enum StepError {
     SteamConfig(#[from] crate::steam::VdfError),
 }
 
+impl StepError {
+    /// This failure and every cause under it, on one line.
+    ///
+    /// `to_string` renders only the outermost message, so a `Write` says which
+    /// path could not be written and drops the reason the system gave for
+    /// refusing. Every call site that turns a `StepError` into a report string
+    /// uses this instead; the report is the only place a user ever sees why a
+    /// step failed.
+    ///
+    /// One line because a command's stderr arrives with its newlines and the
+    /// summary row it lands in cannot take them.
+    #[must_use]
+    pub fn describe(&self) -> String {
+        let mut described = one_line(&self.to_string());
+        let mut cause = self.source();
+        while let Some(error) = cause {
+            described.push_str(": ");
+            described.push_str(&one_line(&error.to_string()));
+            cause = error.source();
+        }
+        described
+    }
+}
+
+/// Collapses every run of whitespace, newlines included, to a single space.
+fn one_line(text: &str) -> String {
+    text.split_whitespace().join(" ")
+}
+
 /// The concrete ways reading a system file can fail to yield a usable value.
 /// Kept as its own enum so `StepError::Parse` names a real type: a boxed
 /// `dyn Error` here would make every caller stringify to learn anything.
@@ -108,3 +128,7 @@ pub enum ParseFailure {
         found: String,
     },
 }
+
+#[cfg(test)]
+#[path = "errors_test.rs"]
+mod errors_test;

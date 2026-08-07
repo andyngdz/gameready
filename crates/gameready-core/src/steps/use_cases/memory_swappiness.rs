@@ -53,12 +53,7 @@ impl Swappiness {
     /// Reads the value the kernel currently reports.
     fn read_current(&self, runner: &dyn CommandRunner) -> Result<u16, StepError> {
         let path = Self::runtime_path();
-        let raw = runner
-            .read_to_string(&path)
-            .map_err(|source| StepError::Read {
-                path: path.clone(),
-                source: std::io::Error::other(source.to_string()),
-            })?;
+        let raw = runner.read_to_string(&path).map_err(StepError::Exec)?;
 
         raw.trim()
             .parse::<u16>()
@@ -158,10 +153,7 @@ impl CoreImprovement for Swappiness {
             |runner| {
                 runner
                     .write_file(&dropin, &contents, Privilege::Root)
-                    .map_err(|source| StepError::Write {
-                        path: dropin.clone(),
-                        source: std::io::Error::other(source.to_string()),
-                    })
+                    .map_err(StepError::Exec)
             },
         )?;
 
@@ -174,14 +166,7 @@ impl CoreImprovement for Swappiness {
                 let set = Cmd::root(SYSCTL_BIN)
                     .arg("-w")
                     .arg(format!("{VM_SWAPPINESS}={TARGET}"));
-                runner
-                    .run(&set)
-                    .map(|_| ())
-                    .map_err(|source| StepError::Command {
-                        command: set.to_string(),
-                        code: 1,
-                        stderr: source.to_string(),
-                    })
+                runner.run(&set).map(|_| ()).map_err(StepError::Exec)
             },
         )
     }
@@ -213,21 +198,12 @@ impl CoreImprovement for Swappiness {
                     let restore = Cmd::root(SYSCTL_BIN)
                         .arg("-w")
                         .arg(format!("{key}={previous}"));
-                    cx.reader()
-                        .run(&restore)
-                        .map_err(|source| StepError::Command {
-                            command: restore.to_string(),
-                            code: 1,
-                            stderr: source.to_string(),
-                        })?;
+                    cx.reader().run(&restore).map_err(StepError::Exec)?;
                 }
                 Change::FileWritten { path, .. } => {
                     cx.reader()
                         .remove_file(path, Privilege::Root)
-                        .map_err(|source| StepError::Write {
-                            path: path.clone(),
-                            source: std::io::Error::other(source.to_string()),
-                        })?;
+                        .map_err(StepError::Exec)?;
                 }
                 // Listed rather than wildcarded: a new Change variant this step
                 // records must fail to compile here, not be skipped silently.

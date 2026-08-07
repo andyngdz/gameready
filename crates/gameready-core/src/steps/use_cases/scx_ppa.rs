@@ -135,10 +135,7 @@ impl CoreImprovement for ScxPpa {
             |runner| {
                 runner
                     .write_file(&pin, &contents, Privilege::Root)
-                    .map_err(|source| StepError::Write {
-                        path: pin.clone(),
-                        source: std::io::Error::other(source.to_string()),
-                    })
+                    .map_err(StepError::Exec)
             },
         )?;
 
@@ -149,14 +146,7 @@ impl CoreImprovement for ScxPpa {
             },
             |runner| {
                 let add = Self::add();
-                runner
-                    .run(&add)
-                    .map(|_| ())
-                    .map_err(|source| StepError::Command {
-                        command: add.to_string(),
-                        code: 1,
-                        stderr: source.to_string(),
-                    })
+                runner.run(&add).map(|_| ()).map_err(StepError::Exec)
             },
         )
     }
@@ -197,21 +187,12 @@ impl CoreImprovement for ScxPpa {
                         .arg(APT_ASSUME_YES)
                         .arg(APT_REMOVE)
                         .arg(spec);
-                    cx.reader()
-                        .run(&remove)
-                        .map_err(|source| StepError::Command {
-                            command: remove.to_string(),
-                            code: 1,
-                            stderr: source.to_string(),
-                        })?;
+                    cx.reader().run(&remove).map_err(StepError::Exec)?;
                 }
                 Change::FileWritten { path, .. } => {
                     cx.reader()
                         .remove_file(path, Privilege::Root)
-                        .map_err(|source| StepError::Write {
-                            path: path.clone(),
-                            source: std::io::Error::other(source.to_string()),
-                        })?;
+                        .map_err(StepError::Exec)?;
                 }
                 // Listed rather than wildcarded, so a new change this step
                 // starts recording fails to compile here instead of being

@@ -11,6 +11,7 @@ use gameready_core::infra::pkg;
 use gameready_core::journal::{Journal, RunId, StatePaths};
 use gameready_core::run::{Mode, RunReport, apply_plan, plan_run};
 
+use crate::cli::escalation::Escalation;
 use crate::cli::ui::{self, Picker};
 
 /// Probes, applies, and verifies the selected steps.
@@ -24,6 +25,7 @@ pub fn run(
     step: Option<&str>,
     mode: Mode,
     picker: Picker,
+    escalation: Escalation<'_>,
 ) -> Result<(RunReport, String)> {
     let selected = select_steps(step)?;
 
@@ -44,6 +46,9 @@ pub fn run(
     } else {
         ui::InstallList::new(&plan, family).to_string()
     };
+
+    // Nothing above this line changed anything. Nothing below it asks.
+    escalation.ask()?;
 
     let mut journal =
         Journal::open(paths.clone(), RunId::generate()).context(CANNOT_OPEN_JOURNAL)?;

@@ -191,7 +191,7 @@ fn probe_outcome(step: &dyn CoreImprovement, cx: &CoreCx<'_>) -> Settled {
         }),
         Ok(Probe::Unknown { reason }) => Settled::Now(Outcome::NotApplicable { reason }),
         Err(error) => Settled::Now(Outcome::Failed {
-            error: error.to_string(),
+            error: error.describe(),
             rolled_back: RollbackStatus::NotAttempted,
         }),
     }

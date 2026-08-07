@@ -87,10 +87,7 @@ impl CoreImprovement for Fake {
             |runner| {
                 runner
                     .write_file("/tmp/fake".as_ref(), "x", Privilege::User)
-                    .map_err(|source| StepError::Write {
-                        path: "/tmp/fake".into(),
-                        source: std::io::Error::other(source.to_string()),
-                    })
+                    .map_err(StepError::Exec)
             },
         )?;
         if self.applies {
@@ -111,10 +108,7 @@ impl CoreImprovement for Fake {
         for _ in undo {
             cx.reader()
                 .remove_file("/tmp/fake".as_ref(), Privilege::User)
-                .map_err(|source| StepError::Write {
-                    path: "/tmp/fake".into(),
-                    source: std::io::Error::other(source.to_string()),
-                })?;
+                .map_err(StepError::Exec)?;
         }
         Ok(())
     }

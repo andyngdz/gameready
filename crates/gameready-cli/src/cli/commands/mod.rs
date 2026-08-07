@@ -11,6 +11,12 @@ mod rollback;
 mod selection;
 mod selftest;
 
+/// Shared by the command tests that assert the password prompt came before the
+/// first privileged command.
+#[cfg(test)]
+#[path = "prompt_recorder_test.rs"]
+pub(crate) mod prompt_recorder;
+
 pub use apply::run as apply;
 pub use doctor::run as doctor;
 pub use explain::run as explain;

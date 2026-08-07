@@ -10,6 +10,7 @@ use gameready_core::run::{RunStatus, StepSelftest, selftest};
 
 use crate::cli::commands::constants::CANNOT_READ_SYSTEM;
 use crate::cli::commands::selection::select_steps;
+use crate::cli::escalation::Escalation;
 use crate::cli::ui::SelftestSummary;
 
 /// Applies each step, verifies it, rolls it back, and verifies it reverted.
@@ -21,11 +22,17 @@ pub fn run(
     runner: &dyn CommandRunner,
     paths: StatePaths,
     step: Option<&str>,
+    escalation: Escalation<'_>,
 ) -> Result<(RunStatus, String)> {
     let selected = select_steps(step)?;
     let facts = facts::probe(runner).context(CANNOT_READ_SYSTEM)?;
     let packages = pkg::for_kind(facts.distro.package_manager());
     let cx = CoreCx::new(&facts, runner).with_packages(packages.as_ref());
+
+    // Asked here rather than at the top, so an unknown step id and an unreadable
+    // system both answer without a password.
+    escalation.ask()?;
+
     let mut journal = Journal::open(paths, RunId::generate())?;
 
     let results = selftest(selected, &cx, runner, &mut journal);

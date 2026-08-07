@@ -46,12 +46,7 @@ impl SteamLaunchOptions {
 
     /// The config file as it stands.
     fn read(&self, runner: &dyn crate::exec::CommandRunner) -> Result<String, StepError> {
-        runner
-            .read_to_string(&self.config)
-            .map_err(|source| StepError::Read {
-                path: self.config.clone(),
-                source: std::io::Error::other(source.to_string()),
-            })
+        runner.read_to_string(&self.config).map_err(StepError::Exec)
     }
 }
 
@@ -141,10 +136,7 @@ impl CoreImprovement for SteamLaunchOptions {
         let backup = cx.backup_dir().join(LOCAL_CONFIG_BACKUP);
         cx.reader()
             .write_private_file(&backup, &original)
-            .map_err(|source| StepError::Write {
-                path: backup.clone(),
-                source: std::io::Error::other(source.to_string()),
-            })?;
+            .map_err(StepError::Exec)?;
 
         let config = self.config.clone();
         let text = edited.text;
@@ -163,10 +155,7 @@ impl CoreImprovement for SteamLaunchOptions {
             |runner| {
                 runner
                     .write_file(&config, &text, Privilege::User)
-                    .map_err(|source| StepError::Write {
-                        path: config.clone(),
-                        source: std::io::Error::other(source.to_string()),
-                    })
+                    .map_err(StepError::Exec)
             },
         )
     }

@@ -4,6 +4,7 @@ use anyhow::{Context as _, Result};
 use gameready_core::exec::CommandRunner;
 use gameready_core::journal::{self, Journal, RunId, StatePaths};
 
+use crate::cli::escalation::Escalation;
 use crate::cli::ui;
 use gameready_core::infra::steam::undo_with_steam_closed;
 use gameready_core::rollback::{PackagePolicy, RollbackError, latest_run, plan};
@@ -15,6 +16,7 @@ pub fn run(
     paths: StatePaths,
     requested: Option<&str>,
     packages: PackagePolicy,
+    escalation: Escalation<'_>,
 ) -> Result<(RunStatus, String)> {
     let records = journal::load(&paths.journal()).context("could not read the journal")?;
 
@@ -32,6 +34,10 @@ pub fn run(
             format!("\nRun {target} recorded no changes to undo.\n"),
         ));
     }
+
+    // Asked here rather than at the top, so a malformed run id and a run with
+    // nothing to undo both answer without a password.
+    escalation.ask()?;
 
     // Journalled under a new run id, so a rollback that itself fails partway is
     // inspectable rather than invisible.

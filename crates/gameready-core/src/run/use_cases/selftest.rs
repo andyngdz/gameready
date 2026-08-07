@@ -40,7 +40,7 @@ fn one(
             reason: probe.describe(),
         },
         Err(error) => SelftestResult::ProbeFailed {
-            error: error.to_string(),
+            error: error.describe(),
         },
     }
 }
@@ -67,13 +67,13 @@ fn cycle(
     let undone = step.rollback(&recorded, &mut apply_cx);
 
     if let Err(error) = applied {
-        return failed(Phase::Apply, error.to_string());
+        return failed(Phase::Apply, error.describe());
     }
     if let Some(detail) = verified {
         return failed(Phase::Verify, detail);
     }
     if let Err(error) = undone {
-        return failed(Phase::Rollback, error.to_string());
+        return failed(Phase::Rollback, error.describe());
     }
 
     confirm_reverted(step, cx, &recorded)
@@ -125,7 +125,7 @@ fn verify_failure(step: &dyn CoreImprovement, cx: &CoreCx<'_>) -> Option<String>
             verification.failed_count(),
             verification.total_count()
         )),
-        Err(error) => Some(error.to_string()),
+        Err(error) => Some(error.describe()),
     }
 }
 

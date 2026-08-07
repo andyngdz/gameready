@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use tempfile::TempDir;
 
 use super::*;
+use crate::exec::ExecError;
 use crate::facts::{Family, SystemFacts};
 use crate::improvement::ImprovementId;
 use crate::infra::exec::MockRunner;
@@ -85,7 +86,7 @@ fn a_missing_backup_file_is_reported_rather_than_swallowed() {
     let failure = restore_from_backup(&[written(Some(PathBuf::from(BACKUP)))], &mut apply);
 
     assert!(
-        matches!(failure, Err(StepError::Read { .. })),
+        matches!(failure, Err(StepError::Exec(ExecError::Read { .. }))),
         "{failure:?}"
     );
 }

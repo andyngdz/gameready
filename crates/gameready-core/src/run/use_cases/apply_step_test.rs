@@ -43,10 +43,7 @@ impl CoreImprovement for FakeStep {
             |runner| {
                 runner
                     .write_file("/tmp/fake-apply".as_ref(), "x", Privilege::User)
-                    .map_err(|source| StepError::Write {
-                        path: "/tmp/fake-apply".into(),
-                        source: std::io::Error::other(source.to_string()),
-                    })
+                    .map_err(StepError::Exec)
             },
         )?;
         if self.applies {
@@ -68,10 +65,7 @@ impl CoreImprovement for FakeStep {
     ) -> Result<(), StepError> {
         cx.reader()
             .remove_file("/tmp/fake-apply".as_ref(), Privilege::User)
-            .map_err(|source| StepError::Write {
-                path: "/tmp/fake-apply".into(),
-                source: std::io::Error::other(source.to_string()),
-            })
+            .map_err(StepError::Exec)
     }
 }
 

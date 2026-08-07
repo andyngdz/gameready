@@ -13,12 +13,14 @@ use std::process::ExitCode;
 use anyhow::{Context as _, Result};
 use clap::Parser;
 use directories::ProjectDirs;
+use gameready_core::exec::CommandRunner;
 use gameready_core::journal::StatePaths;
 use gameready_core::rollback::PackagePolicy;
 use gameready_core::run::{RunReport, RunStatus};
 use gameready_core::steam::Overlay;
 
 use crate::cli::args::{Cli, Command};
+use crate::cli::escalation::Escalation;
 use crate::cli::runtime::Machine;
 
 /// The name every per-user directory is built from. Named once because the
@@ -43,12 +45,27 @@ fn main() -> ExitCode {
 
 fn dispatch(cli: &Cli) -> Result<(RunStatus, String)> {
     let paths = state_paths(cli.state_dir.clone())?;
-    let machine = Machine::detect(cli.command.effect())?;
-    let runner = machine.runner();
+    let effect = cli.command.effect();
+    let machine = Machine::detect(effect)?;
 
+    // Built once for every command, so a command that changes the system cannot
+    // reach its first `sudo -n` without having filled the credential cache.
+    let authorize = || machine.authorize();
+    let escalation = Escalation::for_effect(effect, &authorize);
+
+    carry_out(cli, machine.runner(), paths, escalation)
+}
+
+/// Runs the command the flags named, against a machine already chosen.
+fn carry_out(
+    cli: &Cli,
+    runner: &dyn CommandRunner,
+    paths: StatePaths,
+    escalation: Escalation<'_>,
+) -> Result<(RunStatus, String)> {
     match &cli.command {
         Command::Init { fps_overlay, .. } => {
-            reported(cli, init(cli, &machine, paths, *fps_overlay)?)
+            reported(cli, init(cli, runner, paths, *fps_overlay, escalation)?)
         }
 
         Command::Doctor => Ok((RunStatus::Clean, cli::commands::doctor(runner)?)),
@@ -71,24 +88,25 @@ fn dispatch(cli: &Cli) -> Result<(RunStatus, String)> {
                 step.as_deref(),
                 cli.command.mode(),
                 cli.command.picker(),
+                escalation,
             )?,
         ),
 
         Command::Rollback {
             run,
             purge_packages,
-        } => cli::commands::rollback(
-            runner,
-            paths,
-            run.as_deref(),
-            if *purge_packages {
+        } => {
+            let packages = if *purge_packages {
                 PackagePolicy::Purge
             } else {
                 PackagePolicy::Keep
-            },
-        ),
+            };
+            cli::commands::rollback(runner, paths, run.as_deref(), packages, escalation)
+        }
 
-        Command::Selftest { step } => cli::commands::selftest(runner, paths, step.as_deref()),
+        Command::Selftest { step } => {
+            cli::commands::selftest(runner, paths, step.as_deref(), escalation)
+        }
     }
 }
 
@@ -98,9 +116,10 @@ fn dispatch(cli: &Cli) -> Result<(RunStatus, String)> {
 /// and a run with nobody at the terminal leaves the screen alone.
 fn init(
     cli: &Cli,
-    machine: &Machine,
+    runner: &dyn CommandRunner,
     paths: StatePaths,
     fps_overlay: bool,
+    escalation: Escalation<'_>,
 ) -> Result<(RunReport, String)> {
     let games = user_games_dir(cli.games_dir.clone())?;
     let request = cli::commands::InitRequest {
@@ -109,7 +128,7 @@ fn init(
         picker: cli.command.picker(),
         overlay: fps_overlay.then_some(Overlay::Show),
     };
-    cli::commands::init(machine.runner(), paths, &request, &|| machine.authorize())
+    cli::commands::init(runner, paths, &request, escalation)
 }
 
 /// Renders a finished run as JSON or as the summary the user reads.

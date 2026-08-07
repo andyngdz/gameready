@@ -177,31 +177,16 @@ impl CoreImprovement for ScxLavd {
             match change {
                 Change::ScxScheduler { previous } => {
                     let back = restore_scheduler(previous.as_deref());
-                    cx.reader()
-                        .run(&back)
-                        .map_err(|source| StepError::Command {
-                            command: back.to_string(),
-                            code: 1,
-                            stderr: source.to_string(),
-                        })?;
+                    cx.reader().run(&back).map_err(StepError::Exec)?;
                 }
                 Change::SystemdUnit { unit, .. } => {
                     let stop = Cmd::root(SYSTEMCTL).arg(DISABLE).arg(NOW).arg(unit);
-                    cx.reader()
-                        .run(&stop)
-                        .map_err(|source| StepError::Command {
-                            command: stop.to_string(),
-                            code: 1,
-                            stderr: source.to_string(),
-                        })?;
+                    cx.reader().run(&stop).map_err(StepError::Exec)?;
                 }
                 Change::FileWritten { path, .. } => {
                     cx.reader()
                         .remove_file(path, Privilege::Root)
-                        .map_err(|source| StepError::Write {
-                            path: path.clone(),
-                            source: std::io::Error::other(source.to_string()),
-                        })?;
+                        .map_err(StepError::Exec)?;
                 }
                 // Removing a package is not the inverse of installing one, so
                 // the packages stay and the summary says so.

@@ -27,14 +27,14 @@ pub fn apply_and_verify(
 
     if let Err(error) = step.apply(&mut apply_cx) {
         let recorded = apply_cx.recorded().to_vec();
-        return failed(step, &recorded, &mut apply_cx, &error.to_string());
+        return failed(step, &recorded, &mut apply_cx, &error.describe());
     }
 
     let verification = match step.verify(cx) {
         Ok(verification) => verification,
         Err(error) => {
             let recorded = apply_cx.recorded().to_vec();
-            return failed(step, &recorded, &mut apply_cx, &error.to_string());
+            return failed(step, &recorded, &mut apply_cx, &error.describe());
         }
     };
 
@@ -45,7 +45,7 @@ pub fn apply_and_verify(
             failed: verification.failed_count(),
             total: verification.total_count(),
         };
-        return failed(step, &recorded, &mut apply_cx, &error.to_string());
+        return failed(step, &recorded, &mut apply_cx, &error.describe());
     }
 
     Outcome::Applied {
@@ -71,7 +71,7 @@ fn failed(
     let rolled_back = match step.rollback(recorded, apply_cx) {
         Ok(()) => RollbackStatus::Succeeded,
         Err(undo_error) => RollbackStatus::Failed {
-            detail: undo_error.to_string(),
+            detail: undo_error.describe(),
         },
     };
 

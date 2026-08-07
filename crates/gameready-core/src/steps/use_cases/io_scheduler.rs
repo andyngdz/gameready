@@ -128,10 +128,7 @@ impl CoreImprovement for IoScheduler {
             |runner| {
                 runner
                     .write_file(&rule, &contents, Privilege::Root)
-                    .map_err(|source| StepError::Write {
-                        path: rule.clone(),
-                        source: std::io::Error::other(source.to_string()),
-                    })
+                    .map_err(StepError::Exec)
             },
         )?;
 
@@ -150,10 +147,7 @@ impl CoreImprovement for IoScheduler {
                 |runner| {
                     runner
                         .write_sysfs(&path, target, Privilege::Root)
-                        .map_err(|source| StepError::Write {
-                            path: path.clone(),
-                            source: std::io::Error::other(source.to_string()),
-                        })
+                        .map_err(StepError::Exec)
                 },
             )?;
         }
@@ -190,18 +184,12 @@ impl CoreImprovement for IoScheduler {
                 Change::SysfsWrite { path, previous } => {
                     cx.reader()
                         .write_sysfs(path, previous, Privilege::Root)
-                        .map_err(|source| StepError::Write {
-                            path: path.clone(),
-                            source: std::io::Error::other(source.to_string()),
-                        })?;
+                        .map_err(StepError::Exec)?;
                 }
                 Change::FileWritten { path, .. } => {
                     cx.reader()
                         .remove_file(path, Privilege::Root)
-                        .map_err(|source| StepError::Write {
-                            path: path.clone(),
-                            source: std::io::Error::other(source.to_string()),
-                        })?;
+                        .map_err(StepError::Exec)?;
                 }
                 Change::FileRemoved { .. }
                 | Change::SysctlRuntime { .. }

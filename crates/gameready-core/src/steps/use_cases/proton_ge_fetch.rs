@@ -50,23 +50,12 @@ pub(super) fn download_verified(
 
 fn fetch_text(runner: &dyn CommandRunner, url: &str) -> Result<CmdOutput, StepError> {
     let cmd = Cmd::user(CURL_BIN).arg(FETCH_FLAGS).arg(url);
-    runner.run(&cmd).map_err(|source| StepError::Command {
-        command: cmd.to_string(),
-        code: 1,
-        stderr: source.to_string(),
-    })
+    runner.run(&cmd).map_err(StepError::Exec)
 }
 
 fn download_file(runner: &dyn CommandRunner, url: &str, dest: &str) -> Result<(), StepError> {
     let cmd = Cmd::user(CURL_BIN).arg(DOWNLOAD_FLAGS).arg(dest).arg(url);
-    runner
-        .run(&cmd)
-        .map(|_| ())
-        .map_err(|source| StepError::Command {
-            command: cmd.to_string(),
-            code: 1,
-            stderr: source.to_string(),
-        })
+    runner.run(&cmd).map(|_| ()).map_err(StepError::Exec)
 }
 
 fn verify_checksum(
@@ -75,11 +64,7 @@ fn verify_checksum(
     expected: &str,
 ) -> Result<(), StepError> {
     let cmd = Cmd::user(SHA512SUM_BIN).arg(file_path);
-    let output = runner.run(&cmd).map_err(|source| StepError::Command {
-        command: cmd.to_string(),
-        code: 1,
-        stderr: source.to_string(),
-    })?;
+    let output = runner.run(&cmd).map_err(StepError::Exec)?;
     let computed = output.stdout.split_whitespace().next().unwrap_or("");
     if computed != expected {
         return Err(StepError::Command {
