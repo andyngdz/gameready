@@ -1,0 +1,18 @@
+---
+source: crates/gameready-cli/tests/snapshots.rs
+expression: "gameready(&[\"list-games\"])"
+---
+exit code: 0
+----- stdout -----
+
+Games
+  Cyberpunk 2077               1091500  built in
+                               launch through gamemoderun
+                               run under the newest GE-Proton installed
+  Deadlock                     1422450  built in
+                               launch through gamemoderun
+                               run under the newest GE-Proton installed
+  Slay the Spire 2             2868840  built in
+                               launch through gamemoderun
+
+----- stderr -----

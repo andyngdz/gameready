@@ -12,6 +12,7 @@ pub use domain::{
 };
 pub use errors::RunError;
 pub use service::{apply_plan, execute};
+pub use use_cases::compat::compat_targets_for;
 pub use use_cases::launch::targets_for;
 pub use use_cases::plan::plan_run;
 pub use use_cases::resolve::resolve_dependencies;

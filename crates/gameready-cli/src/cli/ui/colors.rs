@@ -7,6 +7,16 @@ use gameready_core::improvement::OutcomeKind;
 
 const SEPARATOR: &str = "--------------------------------------";
 
+/// How wide the label column in a labelled paragraph is.
+const LABEL: usize = 10;
+
+/// How wide the body of a labelled paragraph is.
+///
+/// Kept inside 80 columns with the two-space indent and the label column in
+/// front of it, because nothing here re-wraps to the real terminal width and a
+/// longer line breaks mid-word against the left margin.
+const BODY: usize = 66;
+
 /// The gutter mark for a step outcome.
 ///
 /// Applied and already-set carry different marks on purpose. A tick next to a
@@ -59,6 +69,39 @@ impl<'a, W: fmt::Write> Section<'a, W> {
     /// A 5-space-indented sub-line under a marked line.
     pub(crate) fn sub(&mut self, text: &str) -> fmt::Result {
         writeln!(self.w, "     {text}")
+    }
+
+    /// A label in its own column, with the text wrapped and aligned under it.
+    ///
+    /// The label is written once and the following lines are blank in that
+    /// column, so a paragraph reads as one answer rather than as a list of
+    /// unlabelled fragments.
+    pub(crate) fn labelled(&mut self, label: &str, text: &str) -> fmt::Result {
+        let mut pending = Some(label);
+        for line in Self::wrap(text) {
+            let shown = pending.take().unwrap_or("");
+            writeln!(self.w, "  {shown:<LABEL$}{line}")?;
+        }
+        Ok(())
+    }
+
+    /// Splits text into lines that fit the body column, breaking between words.
+    fn wrap(text: &str) -> Vec<String> {
+        let mut lines: Vec<String> = Vec::new();
+        let mut current = String::new();
+
+        for word in text.split_whitespace() {
+            if !current.is_empty() && current.len() + 1 + word.len() > BODY {
+                lines.push(std::mem::take(&mut current));
+            }
+            if !current.is_empty() {
+                current.push(' ');
+            }
+            current.push_str(word);
+        }
+
+        lines.push(current);
+        lines
     }
 
     /// Separator that closes the section.

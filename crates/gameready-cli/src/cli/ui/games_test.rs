@@ -1,7 +1,9 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use gameready_core::games::{AppId, Catalog, GameError, GameProfile, Source, Wrapper};
+use gameready_core::games::{
+    AppId, Catalog, GameError, GameProfile, ProtonChoice, Source, Wrapper,
+};
 
 use super::GameList;
 
@@ -61,6 +63,34 @@ fn wrappers_are_shown_as_the_commands_they_become() {
 
     let rendered = GameList::new(&catalog, &[]).to_string();
     assert!(rendered.contains("gamemoderun mangohud"), "{rendered}");
+}
+
+#[test]
+fn a_pinned_proton_version_is_listed_next_to_the_wrappers() {
+    // A list that shows one setting and hides the other reads as if there is
+    // only one, which is how the pin went unnoticed for as long as it did.
+    let mut catalog = Catalog::new();
+    let mut deadlock = profile("Deadlock", 1422450, vec![Wrapper::GameMode]);
+    deadlock.proton = Some(ProtonChoice::Pinned {
+        tool: "GE-Proton8-32".to_owned(),
+    });
+    catalog.overlay(Source::Builtin, [deadlock]);
+
+    let rendered = GameList::new(&catalog, &[]).to_string();
+    assert!(rendered.contains("GE-Proton8-32"), "{rendered}");
+}
+
+#[test]
+fn asking_for_the_newest_build_says_so_rather_than_naming_one() {
+    // Which build that is depends on what is installed, and the catalog is read
+    // without touching a Steam directory.
+    let mut catalog = Catalog::new();
+    let mut deadlock = profile("Deadlock", 1422450, vec![Wrapper::GameMode]);
+    deadlock.proton = Some(ProtonChoice::NewestGeProton);
+    catalog.overlay(Source::Builtin, [deadlock]);
+
+    let rendered = GameList::new(&catalog, &[]).to_string();
+    assert!(rendered.contains("newest GE-Proton"), "{rendered}");
 }
 
 #[test]

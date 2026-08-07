@@ -3,6 +3,8 @@
 pub(crate) mod constants;
 mod dry_runner;
 mod files;
+mod fixture_runner;
+mod fixture_runner_impl;
 mod real_runner;
 mod sysfs;
 
@@ -12,6 +14,7 @@ pub(crate) mod mock_runner;
 mod mock_runner_impl;
 
 pub use dry_runner::DryRunner;
+pub use fixture_runner::FixtureRunner;
 pub use real_runner::RealRunner;
 
 #[cfg(any(test, feature = "testkit"))]

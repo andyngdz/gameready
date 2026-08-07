@@ -7,8 +7,9 @@ use crate::improvement::{
     Probe, StepError, StepPlan, Tag, Verification,
 };
 use crate::journal::{Change, digest};
-use crate::steps::constants::LOCAL_CONFIG_BACKUP;
+use crate::steps::constants::{LOCAL_CONFIG_BACKUP, NOT_SET};
 use crate::steps::domain::{Edited, LaunchTarget, apply_targets};
+use crate::steps::use_cases::restore_backup::restore_from_backup;
 
 /// Sets the launch options of the selected games.
 ///
@@ -182,7 +183,7 @@ impl CoreImprovement for SteamLaunchOptions {
                 format!("{} launch options", target.name),
                 target.options.clone(),
                 if still_pending {
-                    "not set".to_owned()
+                    NOT_SET.to_owned()
                 } else {
                     target.options.clone()
                 },
@@ -192,43 +193,7 @@ impl CoreImprovement for SteamLaunchOptions {
     }
 
     fn rollback(&self, undo: &[Change], cx: &mut ApplyCx<'_, CoreCx<'_>>) -> Result<(), StepError> {
-        for change in undo.iter().rev() {
-            match change {
-                Change::FileWritten {
-                    path,
-                    backup: Some(backup),
-                    ..
-                } => {
-                    let original =
-                        cx.reader()
-                            .read_to_string(backup)
-                            .map_err(|source| StepError::Read {
-                                path: backup.clone(),
-                                source: std::io::Error::other(source.to_string()),
-                            })?;
-                    cx.reader()
-                        .write_file(path, &original, Privilege::User)
-                        .map_err(|source| StepError::Write {
-                            path: path.clone(),
-                            source: std::io::Error::other(source.to_string()),
-                        })?;
-                }
-                // Listed rather than wildcarded, so a new change this step
-                // starts recording fails to compile here instead of being
-                // silently skipped by rollback.
-                Change::FileWritten { backup: None, .. }
-                | Change::FileRemoved { .. }
-                | Change::SysctlRuntime { .. }
-                | Change::SysfsWrite { .. }
-                | Change::PackagesInstalled { .. }
-                | Change::SystemdUnit { .. }
-                | Change::AptRepository { .. }
-                | Change::ScxScheduler { .. }
-                | Change::DirCreated { .. }
-                | Change::DirTreeInstalled { .. } => {}
-            }
-        }
-        Ok(())
+        restore_from_backup(undo, cx)
     }
 }
 

@@ -74,7 +74,7 @@ impl<'a> Summary<'a> {
         s.title("Rollback saved:")?;
         s.indented(&format!(
             "{}   gameready rollback --run {}",
-            style("Undo").dim(),
+            style(crate::cli::ui::UNDO).dim(),
             self.report.run
         ))?;
         s.indented(&format!(

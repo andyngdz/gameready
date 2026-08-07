@@ -53,6 +53,7 @@ fn plan_for_selection(found: &[GameSetup], selected: &[GameSetup], mode: Mode) -
         picker: Picker::TakeAll,
         overlay: None,
         mode,
+        compat_tools: &[],
     })
     .expect("answered");
     InitPlan::new(found, &answers, mode).to_string()

@@ -106,3 +106,42 @@ pub enum PlannedAction {
     /// Anything else, shown as the exact command line that will run.
     RunCommand { display: String },
 }
+
+impl PlannedAction {
+    /// One line a user can check against their own machine.
+    ///
+    /// Lives here rather than in whichever screen prints it, so a new variant
+    /// cannot be added without deciding how a person is told about it.
+    #[must_use]
+    pub fn describe(&self) -> String {
+        match self {
+            Self::CreateFile { path, .. } => format!("create {path}"),
+            Self::SetSysctl { key, from, to } => format!("set {key} from {from} to {to}"),
+            Self::WriteSysfs { path, from, to } => format!("write {path}, {from} to {to}"),
+            Self::InstallPackages {
+                packages,
+                already_present,
+            } => describe_install(packages, already_present),
+            Self::EnableUnit { unit } => format!("enable and start {unit}"),
+            Self::RunCommand { display } => format!("run {display}"),
+        }
+    }
+}
+
+/// The install line, naming what is already here so the count adds up.
+fn describe_install(packages: &[PlannedPackage], already_present: &[String]) -> String {
+    let names: Vec<&str> = packages
+        .iter()
+        .map(|package| package.name.as_str())
+        .collect();
+
+    let mut line = format!("install {}", names.join(" "));
+    if !already_present.is_empty() {
+        line.push_str(&format!(" (already here: {})", already_present.join(" ")));
+    }
+    line
+}
+
+#[cfg(test)]
+#[path = "plan_test.rs"]
+mod plan_test;

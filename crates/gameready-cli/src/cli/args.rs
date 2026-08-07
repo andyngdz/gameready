@@ -1,6 +1,8 @@
 //! Command line surface.
 
 use clap::{Parser, Subcommand};
+
+use crate::cli::ui::Picker;
 use gameready_core::run::Mode;
 
 /// Apply gaming-related system tuning on Linux, and undo it.
@@ -44,7 +46,7 @@ impl Command {
     #[must_use]
     pub const fn effect(&self) -> Effect {
         match self {
-            Self::Doctor | Self::ListGames => Effect::Reads,
+            Self::Doctor | Self::Explain { .. } | Self::ListGames => Effect::Reads,
             Self::Init { dry_run, .. } | Self::Apply { dry_run, .. } => {
                 if *dry_run {
                     Effect::Reads
@@ -53,6 +55,24 @@ impl Command {
                 }
             }
             Self::Rollback { .. } | Self::Selftest { .. } => Effect::Mutates,
+        }
+    }
+
+    /// Whether there is anyone at the terminal to answer this run's questions.
+    ///
+    /// `--yes` is the caller answering in advance, which is the only way a run
+    /// in a script or a pipe gets past a question nobody can be asked.
+    #[must_use]
+    pub const fn picker(&self) -> Picker {
+        match self {
+            Self::Init { yes: true, .. } | Self::Apply { yes: true, .. } => Picker::TakeAll,
+            Self::Init { .. }
+            | Self::Apply { .. }
+            | Self::Doctor
+            | Self::Explain { .. }
+            | Self::ListGames
+            | Self::Rollback { .. }
+            | Self::Selftest { .. } => Picker::Ask,
         }
     }
 
@@ -70,9 +90,11 @@ impl Command {
                     Mode::Apply
                 }
             }
-            Self::Doctor | Self::ListGames | Self::Rollback { .. } | Self::Selftest { .. } => {
-                Mode::Apply
-            }
+            Self::Doctor
+            | Self::Explain { .. }
+            | Self::ListGames
+            | Self::Rollback { .. }
+            | Self::Selftest { .. } => Mode::Apply,
         }
     }
 }
@@ -108,6 +130,15 @@ pub enum Command {
 
     /// Report system facts and what each step would do.
     Doctor,
+
+    /// Say what a step does, why, and what it would change on this machine.
+    ///
+    /// Reads only. Run it before `apply --step <id>` to see the same step's
+    /// plan without agreeing to any of it.
+    Explain {
+        /// Which step, by id. Leave it out to list them.
+        step: Option<String>,
+    },
 
     /// List the game profiles gameready can see, and where each came from.
     ListGames,

@@ -13,14 +13,13 @@ use std::process::ExitCode;
 use anyhow::{Context as _, Result};
 use clap::Parser;
 use directories::ProjectDirs;
-use gameready_core::infra::exec::RealRunner;
 use gameready_core::journal::StatePaths;
 use gameready_core::rollback::PackagePolicy;
 use gameready_core::run::{RunReport, RunStatus};
 use gameready_core::steam::Overlay;
 
-use crate::cli::args::{Cli, Command, Effect};
-use crate::cli::ui::Picker::{Ask, TakeAll};
+use crate::cli::args::{Cli, Command};
+use crate::cli::runtime::Machine;
 
 /// The name every per-user directory is built from. Named once because the
 /// state directory and the config directory both derive from it, and two copies
@@ -44,77 +43,53 @@ fn main() -> ExitCode {
 
 fn dispatch(cli: &Cli) -> Result<(RunStatus, String)> {
     let paths = state_paths(cli.state_dir.clone())?;
-    let runner = build_runner(cli.command.effect())?;
+    let machine = Machine::detect(cli.command.effect())?;
+    let runner = machine.runner();
 
     match &cli.command {
-        // `--yes` is the caller answering in advance, which is the only way a
-        // run in a script or a pipe gets past a question nobody can be asked.
-        Command::Init {
-            yes, fps_overlay, ..
-        } => {
-            let picker = if *yes { TakeAll } else { Ask };
-            reported(cli, init(cli, &runner, paths, picker, *fps_overlay)?)
+        Command::Init { fps_overlay, .. } => {
+            reported(cli, init(cli, &machine, paths, *fps_overlay)?)
         }
 
-        Command::Doctor => Ok((RunStatus::Clean, cli::commands::doctor(&runner)?)),
+        Command::Doctor => Ok((RunStatus::Clean, cli::commands::doctor(runner)?)),
+
+        Command::Explain { step } => Ok((
+            RunStatus::Clean,
+            cli::commands::explain(runner, step.as_deref())?,
+        )),
 
         Command::ListGames => {
             let games = user_games_dir(cli.games_dir.clone())?;
             Ok((RunStatus::Clean, cli::commands::list_games(&games)?))
         }
 
-        Command::Apply {
-            step,
-            yes,
-            dry_run: _,
-        } => {
-            let mode = cli.command.mode();
-            let picker = if *yes { TakeAll } else { Ask };
-            reported(
-                cli,
-                cli::commands::apply(&runner, paths, step.as_deref(), mode, picker)?,
-            )
-        }
+        Command::Apply { step, .. } => reported(
+            cli,
+            cli::commands::apply(
+                runner,
+                paths,
+                step.as_deref(),
+                cli.command.mode(),
+                cli.command.picker(),
+            )?,
+        ),
 
         Command::Rollback {
             run,
             purge_packages,
-        } => {
-            let policy = if *purge_packages {
+        } => cli::commands::rollback(
+            runner,
+            paths,
+            run.as_deref(),
+            if *purge_packages {
                 PackagePolicy::Purge
             } else {
                 PackagePolicy::Keep
-            };
-            cli::commands::rollback(&runner, paths, run.as_deref(), policy)
-        }
+            },
+        ),
 
-        Command::Selftest { step } => cli::commands::selftest(&runner, paths, step.as_deref()),
+        Command::Selftest { step } => cli::commands::selftest(runner, paths, step.as_deref()),
     }
-}
-
-/// Builds the runner, priming the credential cache when the command will change
-/// something.
-///
-/// A command that only reads falls back to an unprivileged runner, so `doctor`
-/// works in a container with no `sudo` at all.
-fn build_runner(effect: Effect) -> Result<RealRunner> {
-    match effect {
-        Effect::Reads => Ok(RealRunner::detect().unwrap_or_else(|_| RealRunner::unprivileged())),
-        Effect::Mutates => {
-            RealRunner::detect().context("no way to run privileged commands was found")
-        }
-    }
-}
-
-/// Fills the credential cache, prompting once.
-///
-/// Called after every question a command has, so the password prompt is the
-/// last thing between deciding and doing rather than the first thing a user
-/// meets.
-fn authorize(runner: &RealRunner) -> Result<()> {
-    runner
-        .prime()
-        .context("could not get permission to make system changes")
 }
 
 /// Runs `init` with the picker and overlay the flags asked for.
@@ -123,19 +98,18 @@ fn authorize(runner: &RealRunner) -> Result<()> {
 /// and a run with nobody at the terminal leaves the screen alone.
 fn init(
     cli: &Cli,
-    runner: &RealRunner,
+    machine: &Machine,
     paths: StatePaths,
-    picker: cli::ui::Picker,
     fps_overlay: bool,
 ) -> Result<(RunReport, String)> {
     let games = user_games_dir(cli.games_dir.clone())?;
     let request = cli::commands::InitRequest {
         games_dir: &games,
         mode: cli.command.mode(),
-        picker,
+        picker: cli.command.picker(),
         overlay: fps_overlay.then_some(Overlay::Show),
     };
-    cli::commands::init(runner, paths, &request, &|| authorize(runner))
+    cli::commands::init(machine.runner(), paths, &request, &|| machine.authorize())
 }
 
 /// Renders a finished run as JSON or as the summary the user reads.

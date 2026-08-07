@@ -60,6 +60,33 @@ pub fn tarball_name(tag: &str) -> String {
     format!("{tag}.tar.gz")
 }
 
+/// The newest GE-Proton build among a set of installed tool names.
+///
+/// Compared on the two numbers in the tag rather than as text, which would rank
+/// `GE-Proton9-20` above `GE-Proton11-3`. Anything that is not a GE-Proton tag
+/// is ignored, so a directory holding some other compatibility tool cannot win.
+#[must_use]
+pub fn newest_ge_proton(installed: &[String]) -> Option<&str> {
+    installed
+        .iter()
+        .filter_map(|name| ge_version(name).map(|version| (version, name.as_str())))
+        .max_by_key(|(version, _)| *version)
+        .map(|(_, name)| name)
+}
+
+/// The release and revision numbers in a GE-Proton tag, when it is one.
+fn ge_version(name: &str) -> Option<(u32, u32)> {
+    let rest = name.strip_prefix(GE_PROTON_PREFIX)?;
+    // A tag has always carried both numbers so far. One that does not is read
+    // as revision zero rather than dropped, so a future naming change costs the
+    // build its place in the order instead of its place in the list.
+    let (release, revision) = rest.split_once('-').unwrap_or((rest, "0"));
+    Some((release.parse().ok()?, revision.parse().ok()?))
+}
+
+/// What every Proton-GE tag starts with.
+const GE_PROTON_PREFIX: &str = "GE-Proton";
+
 const AARCH64: &str = "aarch64";
 
 fn is_x86_tarball(name: &str) -> bool {

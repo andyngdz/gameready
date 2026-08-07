@@ -4,7 +4,11 @@
 /// The line an empty list prints, so a bare heading never looks like a bug.
 pub(crate) const NOTHING: &str = "  none";
 
+/// The label that introduces the command that puts things back.
+pub(crate) const UNDO: &str = "Undo";
+
 pub(crate) mod colors;
+mod explain;
 mod games;
 mod init;
 mod install;
@@ -19,10 +23,11 @@ mod rollback;
 mod selftest;
 mod summary;
 
+pub use explain::{StepExplanation, StepIndex};
 pub use games::GameList;
 pub use init::LaunchInstructions;
 pub use install::{InstallList, consent_to_install};
-pub use launch_choice::{LaunchChoice, choose_how_to_apply};
+pub use launch_choice::{LaunchChoice, SteamWork, choose_how_to_apply};
 pub use launch_report::LaunchReport;
 pub use overlay::choose_overlay;
 pub use plan::InitPlan;

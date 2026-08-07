@@ -54,16 +54,13 @@ pub fn set_scalar(
         });
     }
 
-    let block = descend(&mut document.value, rest)?;
+    let block = descend(&mut document.value, rest, Missing::Fail)?;
     let previous = read(block, key);
     if previous.as_deref() == Some(value) {
         return Ok(SetResult::AlreadySet);
     }
 
-    block.0.insert(
-        Cow::Owned(key.to_owned()),
-        vec![Value::Str(Cow::Owned(value.to_owned()))],
-    );
+    write(block, key, value);
 
     Ok(SetResult::Changed(Edit {
         text: document.to_string(),
@@ -71,14 +68,74 @@ pub fn set_scalar(
     }))
 }
 
-/// Walks into nested blocks, failing on the first one the file does not have.
+/// Sets several scalars in one block, adding any block on the path the file
+/// does not have yet.
+///
+/// `previous_of` names the key whose old value comes back in the edit. A block
+/// holds several values and only one of them is the one a user would recognise;
+/// the rest are bookkeeping the file is expected to carry next to it.
+pub fn set_block(
+    text: &str,
+    path: &[&str],
+    values: &[(&str, &str)],
+    previous_of: &str,
+) -> Result<SetResult, VdfError> {
+    let mut document: Vdf<'static> = Vdf::from(parse(text)?).into_owned();
+
+    let (root, rest) = path.split_first().ok_or_else(|| VdfError::MissingSection {
+        section: String::new(),
+    })?;
+    if document.key != *root {
+        return Err(VdfError::MissingSection {
+            section: (*root).to_owned(),
+        });
+    }
+
+    let block = descend(&mut document.value, rest, Missing::Create)?;
+    let previous = read(block, previous_of);
+    if values
+        .iter()
+        .all(|(key, value)| read(block, key).as_deref() == Some(*value))
+    {
+        return Ok(SetResult::AlreadySet);
+    }
+
+    for (key, value) in values {
+        write(block, key, value);
+    }
+
+    Ok(SetResult::Changed(Edit {
+        text: document.to_string(),
+        previous: previous.unwrap_or_default(),
+    }))
+}
+
+/// What a block on the path that the file does not have means.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Missing {
+    /// The path names something the file should already have, so its absence is
+    /// a file this should not be writing to.
+    Fail,
+    /// The path is somewhere the caller is entitled to create, such as a game's
+    /// own entry in a mapping Steam only writes once the user picks something.
+    Create,
+}
+
+/// Walks into nested blocks, creating or refusing the ones that are absent.
 fn descend<'a>(
     value: &'a mut Value<'static>,
     path: &[&str],
+    missing: Missing,
 ) -> Result<&'a mut Obj<'static>, VdfError> {
     let mut block = as_block(value)?;
 
     for section in path {
+        if missing == Missing::Create && !block.0.contains_key(*section) {
+            block.0.insert(
+                Cow::Owned((*section).to_owned()),
+                vec![Value::Obj(Obj::new())],
+            );
+        }
         let next = block
             .0
             .get_mut(*section)
@@ -89,6 +146,14 @@ fn descend<'a>(
         block = as_block(next)?;
     }
     Ok(block)
+}
+
+/// Puts a scalar in a block, replacing whatever was under that key.
+fn write(block: &mut Obj<'static>, key: &str, value: &str) {
+    block.0.insert(
+        Cow::Owned(key.to_owned()),
+        vec![Value::Str(Cow::Owned(value.to_owned()))],
+    );
 }
 
 /// A value that has to be a block for the path to continue through it.

@@ -2,12 +2,12 @@
 
 use anyhow::Result;
 use gameready_core::facts::PackageManagerKind;
-use gameready_core::run::{InstallConsent, Mode, RunPlan, targets_for};
+use gameready_core::run::{InstallConsent, Mode, RunPlan, compat_targets_for, targets_for};
 use gameready_core::steam::{GameSetup, Overlay, with_overlay};
-use gameready_core::steps::LaunchTarget;
+use gameready_core::steps::{CompatTarget, LaunchTarget};
 
 use crate::cli::ui::{
-    LaunchChoice, choose_games, choose_how_to_apply, choose_overlay, consent_to_install,
+    LaunchChoice, SteamWork, choose_games, choose_how_to_apply, choose_overlay, consent_to_install,
 };
 
 /// Whether there is a person at the terminal to answer.
@@ -34,6 +34,12 @@ pub struct Questions<'a> {
     pub overlay: Option<Overlay>,
     /// Whether this run may change anything.
     pub mode: Mode,
+    /// The compatibility tools installed on this machine, by directory name.
+    ///
+    /// A profile asking for the newest GE-Proton resolves against this, so a
+    /// machine with none installed pins nothing rather than pinning a game to
+    /// a build that is not there.
+    pub compat_tools: &'a [String],
 }
 
 impl Questions<'_> {
@@ -49,7 +55,9 @@ pub struct Answers {
     pub selected: Vec<GameSetup>,
     /// The launch options to write, empty when there are none.
     pub targets: Vec<LaunchTarget>,
-    /// How those launch options should be applied.
+    /// The Proton pins to write, empty when no profile asks for one.
+    pub proton: Vec<CompatTarget>,
+    /// How both of those should be applied.
     pub launch: LaunchChoice,
     /// Whether the run may install the packages its steps need.
     pub consent: InstallConsent,
@@ -78,12 +86,17 @@ pub fn ask_everything(questions: &Questions<'_>) -> Result<Answers> {
 
     let selected = with_overlay(&picked, overlay);
     let targets = targets_for(&selected);
+    let proton = compat_targets_for(&selected, questions.compat_tools);
 
-    let launch = if targets.is_empty() {
+    let work = SteamWork {
+        launch: targets.len(),
+        proton: proton.len(),
+    };
+    let launch = if targets.is_empty() && proton.is_empty() {
         LaunchChoice::ShowForCopying
     } else {
         match (questions.picker, questions.mode.mutates()) {
-            (Picker::Ask, true) => choose_how_to_apply(targets.len())?,
+            (Picker::Ask, true) => choose_how_to_apply(&work)?,
             (Picker::TakeAll, _) | (Picker::Ask, false) => LaunchChoice::ShowForCopying,
         }
     };
@@ -91,6 +104,7 @@ pub fn ask_everything(questions: &Questions<'_>) -> Result<Answers> {
     Ok(Answers {
         selected,
         targets,
+        proton,
         launch,
         consent: questions.consent()?,
     })

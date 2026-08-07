@@ -1,0 +1,38 @@
+# The fake machine's answers. Everything not listed here succeeds with no
+# output, so this only carries the commands whose answer a snapshot depends on.
+#
+# Shaped after a real Ubuntu 26.04 box with an NVMe disk, disk swap rather than
+# zram, and gamemode already installed. Deliberately not a machine where
+# nothing applies: a fixture where every step says "already set" would not
+# catch a step that stopped planning anything.
+
+binaries = ["gamemoderun", "curl", "tar", "sha512sum", "systemctl"]
+
+[[commands]]
+line = "uname -r"
+stdout = "7.0.0-29-generic\n"
+
+[[commands]]
+line = "dpkg-query --showformat=${Version} --show gamemode"
+stdout = "1.8.2-2build1"
+
+[[commands]]
+line = "dpkg-query --showformat=${Version} --show mangohud"
+code = 1
+
+[[commands]]
+line = "apt-cache show mangohud"
+stdout = "Package: mangohud\nVersion: 0.8.2~rc2\nInstalled-Size: 5120\n"
+
+[[commands]]
+line = "dpkg-query --showformat=${Version} --show scx"
+code = 1
+
+[[commands]]
+line = "apt-cache show scx"
+code = 1
+
+[[commands]]
+line = "systemctl is-active ananicy-cpp"
+stdout = "inactive\n"
+code = 3

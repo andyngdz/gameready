@@ -5,10 +5,13 @@ mod config;
 mod process;
 mod scan;
 mod setup;
-mod write_launch;
+mod write_settings;
 
-pub use config::{local_config_under, locate_local_config};
+pub use config::{
+    SteamConfigs, configs_under, install_config_under, installed_compat_tools, local_config_under,
+    locate_local_config, locate_steam_dir,
+};
 pub use process::{is_running, shutdown, start};
 pub use scan::{scan_installed_games, scan_installed_games_in};
 pub use setup::discover_setups;
-pub use write_launch::write_launch_options;
+pub use write_settings::{SteamSettings, write_steam_settings};

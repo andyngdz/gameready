@@ -1,0 +1,36 @@
+---
+source: crates/gameready-cli/tests/snapshots.rs
+expression: "gameready(&[\"explain\", \"--help\"])"
+---
+exit code: 0
+----- stdout -----
+Say what a step does, why, and what it would change on this machine.
+
+Reads only. Run it before `apply --step <id>` to see the same step's plan without agreeing to any of
+it.
+
+Usage: gameready explain [OPTIONS] [STEP]
+
+Arguments:
+  [STEP]
+          Which step, by id. Leave it out to list them
+
+Options:
+      --json
+          Print the run report as JSON instead of a rendered summary
+
+      --state-dir <STATE_DIR>
+          Write the state directory somewhere else. Used by tests to keep runs out of the invoking
+          user's real journal
+          
+          [env: GAMEREADY_STATE_DIR=[TMP]
+
+      --games-dir <GAMES_DIR>
+          Read your own game profiles from somewhere other than `~/.config/gameready/games`
+          
+          [env: GAMEREADY_GAMES_DIR=[TMP]
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+----- stderr -----

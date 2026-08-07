@@ -10,6 +10,7 @@ use crate::exec::{Cmd, CmdOutput, CommandRunner, ExecError};
 use crate::improvement::Privilege;
 
 use super::mock_runner::{MockRunner, POISONED};
+use crate::infra::exec::constants::FAKE_BIN_DIR;
 
 impl CommandRunner for MockRunner {
     fn run(&self, cmd: &Cmd) -> Result<CmdOutput, ExecError> {
@@ -129,7 +130,7 @@ impl CommandRunner for MockRunner {
     fn which(&self, binary: &str) -> Option<PathBuf> {
         self.binaries
             .contains(binary)
-            .then(|| PathBuf::from("/usr/bin").join(binary))
+            .then(|| PathBuf::from(FAKE_BIN_DIR).join(binary))
     }
 }
 

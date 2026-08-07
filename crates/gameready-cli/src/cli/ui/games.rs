@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use gameready_core::games::{Catalog, GameError};
+use gameready_core::games::{Catalog, GameError, ProtonChoice};
 
 /// The catalog as printable lines, with anything that failed to load after it.
 ///
@@ -47,6 +47,13 @@ impl fmt::Display for GameList<'_> {
             if !wrappers.is_empty() {
                 writeln!(f, "  {:<28} launch through {}", "", wrappers.join(" "))?;
             }
+
+            // Listed for the same reason as the wrappers: a profile that pins a
+            // Proton version changes how the game runs, and a list that shows
+            // one setting and hides the other reads as if there is only one.
+            if let Some(proton) = &profile.proton {
+                writeln!(f, "  {:<28} run under {}", "", describe(proton))?;
+            }
         }
 
         if !self.failures.is_empty() {
@@ -57,6 +64,18 @@ impl fmt::Display for GameList<'_> {
         }
 
         Ok(())
+    }
+}
+
+/// What a Proton choice reads as in a list, before anything resolves it.
+///
+/// The newest build cannot be named here: which one that is depends on what is
+/// installed, and the catalog is read without touching a Steam directory.
+fn describe(choice: &ProtonChoice) -> String {
+    match choice {
+        ProtonChoice::NewestGeProton => "the newest GE-Proton installed".to_owned(),
+        ProtonChoice::Experimental => "Proton Experimental".to_owned(),
+        ProtonChoice::Pinned { tool } => tool.clone(),
     }
 }
 

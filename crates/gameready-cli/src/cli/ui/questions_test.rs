@@ -1,13 +1,22 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use gameready_core::games::{AppId, GameProfile, Source, Wrapper, default_wrappers};
+use gameready_core::games::{AppId, GameProfile, ProtonChoice, Source, Wrapper, default_wrappers};
 use gameready_core::run::PreflightReport;
 use gameready_core::steam::InstalledGame;
 
 use super::*;
 
 fn setup(name: &str, app_id: u32, wrappers: Option<Vec<Wrapper>>) -> GameSetup {
+    with_proton(name, app_id, wrappers, None)
+}
+
+fn with_proton(
+    name: &str,
+    app_id: u32,
+    wrappers: Option<Vec<Wrapper>>,
+    proton: Option<ProtonChoice>,
+) -> GameSetup {
     GameSetup {
         game: InstalledGame::new(AppId(app_id), name.to_owned(), PathBuf::from("/games")),
         source: wrappers.as_ref().map(|_| Source::Builtin),
@@ -16,7 +25,7 @@ fn setup(name: &str, app_id: u32, wrappers: Option<Vec<Wrapper>>) -> GameSetup {
             app_id: AppId(app_id),
             wrappers: wrappers.unwrap_or_else(default_wrappers),
             env: BTreeMap::new(),
-            proton: None,
+            proton,
             override_module: None,
         },
     }
@@ -40,6 +49,15 @@ fn empty_plan() -> RunPlan {
 
 /// Asks with a scripted picker, which answers without prompting.
 fn scripted(setups: &[GameSetup], overlay: Option<Overlay>, mode: Mode) -> Answers {
+    scripted_with_tools(setups, overlay, mode, &[])
+}
+
+fn scripted_with_tools(
+    setups: &[GameSetup],
+    overlay: Option<Overlay>,
+    mode: Mode,
+    compat_tools: &[String],
+) -> Answers {
     let plan = empty_plan();
     ask_everything(&Questions {
         setups,
@@ -48,6 +66,7 @@ fn scripted(setups: &[GameSetup], overlay: Option<Overlay>, mode: Mode) -> Answe
         picker: Picker::TakeAll,
         overlay,
         mode,
+        compat_tools,
     })
     .expect("answered")
 }
@@ -111,4 +130,36 @@ fn nothing_to_apply_means_nothing_to_ask_about_applying_it() {
 
     assert!(answers.selected.is_empty());
     assert!(answers.targets.is_empty());
+    assert!(answers.proton.is_empty());
+}
+
+#[test]
+fn a_profile_asking_for_ge_proton_becomes_a_pin_when_a_build_is_installed() {
+    let setups = [with_proton(
+        "Deadlock",
+        1_422_450,
+        Some(vec![Wrapper::GameMode]),
+        Some(ProtonChoice::NewestGeProton),
+    )];
+    let installed = ["GE-Proton11-3".to_owned()];
+    let answers = scripted_with_tools(&setups, None, Mode::Apply, &installed);
+
+    assert_eq!(answers.proton.len(), 1);
+    assert_eq!(answers.proton[0].tool, "GE-Proton11-3");
+}
+
+#[test]
+fn the_same_profile_pins_nothing_on_a_machine_with_no_build_installed() {
+    let setups = [with_proton(
+        "Deadlock",
+        1_422_450,
+        Some(vec![Wrapper::GameMode]),
+        Some(ProtonChoice::NewestGeProton),
+    )];
+    let answers = scripted(&setups, None, Mode::Apply);
+
+    assert!(answers.proton.is_empty());
+    // The launch options still go through: one setting failing to resolve does
+    // not take the other with it.
+    assert_eq!(answers.targets.len(), 1);
 }

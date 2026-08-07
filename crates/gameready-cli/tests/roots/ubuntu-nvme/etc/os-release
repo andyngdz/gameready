@@ -1,0 +1,4 @@
+ID=ubuntu
+ID_LIKE=debian
+VERSION_ID="26.04"
+PRETTY_NAME="Ubuntu 26.04 LTS"

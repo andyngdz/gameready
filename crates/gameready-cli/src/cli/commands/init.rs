@@ -8,7 +8,7 @@ use gameready_core::facts;
 use gameready_core::facts::PackageManagerKind;
 use gameready_core::improvement::CoreCx;
 use gameready_core::infra::pkg;
-use gameready_core::infra::steam::discover_setups;
+use gameready_core::infra::steam::{discover_setups, installed_compat_tools, locate_steam_dir};
 use gameready_core::journal::{Journal, RunId, StatePaths};
 use gameready_core::run::{Mode, RunPlan, RunReport, apply_plan, plan_run};
 use gameready_core::steam::{GameSetup, Overlay};
@@ -34,6 +34,7 @@ impl InitRequest<'_> {
         setups: &'a [GameSetup],
         plan: &'a RunPlan,
         packages: PackageManagerKind,
+        compat_tools: &'a [String],
     ) -> Questions<'a> {
         Questions {
             setups,
@@ -42,7 +43,22 @@ impl InitRequest<'_> {
             picker: self.picker,
             overlay: self.overlay,
             mode: self.mode,
+            compat_tools,
         }
+    }
+
+    /// Every question this run has, asked once, with the agreed plan rendered.
+    fn ask(
+        &self,
+        setups: &[GameSetup],
+        run_plan: &RunPlan,
+        packages: PackageManagerKind,
+        compat_tools: &[String],
+    ) -> Result<(Answers, String)> {
+        let answers =
+            ui::ask_everything(&self.questions(setups, run_plan, packages, compat_tools))?;
+        let rendered = self.agreed_plan(setups, &answers, run_plan, packages);
+        Ok((answers, rendered))
     }
 
     /// What the user agreed to, rendered before the run carries it out.
@@ -63,6 +79,17 @@ impl InitRequest<'_> {
         }
         plan
     }
+}
+
+/// The compatibility tools this machine has, by directory name.
+///
+/// Read before the first question, because a profile asking for the newest
+/// GE-Proton can only resolve against the builds that are there now. A machine
+/// with no Steam has none, which is not a failure worth reporting here.
+fn compat_tools() -> Vec<String> {
+    locate_steam_dir()
+        .map(|steam| installed_compat_tools(&steam))
+        .unwrap_or_default()
 }
 
 /// Asks everything, then does everything.
@@ -88,11 +115,16 @@ pub fn run(
     drop(progress);
 
     let family = facts.distro.package_manager();
-    let answers = ui::ask_everything(&request.questions(&setups, &run_plan, family))?;
-    let mut out = request.agreed_plan(&setups, &answers, &run_plan, family);
+    let (answers, mut out) = request.ask(&setups, &run_plan, family, &compat_tools())?;
 
     // Nothing above this line changed anything. Nothing below it asks.
-    authorize()?;
+    //
+    // A dry run skips this: asking for a password to change nothing is a
+    // question with no purpose, and on a machine whose sudo cannot cache it is
+    // a question that stops the preview working at all.
+    if request.mode.mutates() {
+        authorize()?;
+    }
 
     let mut journal =
         Journal::open(paths.clone(), RunId::generate()).context(CANNOT_OPEN_JOURNAL)?;

@@ -1,0 +1,9 @@
+---
+source: crates/gameready-cli/tests/snapshots.rs
+expression: "gameready(&[\"explain\", \"core.sysctl.max-map-conut\"])"
+---
+exit code: 2
+----- stdout -----
+
+----- stderr -----
+gameready: no step named `core.sysctl.max-map-conut`. There is: core.conflicts, core.sysctl.max-map-count, core.io.scheduler, core.memory.swappiness, core.pkg.tools, core.proton.ge, core.repo.scx-ppa, core.sched.scx-lavd, core.cpu.governor

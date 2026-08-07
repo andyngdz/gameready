@@ -224,3 +224,104 @@ fn a_path_that_runs_into_a_value_is_refused() {
     let error = set_scalar(&config(), &path, "LaunchOptions", "x").expect_err("refused");
     assert!(matches!(error, VdfError::NotABlock), "{error:?}");
 }
+
+/// The path a compatibility-tool entry lives at, one game deep.
+const MAPPING: [&str; 6] = [
+    "UserLocalConfigStore",
+    "Software",
+    "Valve",
+    "Steam",
+    "CompatToolMapping",
+    "1422450",
+];
+
+#[test]
+fn a_block_is_created_along_with_every_missing_section_above_it() {
+    let values = [("name", "GE-Proton11-3"), ("priority", "250")];
+
+    let result = set_block(&config(), &MAPPING, &values, "name").expect("set");
+
+    let SetResult::Changed(edit) = result else {
+        panic!("expected a change, got {result:?}");
+    };
+    assert!(edit.text.contains("CompatToolMapping"), "{}", edit.text);
+    assert!(edit.text.contains("GE-Proton11-3"), "{}", edit.text);
+    assert_eq!(edit.previous, "");
+}
+
+#[test]
+fn the_previous_value_reported_is_the_key_the_caller_named() {
+    let first = set_block(
+        &config(),
+        &MAPPING,
+        &[("name", "GE-Proton9-20"), ("priority", "250")],
+        "name",
+    )
+    .expect("set");
+    let SetResult::Changed(first) = first else {
+        panic!("expected a change");
+    };
+
+    let second = set_block(
+        &first.text,
+        &MAPPING,
+        &[("name", "GE-Proton11-3"), ("priority", "250")],
+        "name",
+    )
+    .expect("set");
+    let SetResult::Changed(second) = second else {
+        panic!("expected a change");
+    };
+
+    assert_eq!(second.previous, "GE-Proton9-20");
+}
+
+#[test]
+fn a_block_that_already_says_all_of_it_is_left_alone() {
+    let values = [("name", "GE-Proton11-3"), ("priority", "250")];
+    let first = set_block(&config(), &MAPPING, &values, "name").expect("set");
+    let SetResult::Changed(first) = first else {
+        panic!("expected a change");
+    };
+
+    let again = set_block(&first.text, &MAPPING, &values, "name").expect("set");
+
+    assert!(matches!(again, SetResult::AlreadySet), "{again:?}");
+}
+
+#[test]
+fn one_key_out_of_date_rewrites_the_whole_block() {
+    // Steam re-renders an entry with every key it expects, so a half-written
+    // one reads as gameready's change being partly undone on the next exit.
+    let first = set_block(
+        &config(),
+        &MAPPING,
+        &[("name", "GE-Proton11-3"), ("priority", "75")],
+        "name",
+    )
+    .expect("set");
+    let SetResult::Changed(first) = first else {
+        panic!("expected a change");
+    };
+
+    let second = set_block(
+        &first.text,
+        &MAPPING,
+        &[("name", "GE-Proton11-3"), ("priority", "250")],
+        "name",
+    )
+    .expect("set");
+
+    assert!(matches!(second, SetResult::Changed(_)), "{second:?}");
+}
+
+#[test]
+fn a_block_write_refuses_a_root_key_the_file_does_not_have() {
+    let wrong = ["InstallConfigStore", "Software"];
+    let error = set_block(&config(), &wrong, &[("name", "x")], "name").expect_err("refused");
+
+    assert!(
+        matches!(error, VdfError::MissingSection { .. }),
+        "{error:?}"
+    );
+}

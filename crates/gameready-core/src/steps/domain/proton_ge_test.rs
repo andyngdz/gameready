@@ -89,3 +89,36 @@ fn returns_none_when_tarball_not_in_checksum() {
 fn tarball_name_matches_the_tag() {
     assert_eq!(tarball_name("GE-Proton11-3"), "GE-Proton11-3.tar.gz");
 }
+
+fn tools(names: &[&str]) -> Vec<String> {
+    names.iter().map(|name| (*name).to_owned()).collect()
+}
+
+#[test]
+fn the_newest_build_is_picked_by_number_not_by_text() {
+    // Sorted as text, GE-Proton9-20 wins, and the user gets a build two major
+    // releases old without being told.
+    let installed = tools(&["GE-Proton9-20", "GE-Proton11-3", "GE-Proton10-15"]);
+
+    assert_eq!(newest_ge_proton(&installed), Some("GE-Proton11-3"));
+}
+
+#[test]
+fn the_revision_breaks_a_tie_within_one_release() {
+    let installed = tools(&["GE-Proton11-3", "GE-Proton11-20"]);
+
+    assert_eq!(newest_ge_proton(&installed), Some("GE-Proton11-20"));
+}
+
+#[test]
+fn some_other_compatibility_tool_never_wins() {
+    let installed = tools(&["Proton-EM-10.0-25", "SteamTinkerLaunch", "GE-Proton11-3"]);
+
+    assert_eq!(newest_ge_proton(&installed), Some("GE-Proton11-3"));
+}
+
+#[test]
+fn a_machine_with_no_ge_proton_has_no_answer() {
+    assert_eq!(newest_ge_proton(&tools(&["SteamTinkerLaunch"])), None);
+    assert_eq!(newest_ge_proton(&[]), None);
+}

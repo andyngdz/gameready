@@ -3,26 +3,38 @@
 use std::fmt;
 
 use console::style;
-use gameready_core::steam::GameSetup;
+use gameready_core::games::AppId;
 
 use crate::cli::ui::colors::Section;
+use crate::cli::ui::questions::Answers;
 
-/// Launch options for the user to copy into Steam.
+/// The per-game settings for the user to enter into Steam themselves.
+///
+/// The path taken whenever gameready is not going to close Steam, so it has to
+/// carry everything the writing path would have done. A setting that only the
+/// automatic path knows about is a setting the manual path silently drops.
 pub struct LaunchInstructions<'a> {
-    selected: &'a [GameSetup],
+    answers: &'a Answers,
 }
 
 impl<'a> LaunchInstructions<'a> {
     #[must_use]
-    pub const fn new(selected: &'a [GameSetup]) -> Self {
-        Self { selected }
+    pub const fn new(answers: &'a Answers) -> Self {
+        Self { answers }
     }
 
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.selected
+        self.answers.targets.is_empty() && self.answers.proton.is_empty()
+    }
+
+    /// The Proton build a game is to be pinned to, when one was worked out.
+    fn proton_for(&self, app_id: AppId) -> Option<&str> {
+        self.answers
+            .proton
             .iter()
-            .all(|setup| setup.launch_options().is_empty())
+            .find(|target| target.app_id == app_id)
+            .map(|target| target.tool.as_str())
     }
 }
 
@@ -34,17 +46,27 @@ impl fmt::Display for LaunchInstructions<'_> {
 
         let mut s = Section::new(f);
         s.title("Per-game settings")?;
-        for setup in self.selected {
+        for setup in &self.answers.selected {
             let options = setup.launch_options();
-            if options.is_empty() {
+            let proton = self.proton_for(setup.game.app_id);
+            if options.is_empty() && proton.is_none() {
                 continue;
             }
+
             s.marked("-", &setup.game.name)?;
-            s.sub("- Go to Steam > right click the game > Properties > Launch Options")?;
-            s.sub(&format!(
-                "- Put this into Launch Options: {}",
-                style(&options).green()
-            ))?;
+            s.sub("- Go to Steam > right click the game > Properties")?;
+            if !options.is_empty() {
+                s.sub(&format!(
+                    "- Under General, put this into Launch Options: {}",
+                    style(&options).green()
+                ))?;
+            }
+            if let Some(tool) = proton {
+                s.sub(&format!(
+                    "- Under Compatibility, tick the box and pick: {}",
+                    style(tool).green()
+                ))?;
+            }
         }
         Ok(())
     }
