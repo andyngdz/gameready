@@ -77,6 +77,10 @@ impl<R: CommandRunner> CommandRunner for DryRunner<R> {
         self.inner.path_exists(path)
     }
 
+    fn download(&self, url: &str, _dest: &Path, _on_bytes: &dyn Fn(u64)) -> Result<(), ExecError> {
+        Self::refuse(&format!("download {url}"))
+    }
+
     fn which(&self, binary: &str) -> Option<PathBuf> {
         self.inner.which(binary)
     }

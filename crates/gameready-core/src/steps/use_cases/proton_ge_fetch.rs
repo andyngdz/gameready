@@ -8,7 +8,6 @@ use crate::steps::constants::{CURL_BIN, PROTON_GE_LATEST_URL, SHA512SUM_BIN};
 use crate::steps::domain::{parse_checksum, parse_release, tarball_name, ProtonRelease};
 
 const FETCH_FLAGS: &str = "-sfL";
-const DOWNLOAD_FLAGS: &str = "-sfLo";
 
 /// Fetches the latest release metadata from the GitHub API.
 pub(super) fn fetch_release(runner: &dyn CommandRunner) -> Result<ProtonRelease, StepError> {
@@ -24,9 +23,12 @@ pub(super) fn fetch_release(runner: &dyn CommandRunner) -> Result<ProtonRelease,
 }
 
 /// Downloads and verifies the tarball, returning the local temp path.
+///
+/// `on_bytes` is handed the running total as the transfer lands.
 pub(super) fn download_verified(
     runner: &dyn CommandRunner,
     release: &ProtonRelease,
+    on_bytes: &dyn Fn(u64),
 ) -> Result<PathBuf, StepError> {
     let tarball = tarball_name(&release.tag);
     let temp_path = std::env::temp_dir().join(&tarball);
@@ -43,7 +45,9 @@ pub(super) fn download_verified(
             },
         })?;
 
-    download_file(runner, &release.tarball_url, &temp_str)?;
+    runner
+        .download(&release.tarball_url, &temp_path, on_bytes)
+        .map_err(StepError::Exec)?;
     verify_checksum(runner, &temp_str, &expected_hash)?;
     Ok(temp_path)
 }
@@ -51,11 +55,6 @@ pub(super) fn download_verified(
 fn fetch_text(runner: &dyn CommandRunner, url: &str) -> Result<CmdOutput, StepError> {
     let cmd = Cmd::user(CURL_BIN).arg(FETCH_FLAGS).arg(url);
     runner.run(&cmd).map_err(StepError::Exec)
-}
-
-fn download_file(runner: &dyn CommandRunner, url: &str, dest: &str) -> Result<(), StepError> {
-    let cmd = Cmd::user(CURL_BIN).arg(DOWNLOAD_FLAGS).arg(dest).arg(url);
-    runner.run(&cmd).map(|_| ()).map_err(StepError::Exec)
 }
 
 fn verify_checksum(

@@ -8,7 +8,7 @@
 
 use std::collections::VecDeque;
 
-use crate::improvement::{CoreCx, CoreImprovement, ImprovementId, Outcome, SkipReason};
+use crate::improvement::{CoreCx, CoreImprovement, Doing, ImprovementId, Outcome, SkipReason};
 use crate::journal::{Journal, JournalEvent};
 use crate::run::domain::{Deferred, RunEvent, StepReport};
 use crate::run::errors::RunError;
@@ -216,10 +216,11 @@ fn apply_one(
     journal.append(JournalEvent::StepBegin { step: step.id() })?;
 
     let step_id = step.id();
-    let progress: Box<dyn FnMut(&str) + '_> = Box::new(|msg: &str| {
-        on_event(RunEvent::StepProgress {
-            step: step_id.clone(),
-            message: msg.to_owned(),
+    let progress: Box<dyn FnMut(Doing) + '_> = Box::new(|doing: Doing| {
+        let step = step_id.clone();
+        on_event(match doing {
+            Doing::Phase(message) => RunEvent::StepProgress { step, message },
+            Doing::Bytes { done, total } => RunEvent::StepBytes { step, done, total },
         });
     });
     let outcome = apply_and_verify(step, cx, cx.runner, journal, Some(progress));

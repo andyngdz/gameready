@@ -7,21 +7,15 @@
 
 use std::collections::HashMap;
 
+use crate::cli::ui::layout::{Mark, Section};
+use crate::cli::ui::region::LiveRegion;
+use crate::cli::ui::{short_names, tunings};
 use gameready_core::improvement::ImprovementId;
 use gameready_core::run::{Mode, RunEvent};
-use indicatif::{ProgressBar, ProgressStyle};
-
-use crate::cli::ui::layout::{Mark, Section};
-use crate::cli::ui::{short_names, tunings};
-
-/// How the spinner line is laid out: indented to the column the settled lines
-/// land in, so the line being waited on does not sit left of the ones it turns
-/// into a moment later.
-const SPINNER: &str = "  {spinner:.blue} {msg}";
 
 /// Renders step progress as a checklist on stderr.
 pub struct ProgressView {
-    spinner: Option<ProgressBar>,
+    region: LiveRegion,
     /// The step being applied, kept so its sub-phases can be shown against it.
     applying: Option<String>,
     names: HashMap<ImprovementId, String>,
@@ -32,7 +26,7 @@ impl ProgressView {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            spinner: None,
+            region: LiveRegion::default(),
             applying: None,
             names: HashMap::new(),
         }
@@ -50,7 +44,7 @@ impl ProgressView {
             print(&format!("\nApplying {total} {}\n", tunings(total)));
         }
         Self {
-            spinner: None,
+            region: LiveRegion::default(),
             applying: None,
             names: short_names(),
         }
@@ -81,6 +75,8 @@ impl ProgressView {
             }
 
             RunEvent::StepProgress { message, .. } => self.sub_phase(&message),
+
+            RunEvent::StepBytes { done, total, .. } => self.landed(done, total),
 
             RunEvent::Finished {
                 step,
@@ -114,11 +110,7 @@ impl ProgressView {
     /// read as nine separate waits.
     fn counting(&mut self, done: usize, total: usize) {
         let counted = format!("Checking {total} {} · {done} of {total}", tunings(total));
-        if let Some(bar) = &self.spinner {
-            bar.set_message(counted);
-        } else {
-            self.start(counted);
-        }
+        self.region.say(counted);
     }
 
     /// What the running step is busy with, shown against its own name.
@@ -127,11 +119,7 @@ impl ProgressView {
             Some(name) => format!("{name} · {message}"),
             None => message.to_owned(),
         };
-        if let Some(bar) = &self.spinner {
-            bar.set_message(line);
-        } else {
-            self.start(line);
-        }
+        self.region.say(line);
     }
 
     /// Leaves a line on screen for the run looking again.
@@ -149,37 +137,24 @@ impl ProgressView {
     }
 
     fn start(&mut self, message: String) {
-        self.clear();
-        let bar = ProgressBar::new_spinner();
-        if let Ok(style) = ProgressStyle::with_template(SPINNER) {
-            bar.set_style(style);
-        }
-        bar.enable_steady_tick(std::time::Duration::from_millis(80));
-        bar.set_message(message);
-        self.spinner = Some(bar);
+        self.region.spin(message);
     }
 
     fn clear(&mut self) {
-        if let Some(bar) = self.spinner.take() {
-            bar.finish_and_clear();
-        }
+        self.region.clear();
     }
 
-    /// Stops the spinner and leaves the finished lines on screen.
-    ///
-    /// A row whose evidence would not fit beside its name comes back as two
-    /// lines, and `finish_with_message` pads whatever it is given to the width
-    /// of one bar. So anything with a newline in it is cleared and printed
-    /// rather than handed to the bar.
+    /// How much of a download has landed, against the name of the step doing it.
+    fn landed(&mut self, done: u64, total: u64) {
+        let name = self.applying.clone().unwrap_or_default();
+        self.region.count(&name, done, total);
+    }
+
+    /// Stops the live line and leaves the finished one on screen.
     fn settle(&mut self, message: &str) {
-        if let Some(bar) = self.spinner.take() {
-            if !message.contains('\n') {
-                bar.finish_with_message(message.to_owned());
-                return;
-            }
-            bar.finish_and_clear();
+        if !self.region.settle(message) {
+            print(&format!("{message}\n"));
         }
-        print(&format!("{message}\n"));
     }
 
     /// One finished step, with the evidence for what it did.

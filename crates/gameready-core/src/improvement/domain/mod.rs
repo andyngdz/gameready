@@ -2,6 +2,7 @@
 
 mod context;
 mod dependency;
+mod doing;
 mod identity;
 mod outcome;
 mod plan;
@@ -11,6 +12,7 @@ mod verify;
 
 pub use context::{ApplyCx, CoreCx};
 pub use dependency::{Dependency, DependencyKind, KernelVersion, PackageSpec};
+pub use doing::Doing;
 pub use identity::{ImprovementId, Privilege, Tag};
 pub use outcome::{Outcome, OutcomeKind, RollbackStatus, SkipReason};
 pub use plan::{PlannedAction, PlannedPackage, StepPlan};

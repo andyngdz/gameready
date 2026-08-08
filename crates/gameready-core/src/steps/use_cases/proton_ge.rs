@@ -137,7 +137,8 @@ impl CoreImprovement for ProtonGe {
         let release = fetch_release(cx.reader())?;
 
         cx.progress(&format!("Downloading {}", tarball_name(&release.tag)));
-        let temp_path = download_verified(cx.reader(), &release)?;
+        let total = release.tarball_bytes;
+        let temp_path = download_verified(cx.reader(), &release, &|done| cx.bytes(done, total))?;
         let temp_str = temp_path.to_string_lossy().into_owned();
         let install_dir = self.install_dir(&release.tag);
 

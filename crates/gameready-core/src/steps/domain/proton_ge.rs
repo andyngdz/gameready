@@ -11,6 +11,14 @@ pub struct ProtonRelease {
     pub tarball_url: String,
     /// Download URL for the x86_64 sha512sum file.
     pub checksum_url: String,
+
+    /// How big the tarball is, in bytes.
+    ///
+    /// Read from the release rather than from a HEAD request, so the download
+    /// knows what it is aiming at before it opens a connection. Zero when the
+    /// API did not report it, which the caller reads as "no total to show"
+    /// rather than as an empty file.
+    pub tarball_bytes: u64,
 }
 
 /// Parses the GitHub API JSON for `/repos/.../releases/latest` into a
@@ -22,11 +30,10 @@ pub fn parse_release(json: &str) -> Option<ProtonRelease> {
     let release: GitHubRelease = serde_json::from_str(json).ok()?;
     let tag = release.tag_name;
 
-    let tarball_url = release
+    let tarball = release
         .assets
         .iter()
-        .find(|asset| is_x86_tarball(&asset.name))
-        .map(|asset| asset.browser_download_url.clone())?;
+        .find(|asset| is_x86_tarball(&asset.name))?;
 
     let checksum_url = release
         .assets
@@ -36,8 +43,9 @@ pub fn parse_release(json: &str) -> Option<ProtonRelease> {
 
     Some(ProtonRelease {
         tag,
-        tarball_url,
+        tarball_url: tarball.browser_download_url.clone(),
         checksum_url,
+        tarball_bytes: tarball.size,
     })
 }
 
@@ -107,6 +115,11 @@ struct GitHubRelease {
 struct GitHubAsset {
     name: String,
     browser_download_url: String,
+
+    /// How big the asset is, which GitHub reports and the download would
+    /// otherwise have to discover by finishing.
+    #[serde(default)]
+    size: u64,
 }
 
 #[cfg(test)]

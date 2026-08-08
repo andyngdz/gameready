@@ -3,10 +3,12 @@
 use std::time::Instant;
 
 use crate::exec::CommandRunner;
-use crate::improvement::{ApplyCx, CoreCx, CoreImprovement, Outcome, RollbackStatus, StepError};
+use crate::improvement::{
+    ApplyCx, CoreCx, CoreImprovement, Doing, Outcome, RollbackStatus, StepError,
+};
 use crate::journal::{Change, Journal};
 
-type OnProgress<'a> = Option<Box<dyn FnMut(&str) + 'a>>;
+type OnProgress<'a> = Option<Box<dyn FnMut(Doing) + 'a>>;
 
 /// Applies one step, then proves the change took effect.
 ///

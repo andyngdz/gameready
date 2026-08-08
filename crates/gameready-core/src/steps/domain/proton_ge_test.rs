@@ -10,11 +10,13 @@ fn parses_a_release_with_x86_and_aarch64_assets() {
           "assets": [
             {
               "name": "GE-Proton11-3.tar.gz",
-              "browser_download_url": "https://github.com/dl/GE-Proton11-3.tar.gz"
+              "browser_download_url": "https://github.com/dl/GE-Proton11-3.tar.gz",
+              "size": 186703872
             },
             {
               "name": "GE-Proton11-3.sha512sum",
-              "browser_download_url": "https://github.com/dl/GE-Proton11-3.sha512sum"
+              "browser_download_url": "https://github.com/dl/GE-Proton11-3.sha512sum",
+              "size": 141
             },
             {
               "name": "GE-Proton11-3-aarch64.tar.gz",
@@ -38,6 +40,33 @@ fn parses_a_release_with_x86_and_aarch64_assets() {
         release.checksum_url,
         "https://github.com/dl/GE-Proton11-3.sha512sum"
     );
+    // The tarball's size, not the checksum file's: the progress bar is about
+    // the 178 MB, not the 141 bytes beside it.
+    assert_eq!(release.tarball_bytes, 186_703_872);
+}
+
+#[test]
+fn a_release_that_reports_no_size_parses_with_nothing_to_aim_at() {
+    // Every release GitHub serves carries one. A run must not fall over
+    // because a mirror or a fixture left the field out.
+    let json = indoc! {r#"
+        {
+          "tag_name": "GE-Proton11-3",
+          "assets": [
+            {
+              "name": "GE-Proton11-3.tar.gz",
+              "browser_download_url": "https://github.com/dl/GE-Proton11-3.tar.gz"
+            },
+            {
+              "name": "GE-Proton11-3.sha512sum",
+              "browser_download_url": "https://github.com/dl/GE-Proton11-3.sha512sum"
+            }
+          ]
+        }
+    "#};
+
+    let release = parse_release(json).expect("should parse");
+    assert_eq!(release.tarball_bytes, 0);
 }
 
 #[test]

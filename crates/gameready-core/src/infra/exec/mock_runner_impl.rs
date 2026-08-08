@@ -127,6 +127,24 @@ impl CommandRunner for MockRunner {
         self.file(path).is_some()
     }
 
+    /// Hands over what the URL was seeded with, in pieces.
+    ///
+    /// Reported in more than one call on purpose: a caller that only ever hears
+    /// the final total looks identical to one that reports nothing until the
+    /// end, and that is the bug this whole path exists to avoid.
+    fn download(&self, url: &str, dest: &Path, on_bytes: &dyn Fn(u64)) -> Result<(), ExecError> {
+        let Some(body) = self.served.get(url) else {
+            return Err(ExecError::Download {
+                url: url.to_owned(),
+                detail: "no test seeded this url".to_owned(),
+            });
+        };
+        let total = body.len() as u64;
+        on_bytes(total / 2);
+        on_bytes(total);
+        self.write_file(dest, body, Privilege::User)
+    }
+
     fn which(&self, binary: &str) -> Option<PathBuf> {
         let present = self
             .state

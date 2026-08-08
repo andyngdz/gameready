@@ -83,6 +83,19 @@ pub trait CommandRunner: Send + Sync {
     /// be stat'd, which is the useful answer for probing.
     fn path_exists(&self, path: &Path) -> bool;
 
+    /// Fetches a URL into a file, reporting how much has landed as it goes.
+    ///
+    /// Its own method rather than one more command for two reasons. A download
+    /// is the only thing a run does whose end is knowable while it is still
+    /// happening, and a process that is started and waited on cannot say how
+    /// far it got. And a fixture run has to be able to refuse it: reads answer
+    /// from a directory, and a fetch that reached the network anyway would make
+    /// the fixture a fiction.
+    ///
+    /// Always the invoking user. Nothing gameready downloads lands outside the
+    /// user's own directories.
+    fn download(&self, url: &str, dest: &Path, on_bytes: &dyn Fn(u64)) -> Result<(), ExecError>;
+
     /// Resolves an executable on `PATH`.
     ///
     /// Used to probe binary dependencies. Deliberately not "ask the package

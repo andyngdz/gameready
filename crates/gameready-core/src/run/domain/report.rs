@@ -199,6 +199,17 @@ pub enum RunEvent {
         message: String,
     },
 
+    /// A step is fetching something whose size it knew in advance.
+    ///
+    /// Separate from `StepProgress` because it is the one thing a run does
+    /// whose end is knowable while it is still happening. A 178 MB download
+    /// behind a spinner is indistinguishable from a hung one.
+    StepBytes {
+        step: ImprovementId,
+        done: u64,
+        total: u64,
+    },
+
     /// A step finished.
     Finished {
         step: ImprovementId,

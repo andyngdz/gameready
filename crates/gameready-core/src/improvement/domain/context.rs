@@ -6,6 +6,7 @@ use crate::improvement::errors::StepError;
 use crate::journal::{Change, Journal, JournalEvent, RunId};
 use crate::pkg::PackageManager;
 
+use super::doing::Doing;
 use super::identity::ImprovementId;
 
 /// Read-only context for a system-wide step.
@@ -70,7 +71,7 @@ impl<'a> CoreCx<'a> {
     }
 }
 
-type ProgressCallback<'a> = std::cell::RefCell<Box<dyn FnMut(&str) + 'a>>;
+type ProgressCallback<'a> = std::cell::RefCell<Box<dyn FnMut(Doing) + 'a>>;
 
 /// Mutating context, handed only to `apply` and `rollback`.
 ///
@@ -151,21 +152,37 @@ impl<'a, C> ApplyCx<'a, C> {
     /// downloads, verifies, and extracts shows each phase individually
     /// rather than one long-running spinner.
     #[must_use]
-    pub fn with_progress(mut self, callback: Box<dyn FnMut(&str) + 'a>) -> Self {
+    pub fn with_progress(mut self, callback: Box<dyn FnMut(Doing) + 'a>) -> Self {
         self.on_progress = Some(std::cell::RefCell::new(callback));
         self
     }
 
     /// Reports a sub-phase to the CLI.
-    ///
-    /// Does nothing when no progress callback is attached, so steps that
-    /// call it are harmless in tests and dry runs.
     pub fn progress(&self, message: &str) {
+        self.report(Doing::Phase(message.to_owned()));
+    }
+
+    /// Reports how much of a known total has landed.
+    ///
+    /// For a step that knows what it is fetching before it starts. A total of
+    /// zero is not reported at all: a bar with no end is worse than the spinner
+    /// it would replace.
+    pub fn bytes(&self, done: u64, total: u64) {
+        if total > 0 {
+            self.report(Doing::Bytes { done, total });
+        }
+    }
+
+    /// Hands one report to whoever is listening.
+    ///
+    /// Does nothing when no callback is attached, so steps that report are
+    /// harmless in tests and dry runs.
+    fn report(&self, doing: Doing) {
         let Some(ref cell) = self.on_progress else {
             return;
         };
         if let Ok(mut callback) = cell.try_borrow_mut() {
-            callback(message);
+            callback(doing);
         }
     }
 

@@ -50,6 +50,12 @@ pub enum ExecError {
     #[error("{escalator} needs a password but the run is non-interactive")]
     EscalationNeedsPassword { escalator: String },
 
+    /// A download did not complete. Separate from [`Self::Read`] because the
+    /// thing that failed is a URL, and telling a user a path could not be read
+    /// when their connection dropped sends them to look at the wrong thing.
+    #[error("downloading `{url}` failed: {detail}")]
+    Download { url: String, detail: String },
+
     /// A dry run was asked to perform a mutation. This is a programming error
     /// rather than a user-facing one: the executor should never route a
     /// mutation to the dry runner.

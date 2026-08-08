@@ -97,6 +97,17 @@ impl CommandRunner for FixtureRunner {
         self.resolve(path).exists()
     }
 
+    /// Refused, like every other write.
+    ///
+    /// A fixture stands in for a machine. One that reached the network anyway
+    /// would make every screen taken against it a screen of something else.
+    fn download(&self, url: &str, _dest: &Path, _on_bytes: &dyn Fn(u64)) -> Result<(), ExecError> {
+        Err(ExecError::Download {
+            url: url.to_owned(),
+            detail: "this run reads a fixture directory and reaches no network".to_owned(),
+        })
+    }
+
     fn which(&self, binary: &str) -> Option<PathBuf> {
         self.has_binary(binary)
             .then(|| PathBuf::from(FAKE_BIN_DIR).join(binary))

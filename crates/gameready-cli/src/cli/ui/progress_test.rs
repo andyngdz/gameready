@@ -21,7 +21,7 @@ fn a_finished_event_clears_the_spinner() {
         kind: OutcomeKind::Applied,
         detail: Some("verified".to_owned()),
     });
-    assert!(view.spinner.is_none());
+    assert!(!view.region.is_live());
 }
 
 #[test]
@@ -68,8 +68,32 @@ fn a_sub_phase_reads_against_the_step_it_belongs_to() {
         message: "downloading".to_owned(),
     });
 
-    let message = view.spinner.as_ref().expect("a spinner").message();
+    let message = view.region.saying().expect("a live line");
     assert_eq!(message, "Proton-GE · downloading");
+}
+
+#[test]
+fn a_download_turns_the_spinner_into_a_bar_and_finishing_takes_it_away() {
+    let mut view = ProgressView::new();
+    view.on_event(RunEvent::Applying {
+        step: ImprovementId::from_static("core.proton.ge"),
+        name: "Proton-GE".to_owned(),
+    });
+
+    view.on_event(RunEvent::StepBytes {
+        step: ImprovementId::from_static("core.proton.ge"),
+        done: 65_536,
+        total: 186_703_872,
+    });
+    assert_eq!(view.region.counting(), Some(186_703_872));
+
+    view.on_event(RunEvent::Finished {
+        step: ImprovementId::from_static("core.proton.ge"),
+        name: "Proton-GE".to_owned(),
+        kind: OutcomeKind::Applied,
+        detail: Some("installed".to_owned()),
+    });
+    assert_eq!(view.region.counting(), None);
 }
 
 #[test]

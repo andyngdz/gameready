@@ -64,6 +64,10 @@ fn apply_runner() -> MockRunner {
             format!("sha512sum {temp_tarball}"),
             "abc123  GE-Proton11-3.tar.gz\n",
         )
+        .serving(
+            "https://github.com/dl/GE-Proton11-3.tar.gz",
+            "a tarball, as far as this test is concerned",
+        )
 }
 
 // --- identity ---

@@ -43,6 +43,7 @@ mod plan;
 mod progress;
 mod prompt;
 pub(crate) mod questions;
+mod region;
 mod rollback;
 mod selftest;
 mod steps;

@@ -1,6 +1,7 @@
 //! Implementations of [`crate::exec::CommandRunner`].
 
 pub(crate) mod constants;
+mod download;
 mod dry_runner;
 mod files;
 mod fixture_runner;

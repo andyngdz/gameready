@@ -28,6 +28,8 @@ pub struct MockRunner {
     pub(super) state: Mutex<MockState>,
     responses: HashMap<String, CmdOutput>,
     effects: HashMap<String, Vec<(PathBuf, String)>>,
+    /// What each URL serves, for the one step that fetches something.
+    pub(super) served: HashMap<String, String>,
     pub(super) triggers: HashMap<String, Vec<Unlock>>,
     failing: HashSet<String>,
     fail_at: Option<usize>,
@@ -59,6 +61,16 @@ impl MockRunner {
         if let Ok(mut state) = self.state.lock() {
             state.files.insert(path.into(), contents.into());
         }
+        self
+    }
+
+    /// Seeds what a URL serves.
+    ///
+    /// A URL nothing seeded fails, the same way a real fetch of a URL nothing
+    /// serves fails, so a test cannot pass by downloading emptiness.
+    #[must_use]
+    pub fn serving(mut self, url: impl Into<String>, body: impl Into<String>) -> Self {
+        self.served.insert(url.into(), body.into());
         self
     }
 

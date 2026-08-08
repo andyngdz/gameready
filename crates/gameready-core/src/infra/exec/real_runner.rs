@@ -217,6 +217,10 @@ impl CommandRunner for RealRunner {
         path.exists()
     }
 
+    fn download(&self, url: &str, dest: &Path, on_bytes: &dyn Fn(u64)) -> Result<(), ExecError> {
+        super::download::fetch(url, dest, on_bytes)
+    }
+
     fn which(&self, binary: &str) -> Option<PathBuf> {
         which_on_path(binary)
     }
