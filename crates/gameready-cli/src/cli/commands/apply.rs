@@ -47,8 +47,11 @@ pub fn run(
         ui::InstallList::new(&plan, family).to_string()
     };
 
-    // Nothing above this line changed anything. Nothing below it asks.
-    escalation.ask()?;
+    // Nothing above this line changed anything. Nothing below it asks, and it
+    // only asks when a step in the run reaches outside the user's own files.
+    if plan.needs_root() {
+        escalation.ask()?;
+    }
 
     let mut journal =
         Journal::open(paths.clone(), RunId::generate()).context(CANNOT_OPEN_JOURNAL)?;

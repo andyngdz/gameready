@@ -9,9 +9,10 @@ use gameready_core::infra::steam::{
     configs_under, locate_steam_dir, write_steam_settings, SteamSettings,
 };
 use gameready_core::journal::Journal;
+use gameready_core::run::RunReport;
 use inquire::Select;
 
-use crate::cli::ui::{theme, Answers, LaunchInstructions, LaunchReport};
+use crate::cli::ui::{theme, Answers, LaunchInstructions};
 
 /// What the user wants done about the per-game settings Steam holds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,23 +28,38 @@ pub enum LaunchChoice {
     ShowForCopying,
 }
 
+/// What became of the per-game settings.
+///
+/// The written case hands back the run rather than a screen of its own. Steam's
+/// settings are part of what this run did, and a second verdict under the first
+/// one would be a second answer to the question the summary already answers.
+pub enum SteamSettingsDone {
+    /// Nothing to set: a machine with no matching game has nothing to say here.
+    Nothing,
+
+    /// Left to the user, with what to type.
+    Instructions(String),
+
+    /// Written, with what each setting did.
+    Written(Box<RunReport>),
+}
+
 impl LaunchChoice {
-    /// Carries out the choice and returns the text describing what happened.
-    ///
-    /// Nothing to set is not an error and not a screen: a machine with no
-    /// matching game has nothing to say here.
+    /// Carries out the choice.
     pub fn carry_out(
         self,
         runner: &dyn CommandRunner,
         facts: &SystemFacts,
         journal: &mut Journal,
         answers: &Answers,
-    ) -> Result<String> {
+    ) -> Result<SteamSettingsDone> {
         if answers.targets.is_empty() && answers.proton.is_empty() {
-            return Ok(String::new());
+            return Ok(SteamSettingsDone::Nothing);
         }
         match self {
-            Self::ShowForCopying => Ok(LaunchInstructions::new(answers).to_string()),
+            Self::ShowForCopying => Ok(SteamSettingsDone::Instructions(
+                LaunchInstructions::new(answers).to_string(),
+            )),
             Self::CloseSteamAndWrite => {
                 let steam = locate_steam_dir().context(NO_STEAM)?;
                 let configs = configs_under(&steam).context(NO_STEAM)?;
@@ -52,7 +68,7 @@ impl LaunchChoice {
                     proton: answers.proton.clone(),
                 };
                 let written = write_steam_settings(runner, facts, journal, configs, settings)?;
-                Ok(LaunchReport::new(&written).to_string())
+                Ok(SteamSettingsDone::Written(Box::new(written)))
             }
         }
     }

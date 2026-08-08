@@ -34,6 +34,54 @@ fn plan_needing(status: DependencyStatus) -> RunPlan {
     }
 }
 
+/// A plan whose pending steps are the catalog steps with these ids.
+///
+/// Real steps rather than a fake, because the question is what a step's own
+/// `privilege` says, and a fake that answers it is a test of the fake.
+fn plan_applying(ids: &[&str]) -> RunPlan {
+    let mut plan = plan_needing(DependencyStatus::Present);
+    plan.pending = crate::steps::core_steps()
+        .into_iter()
+        .filter(|step| ids.contains(&step.id().as_str()))
+        .collect();
+    assert_eq!(plan.pending.len(), ids.len(), "an id named no catalog step");
+    plan
+}
+
+#[test]
+fn a_plan_of_nothing_but_the_users_own_files_needs_no_password() {
+    // Reading systemd unit states and writing Steam's config are both the
+    // user's own business, and asking for a password to do them teaches a user
+    // to type it without reading what asked.
+    let plan = plan_applying(&["core.conflicts", "core.proton.ge"]);
+
+    assert!(!plan.needs_root());
+}
+
+#[test]
+fn one_step_that_reaches_outside_the_home_is_enough_to_need_a_password() {
+    let plan = plan_applying(&["core.conflicts", "core.sysctl.max-map-count"]);
+
+    assert!(plan.needs_root());
+}
+
+#[test]
+fn a_held_open_step_counts_towards_the_password() {
+    // It may be released mid-run, and stopping to ask then would be asking
+    // after the run had already started changing things.
+    let mut plan = plan_applying(&["core.conflicts"]);
+    plan.deferred = vec![Deferred {
+        step: crate::steps::core_steps()
+            .into_iter()
+            .find(|step| step.id().as_str() == "core.sysctl.max-map-count")
+            .expect("a catalog step"),
+        reason: "held open for the test".to_owned(),
+        waiting_on: vec![ImprovementId::from_static("core.conflicts")],
+    }];
+
+    assert!(plan.needs_root());
+}
+
 #[test]
 fn a_plan_with_a_missing_package_needs_an_install() {
     let plan = plan_needing(DependencyStatus::Missing);

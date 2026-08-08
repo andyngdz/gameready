@@ -4,7 +4,6 @@ use std::fmt;
 
 use console::style;
 use gameready_core::facts::PackageManagerKind;
-use gameready_core::improvement::Privilege;
 use gameready_core::run::{InstallConsent, Mode, RunPlan};
 use gameready_core::steam::{GameSetup, Overlay};
 use itertools::Itertools as _;
@@ -130,17 +129,11 @@ impl<'a> InitPlan<'a> {
 
     /// Whether anything in this run reaches outside the user's own files.
     ///
-    /// Read off the steps rather than off the mode, because that is the same
-    /// answer the escalation uses a moment later: a run of nothing but Steam
-    /// config never prompts, and promising a password prompt that never comes
-    /// is its own kind of wrong.
+    /// The same question the escalation asks a moment later, answered from the
+    /// same place: a run of nothing but Steam config never prompts, and
+    /// promising a password prompt that never comes is its own kind of wrong.
     fn needs_password(&self) -> bool {
-        self.mode.mutates()
-            && self
-                .plan
-                .pending
-                .iter()
-                .any(|step| matches!(step.privilege(), Privilege::Root))
+        self.mode.mutates() && self.plan.needs_root()
     }
 
     /// Every row, in the order the run will carry them out.

@@ -3,7 +3,7 @@
 use std::time::Instant;
 
 use crate::facts::PackageManagerKind;
-use crate::improvement::{CoreImprovement, ImprovementId};
+use crate::improvement::{CoreImprovement, ImprovementId, Privilege};
 use crate::run::domain::preflight::PreflightReport;
 use crate::run::domain::report::StepReport;
 
@@ -107,6 +107,18 @@ impl RunPlan {
     #[must_use]
     pub fn to_apply(&self) -> usize {
         self.pending.len() + self.deferred.len()
+    }
+
+    /// Whether anything this run may apply reaches outside the user's files.
+    ///
+    /// Held-open steps count: one of them being released is not a reason to
+    /// stop and ask for a password half way through a run that has already
+    /// started changing things.
+    #[must_use]
+    pub fn needs_root(&self) -> bool {
+        self.considered()
+            .iter()
+            .any(|step| matches!(step.privilege(), Privilege::Root))
     }
 
     /// Whether this run would put any software on the machine.

@@ -97,6 +97,43 @@ impl InitRequest<'_> {
         }
         String::new()
     }
+
+    /// Applies the plan, then the per-game settings, as one run.
+    ///
+    /// One report out, not two. Steam's settings are written after the sweep
+    /// because Steam has to be closed first, but they are part of what this run
+    /// did: reporting them separately gave the summary a verdict computed
+    /// before half the work had happened.
+    fn carry_out(
+        &self,
+        runner: &dyn CommandRunner,
+        facts: &facts::SystemFacts,
+        cx: &CoreCx<'_>,
+        plan: RunPlan,
+        answers: Answers,
+        journal: &mut Journal,
+    ) -> Result<(RunReport, String)> {
+        let mut progress = ui::ProgressView::sweeping(self.mode, plan.to_apply());
+        let mut report = apply_plan(
+            plan,
+            cx,
+            journal,
+            self.mode,
+            answers.consent,
+            &mut |event| {
+                progress.on_event(event);
+            },
+        )?;
+        drop(progress);
+
+        let mut tail = String::new();
+        match answers.launch.carry_out(runner, facts, journal, &answers)? {
+            ui::SteamSettingsDone::Nothing => {}
+            ui::SteamSettingsDone::Instructions(text) => tail.push_str(&text),
+            ui::SteamSettingsDone::Written(steam) => report.steps.extend(steam.steps),
+        }
+        Ok((report, tail))
+    }
 }
 
 /// The compatibility tools this machine has, by directory name.
@@ -151,33 +188,24 @@ pub fn run(
     let (answers, rendered) = request.ask(&setups, &run_plan, family, &tools)?;
     let mut out = request.checkpoint(rendered);
 
-    // Nothing above this line changed anything. Nothing below it asks.
-    escalation.ask()?;
+    // Nothing above this line changed anything. Nothing below it asks. The
+    // password is asked for only when something in the run reaches outside the
+    // user's own files: a run of nothing but Steam config never prompts, which
+    // is what the plan screen a moment ago promised.
+    if run_plan.needs_root() {
+        escalation.ask()?;
+    }
 
     // The governor answer is known only now, so the context the run applies
     // with is rebuilt to carry it. Copy, so this shadows without disturbing the
     // borrows above.
     let cx = cx.with_governor_pinned(answers.governor_pinned);
-
     let mut journal =
         Journal::open(paths.clone(), RunId::generate()).context(CANNOT_OPEN_JOURNAL)?;
-    let mut progress = ui::ProgressView::sweeping(request.mode, run_plan.to_apply());
-    let report = apply_plan(
-        run_plan,
-        &cx,
-        &mut journal,
-        request.mode,
-        answers.consent,
-        &mut |event| progress.on_event(event),
-    )?;
-    drop(progress);
+    let (report, tail) = request.carry_out(runner, &facts, &cx, run_plan, answers, &mut journal)?;
 
     out.push_str(&ui::Summary::new(&report, &paths.journal()).to_string());
-    out.push_str(
-        &answers
-            .launch
-            .carry_out(runner, &facts, &mut journal, &answers)?,
-    );
+    out.push_str(&tail);
     Ok((report, out))
 }
 
