@@ -104,6 +104,27 @@ pub enum Tag {
     Steam,
 }
 
+impl Tag {
+    /// What this area is called on a screen a user reads.
+    ///
+    /// Not the variant name lowercased: "io" and "scheduler" are how the code
+    /// talks about the machine, and a plan that says it will change "io" has
+    /// told the user nothing.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Cpu => "the CPU",
+            Self::Gpu => "graphics",
+            Self::Io => "disks",
+            Self::Memory => "memory",
+            Self::Scheduler => "the CPU scheduler",
+            Self::Overlay => "the overlay",
+            Self::Wine => "Wine and Proton",
+            Self::Steam => "Steam",
+        }
+    }
+}
+
 #[cfg(test)]
 #[path = "identity_test.rs"]
 mod identity_test;

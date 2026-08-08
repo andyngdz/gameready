@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use gameready_core::run::{compat_targets_for, targets_for, InstallConsent};
-use gameready_core::steam::{with_overlay, GameSetup};
+use gameready_core::steam::{with_overlay, GameSetup, Overlay};
 use gameready_core::steps::{CompatTarget, LaunchTarget};
 
 use crate::cli::ui::{LaunchChoice, Questions, SteamWork, Steps};
@@ -19,6 +19,10 @@ pub struct Answers {
     pub launch: LaunchChoice,
     /// Whether the run may install the packages its steps need.
     pub consent: InstallConsent,
+    /// Whether those games show a frame-rate overlay. Already folded into
+    /// `selected`, and kept because the plan screen has to say which way it
+    /// went and cannot read it back out of a launch option.
+    pub overlay: Overlay,
     /// Whether the CPU governor, if pinned this run, should survive a reboot.
     pub governor_pinned: bool,
 }
@@ -53,6 +57,7 @@ pub fn ask_everything(questions: &Questions<'_>) -> Result<Answers> {
         proton,
         launch,
         consent,
+        overlay,
         governor_pinned,
     })
 }

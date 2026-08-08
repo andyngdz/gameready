@@ -74,11 +74,28 @@ impl InitRequest<'_> {
         run_plan: &RunPlan,
         packages: PackageManagerKind,
     ) -> String {
-        let mut plan = ui::InitPlan::new(setups, answers, self.mode).to_string();
+        let mut plan =
+            ui::InitPlan::new(setups, answers, run_plan, packages, self.mode).to_string();
         if !self.mode.mutates() {
             plan.push_str(&ui::InstallList::new(run_plan, packages).to_string());
         }
         plan
+    }
+
+    /// Puts the agreed plan where the user will read it before deciding.
+    ///
+    /// A run that is about to change something shows it on stderr right before
+    /// the password prompt, which is the last moment it can still be stopped.
+    /// A dry run has nothing to stop, so its plan is the report itself and goes
+    /// to stdout with the rest.
+    fn checkpoint(&self, rendered: String) -> String {
+        if !self.mode.mutates() {
+            return rendered;
+        }
+        if console::user_attended_stderr() {
+            eprint!("{rendered}");
+        }
+        String::new()
     }
 }
 
@@ -131,7 +148,8 @@ pub fn run(
 
     let family = facts.distro.package_manager();
     let tools = compat_tools(steam.as_deref());
-    let (answers, mut out) = request.ask(&setups, &run_plan, family, &tools)?;
+    let (answers, rendered) = request.ask(&setups, &run_plan, family, &tools)?;
+    let mut out = request.checkpoint(rendered);
 
     // Nothing above this line changed anything. Nothing below it asks.
     escalation.ask()?;

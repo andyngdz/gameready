@@ -555,6 +555,7 @@ dependencies = [
  "inquire",
  "insta",
  "insta-cmd",
+ "itertools",
  "predicates",
  "serde_json",
  "tempfile",

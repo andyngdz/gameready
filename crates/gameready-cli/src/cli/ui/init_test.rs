@@ -31,6 +31,7 @@ fn answers(selected: Vec<GameSetup>, proton: Vec<CompatTarget>) -> Answers {
         proton,
         launch: LaunchChoice::ShowForCopying,
         consent: InstallConsent::Declined,
+        overlay: gameready_core::steam::Overlay::Hide,
         governor_pinned: false,
     }
 }

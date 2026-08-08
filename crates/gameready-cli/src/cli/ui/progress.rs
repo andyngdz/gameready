@@ -8,6 +8,7 @@ use gameready_core::run::RunEvent;
 use indicatif::{ProgressBar, ProgressStyle};
 
 use crate::cli::ui::layout::Mark;
+use crate::cli::ui::tunings;
 
 /// Renders step progress as a checklist on stderr.
 pub struct ProgressView {
@@ -80,8 +81,7 @@ impl ProgressView {
 
     /// How far the probing sweep has got, in the words the summary will use.
     fn checking(done: usize, total: usize) -> String {
-        let noun = if total == 1 { "tuning" } else { "tunings" };
-        format!("Checking {total} {noun} · {done} of {total}")
+        format!("Checking {total} {} · {done} of {total}", tunings(total))
     }
 
     fn start(&mut self, message: String) {

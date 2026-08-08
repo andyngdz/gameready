@@ -196,7 +196,9 @@ pub fn consent_to_install(
 /// Hand-rolled rather than pulled from a formatting crate: the input is already
 /// an estimate written by hand in each step's `PackageSpec`, so decimal-versus-
 /// binary precision would be false accuracy.
-fn approx_size(bytes: u64) -> String {
+///
+/// Shared with the plan screen, which totals the same packages on one line.
+pub(super) fn approx_size(bytes: u64) -> String {
     const MB: u64 = 1_000_000;
     if bytes < MB {
         return "under 1 MB".to_owned();

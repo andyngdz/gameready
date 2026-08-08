@@ -4,6 +4,24 @@
 /// The label that introduces the command that puts things back.
 pub(crate) const UNDO: &str = "Undo";
 
+/// What the tunings that are about the machine itself are called.
+pub(crate) const SYSTEM: &str = "System";
+
+/// What the tunings that are about one game are called.
+pub(crate) const PER_GAME: &str = "Per game";
+
+/// What to call `count` tunings.
+///
+/// Shared so the screen that counts them while probing and the screen that
+/// counts them in the plan cannot end up calling them different things.
+pub(crate) const fn tunings(count: usize) -> &'static str {
+    if count == 1 {
+        "tuning"
+    } else {
+        "tunings"
+    }
+}
+
 mod answers;
 mod doctor;
 mod explain;

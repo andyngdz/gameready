@@ -7,7 +7,7 @@ use gameready_core::improvement::{CoreCx, CoreImprovement, Privilege, Probe, Ste
 use gameready_core::steps::{core_steps, game_steps};
 
 use crate::cli::ui::layout::Section;
-use crate::cli::ui::UNDO;
+use crate::cli::ui::{PER_GAME, SYSTEM, UNDO};
 
 /// The command that puts a run back, shown at the foot of every explanation.
 const ROLLBACK_COMMAND: &str = "gameready rollback";
@@ -177,9 +177,9 @@ impl fmt::Display for StepIndex {
             self.system.len()
         ))?;
         let column = self.column();
-        self.group(&mut s, "System", &self.system, column)?;
+        self.group(&mut s, SYSTEM, &self.system, column)?;
         s.blank()?;
-        self.group(&mut s, "Per game", &self.per_game, column)?;
+        self.group(&mut s, PER_GAME, &self.per_game, column)?;
         s.blank()?;
         s.indented("Ask about any one: gameready explain core.io.scheduler")?;
         s.end()
