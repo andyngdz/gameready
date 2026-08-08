@@ -38,6 +38,6 @@ fn a_broken_user_profile_is_named_without_hiding_the_rest() {
     std::fs::write(dir.join("game.toml"), "nope").expect("write");
 
     let text = run(user.path()).expect("catalog loads");
-    assert!(text.contains("Could not read"), "{text}");
+    assert!(text.contains("Couldn't read 1 file"), "{text}");
     assert!(text.contains("Deadlock"), "{text}");
 }

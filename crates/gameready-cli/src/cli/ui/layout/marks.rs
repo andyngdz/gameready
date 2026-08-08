@@ -34,10 +34,6 @@ pub(crate) enum Mark {
 
     /// One entry in a list of things the run is about to act on.
     Chosen,
-
-    /// The gutter is deliberately empty, so a list without marks keeps the
-    /// same left edge as every screen that has them.
-    None,
 }
 
 impl Mark {
@@ -67,8 +63,9 @@ impl Mark {
 
     /// The glyph, coloured, exactly one column wide.
     ///
-    /// One column is a contract, not an accident: `Section::row` measures the
-    /// gutter to work out how much of the line the leader may fill.
+    /// One column is a contract, not an accident: every marked line prefixes
+    /// the glyph with a fixed indent and a trailing space, so a wider glyph
+    /// would push one row's text out of line with the rest.
     #[must_use]
     pub(crate) fn glyph(self) -> String {
         match self {
@@ -79,7 +76,6 @@ impl Mark {
             Self::Warning => style("!").yellow().to_string(),
             Self::Recheck => style("\u{21bb}").blue().to_string(),
             Self::Chosen => style("*").green().to_string(),
-            Self::None => " ".to_owned(),
         }
     }
 }

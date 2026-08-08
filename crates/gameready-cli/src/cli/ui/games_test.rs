@@ -22,7 +22,7 @@ fn profile(name: &str, app_id: u32, wrappers: Vec<Wrapper>) -> GameProfile {
 fn an_empty_catalog_says_so_rather_than_printing_a_bare_header() {
     let catalog = Catalog::new();
     let rendered = GameList::new(&catalog, &[]).to_string();
-    assert!(rendered.contains("none"), "{rendered}");
+    assert!(rendered.contains("No game profiles"), "{rendered}");
 }
 
 #[test]
@@ -62,7 +62,7 @@ fn wrappers_are_shown_as_the_commands_they_become() {
     );
 
     let rendered = GameList::new(&catalog, &[]).to_string();
-    assert!(rendered.contains("gamemoderun mangohud"), "{rendered}");
+    assert!(rendered.contains("gamemoderun, mangohud"), "{rendered}");
 }
 
 #[test]
@@ -101,6 +101,6 @@ fn a_profile_that_failed_to_load_is_reported_under_its_own_heading() {
     }];
 
     let rendered = GameList::new(&catalog, &failures).to_string();
-    assert!(rendered.contains("Could not read"), "{rendered}");
+    assert!(rendered.contains("Couldn't read 1 file"), "{rendered}");
     assert!(rendered.contains("Foo/game.toml"), "{rendered}");
 }

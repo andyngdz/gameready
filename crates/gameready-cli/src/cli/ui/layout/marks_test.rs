@@ -2,7 +2,7 @@ use gameready_core::improvement::OutcomeKind;
 
 use super::*;
 
-const EVERY_MARK: [Mark; 8] = [
+const EVERY_MARK: [Mark; 7] = [
     Mark::Applied,
     Mark::AlreadySet,
     Mark::Failed,
@@ -10,7 +10,6 @@ const EVERY_MARK: [Mark; 8] = [
     Mark::Warning,
     Mark::Recheck,
     Mark::Chosen,
-    Mark::None,
 ];
 
 #[test]
@@ -45,9 +44,8 @@ fn every_outcome_maps_to_the_mark_its_name_says() {
 
 #[test]
 fn every_mark_is_exactly_one_column_wide() {
-    // Section::row measures the gutter to work out how much of the line the
-    // dotted leader may fill, so a two-column glyph would push every row past
-    // the right edge.
+    // Every marked line prefixes the glyph with a fixed indent and a trailing
+    // space, so a two-column glyph would push one row's text past the rest.
     for mark in EVERY_MARK {
         let plain = console::strip_ansi_codes(&mark.glyph()).into_owned();
         assert_eq!(plain.chars().count(), 1, "{mark:?} is not one column");
@@ -55,12 +53,11 @@ fn every_mark_is_exactly_one_column_wide() {
 }
 
 #[test]
-fn no_two_marks_share_a_glyph_except_the_empty_gutter() {
+fn no_two_marks_share_a_glyph() {
     // Colour is confirmation, never the only signal, so two marks that differ
     // only by colour are indistinguishable under NO_COLOR.
     let mut plain: Vec<String> = EVERY_MARK
         .iter()
-        .filter(|mark| **mark != Mark::None)
         .map(|mark| console::strip_ansi_codes(&mark.glyph()).into_owned())
         .collect();
     let total = plain.len();

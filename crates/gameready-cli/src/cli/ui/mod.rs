@@ -1,9 +1,6 @@
 //! Turning reports into printable views. Nothing here writes to stdout; `main`
 //! does.
 
-/// The line an empty list prints, so a bare heading never looks like a bug.
-pub(crate) const NOTHING: &str = "  none";
-
 /// The label that introduces the command that puts things back.
 pub(crate) const UNDO: &str = "Undo";
 

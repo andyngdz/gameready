@@ -17,13 +17,6 @@ const LABEL: usize = 10;
 /// The indent every line inside a section carries.
 const INDENT: usize = 2;
 
-/// Columns a row spends on anything that is not the name or the evidence:
-/// the indent, the mark and its space, and a space either side of the leader.
-const ROW_FURNITURE: usize = 6;
-
-/// The shortest leader worth drawing. Two dots read as a typo.
-const MIN_LEADER: usize = 4;
-
 /// Writes structured output sections with consistent spacing and separators.
 ///
 /// Every section opens with a title and a blank line, carries indented content,
@@ -88,6 +81,16 @@ impl<'a, W: fmt::Write> Section<'a, W> {
         self.flow("     ", text)
     }
 
+    /// A label/value pair nested under a catalog entry: the label dimmed in a
+    /// shared column, the value beside it, indented one level past the entry.
+    ///
+    /// Written directly rather than through `flow`, whose word-wrapping would
+    /// collapse the padding that lines the values up across rows.
+    pub(crate) fn detail(&mut self, label: &str, value: &str, column: usize) -> fmt::Result {
+        let padded = format!("{label:<column$}");
+        writeln!(self.w, "    {} {}", style(padded).dim(), value)
+    }
+
     /// Writes `text` after `prefix`, wrapped to the layout width, with every
     /// line after the first indented to the column the text started at.
     ///
@@ -106,44 +109,11 @@ impl<'a, W: fmt::Write> Section<'a, W> {
         Ok(())
     }
 
-    /// One result row: mark, name, a dotted leader, and the evidence that
-    /// proves it, right-aligned to the layout width.
-    ///
-    /// The leader is what lets the eye run from a step's name to its value on a
-    /// wide terminal. When name and evidence together leave room for fewer than
-    /// `MIN_LEADER` dots, the evidence drops to its own sub-line instead.
-    ///
-    /// Both strings arrive unstyled and are styled here, because the leader
-    /// length is measured in columns and an escape code counts as none.
-    pub(crate) fn row(&mut self, mark: Mark, name: &str, evidence: Option<&str>) -> fmt::Result {
-        let named = style(name).bold().to_string();
-        let Some(evidence) = evidence else {
-            return self.marked(mark, &named);
-        };
-
-        let spent = ROW_FURNITURE
-            + console::measure_text_width(name)
-            + console::measure_text_width(evidence);
-        let leader = self.width.saturating_sub(spent);
-        if leader < MIN_LEADER {
-            self.marked(mark, &named)?;
-            return self.sub(&style(evidence).dim().to_string());
-        }
-
-        writeln!(
-            self.w,
-            "  {} {named} {} {}",
-            mark.glyph(),
-            style(".".repeat(leader)).dim(),
-            style(evidence).dim()
-        )
-    }
-
     /// A row whose short evidence sits inline after a dim separator.
     ///
-    /// The doctor screen uses this rather than [`Section::row`]: its values are
-    /// short and a reflowing "name · note" reads better than a dotted leader
-    /// run out to the right edge.
+    /// The value sits after the name as "name · note" and reflows with it,
+    /// which reads better for the short values the doctor and rollback screens
+    /// show than pushing each one out to the right edge.
     pub(crate) fn noted(&mut self, mark: Mark, name: &str, note: &str) -> fmt::Result {
         let text = format!(
             "{} {}",

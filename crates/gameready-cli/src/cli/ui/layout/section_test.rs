@@ -41,49 +41,6 @@ fn the_separator_is_as_wide_as_the_layout() {
 }
 
 #[test]
-fn a_row_fills_the_width_so_the_evidence_lands_on_the_right_edge() {
-    let mut buf = String::new();
-    Section::with_width(&mut buf, ROOMY)
-        .row(
-            Mark::Applied,
-            "Raise vm.max_map_count",
-            Some("65530 to 2147483642"),
-        )
-        .unwrap();
-
-    let line = plain(buf.trim_end());
-    assert_eq!(line.chars().count(), ROOMY);
-    assert!(line.ends_with(". 65530 to 2147483642"), "{line}");
-}
-
-#[test]
-fn a_row_with_no_evidence_is_just_a_marked_line() {
-    let mut buf = String::new();
-    Section::with_width(&mut buf, ROOMY)
-        .row(Mark::Applied, "Competing daemons", None)
-        .unwrap();
-    assert_eq!(plain(&buf).trim_end(), "  \u{2713} Competing daemons");
-}
-
-#[test]
-fn evidence_with_no_room_for_a_leader_drops_to_its_own_line() {
-    let mut buf = String::new();
-    Section::with_width(&mut buf, CRAMPED)
-        .row(
-            Mark::Applied,
-            "I/O scheduler for the boot disk nvme0n1",
-            Some("mq-deadline to none"),
-        )
-        .unwrap();
-
-    let rendered = plain(&buf);
-    let lines: Vec<&str> = rendered.lines().collect();
-    assert_eq!(lines.len(), 2);
-    assert!(!lines[0].contains('.'), "{}", lines[0]);
-    assert_eq!(lines[1], "     mq-deadline to none");
-}
-
-#[test]
 fn a_labelled_paragraph_wraps_inside_the_layout_width() {
     let mut buf = String::new();
     let prose = "Steam rewrites its own config when it quits, so it has to close \
