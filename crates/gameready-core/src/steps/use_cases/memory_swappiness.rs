@@ -88,6 +88,10 @@ impl Improvement for Swappiness {
         "Swappiness"
     }
 
+    fn blurb(&self) -> &str {
+        "Swappiness for zram"
+    }
+
     fn rationale(&self) -> &str {
         "When swap lives in zram, a swapped-out page is compressed into RAM \
          rather than written to disk, so swapping early frees more usable memory \

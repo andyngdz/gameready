@@ -54,6 +54,10 @@ impl Improvement for Conflicts {
         "Competing daemons"
     }
 
+    fn blurb(&self) -> &str {
+        "Daemons that fight gamemode"
+    }
+
     fn rationale(&self) -> &str {
         "ananicy-cpp, tuned, and power-profiles-daemon each set process \
          priorities or the CPU governor on their own schedule. With one of them \

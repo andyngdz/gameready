@@ -24,10 +24,9 @@ const RULE_BODY: &str = r#"SUBSYSTEM=="cpu", ATTR{cpufreq/scaling_governor}="per
 /// `requires` would hand back a reference to a temporary.
 static UNLOCKED_BY: [ImprovementId; 1] = [GamingTools::id_const()];
 
-/// Holds the CPU clocks up while a game runs, but only where nothing else does.
-///
-/// gamemode does this per game and better; this step steps in only where
-/// gamemode is absent and no daemon already owns the governor.
+/// Holds the CPU clocks up while a game runs, but only where nothing else does:
+/// gamemode does it per game and better, so this steps in only where gamemode
+/// is absent and no daemon already owns the governor.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct CpuGovernor;
 
@@ -60,6 +59,10 @@ impl Improvement for CpuGovernor {
         "CPU governor"
     }
 
+    fn blurb(&self) -> &str {
+        "The CPU governor, when nothing else raises it"
+    }
+
     fn rationale(&self) -> &str {
         "A frame is late when the CPU is still ramping its clocks as it arrives. \
          The performance governor holds them up so it does not. gamemode does \
@@ -77,9 +80,7 @@ impl Improvement for CpuGovernor {
         &[Tag::Cpu]
     }
 
-    /// gamemode arriving in this same run changes the answer from "pin it" to
-    /// "gamemode has it", so a probe taken before GamingTools installs gamemode
-    /// is looked at again after it does.
+    /// gamemode arriving mid-run flips this to "gamemode has it"; re-probe then.
     fn requires(&self) -> &[ImprovementId] {
         &UNLOCKED_BY
     }
@@ -88,7 +89,6 @@ impl Improvement for CpuGovernor {
 impl CoreImprovement for CpuGovernor {
     fn probe(&self, cx: &CoreCx<'_>) -> Result<Probe, StepError> {
         let policies = read_policies(cx.runner);
-
         if policies.is_empty() {
             return Ok(Probe::NotApplicable {
                 reason: "this machine reports no CPU governor to set".to_owned(),
@@ -104,8 +104,7 @@ impl CoreImprovement for CpuGovernor {
                 reason: "this hardware offers no performance governor".to_owned(),
             });
         }
-        // Before the gamemode check: with one of these live, gamemode's own
-        // raise is being overwritten too, so "gamemode has it" would be false.
+        // Before the gamemode check: a live daemon overwrites gamemode too.
         if let Some(daemon) = conflicting_daemon(cx.runner) {
             return Ok(Probe::Conflict {
                 with: daemon.to_owned(),

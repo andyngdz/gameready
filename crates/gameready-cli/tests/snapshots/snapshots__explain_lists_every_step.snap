@@ -4,19 +4,24 @@ expression: "gameready(&[\"explain\"])"
 ---
 exit code: 0
 ----- stdout -----
-Steps
+9 tunings, in the order a run works through them
 
-    core.conflicts .................................... Check for daemons that compete with gamemode
-    core.sysctl.max-map-count ............................. Raise vm.max_map_count for Proton titles
-    core.io.scheduler ................................................ Set each disk's I/O scheduler
-    core.memory.swappiness ....................................... Raise vm.swappiness for zram swap
-    core.pkg.tools ................................................... Install gamemode and mangohud
-    core.proton.ge ........................................................ Install latest Proton-GE
-    core.repo.scx-ppa ............................................... Add the scx package repository
-    core.sched.scx-lavd ....................................... Switch the CPU scheduler to scx_lavd
-    core.cpu.governor .......................................... Pin the CPU governor to performance
+System
+  core.conflicts            Daemons that fight gamemode
+  core.sysctl.max-map-count Memory maps for Proton titles
+  core.io.scheduler         An I/O scheduler per disk
+  core.memory.swappiness    Swappiness for zram
+  core.pkg.tools            gamemode and mangohud
+  core.proton.ge            Latest Proton-GE
+  core.repo.scx-ppa         The scx repository, Debian only
+  core.sched.scx-lavd       The scx_lavd CPU scheduler
+  core.cpu.governor         The CPU governor, when nothing else raises it
 
-  Run `gameready explain <id>` for what one of them would do here.
+Per game
+  game.steam.launch-options Steam launch options
+  game.steam.proton         A pinned Proton build
+
+  Ask about any one: gameready explain core.io.scheduler
 ----------------------------------------------------------------------------------------------------
 
 ----- stderr -----

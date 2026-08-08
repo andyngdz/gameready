@@ -14,7 +14,7 @@ pub use domain::{
     apply_targets, newest_ge_proton, restore_scheduler, CompatTarget, CompetingDaemon, Edited,
     GamingTool, LaunchTarget, COMPETING_DAEMONS, GAMING_TOOLS,
 };
-pub use service::{core_steps, find_core_step};
+pub use service::{core_steps, find_core_step, game_steps};
 pub(crate) use use_cases::{disk_inventory, read_sched_ext, DiskInventory};
 pub use use_cases::{
     Conflicts, CpuGovernor, GamingTools, IoScheduler, MaxMapCount, ScxLavd, ScxPpa,

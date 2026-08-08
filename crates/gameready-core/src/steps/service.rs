@@ -1,9 +1,11 @@
 //! The catalog of built-in improvements.
 
+use std::path::PathBuf;
+
 use crate::improvement::{CoreImprovement, ImprovementId};
 use crate::steps::use_cases::{
     Conflicts, CpuGovernor, GamingTools, IoScheduler, MaxMapCount, ProtonGe, ScxLavd, ScxPpa,
-    Swappiness,
+    SteamLaunchOptions, SteamProton, Swappiness,
 };
 
 /// Every system-wide improvement gameready ships, in the order they apply.
@@ -31,6 +33,19 @@ pub fn core_steps() -> Vec<Box<dyn CoreImprovement>> {
         // one install screen for the whole run before any of it is fetched.
         Box::new(ScxLavd),
         Box::new(CpuGovernor),
+    ]
+}
+
+/// The per-game steps, for listing in `explain`.
+///
+/// Built with an empty config and no targets: only their identity is read here.
+/// `init` constructs the real ones from the games the user picked, so these are
+/// never applied.
+#[must_use]
+pub fn game_steps() -> Vec<Box<dyn CoreImprovement>> {
+    vec![
+        Box::new(SteamLaunchOptions::new(PathBuf::new(), Vec::new())),
+        Box::new(SteamProton::new(PathBuf::new(), Vec::new())),
     ]
 }
 

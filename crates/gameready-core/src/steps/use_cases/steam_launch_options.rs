@@ -63,6 +63,10 @@ impl Improvement for SteamLaunchOptions {
         "Launch options"
     }
 
+    fn blurb(&self) -> &str {
+        "Steam launch options"
+    }
+
     fn rationale(&self) -> &str {
         "Launch options are how a wrapper such as gamemode or mangohud gets in \
          front of a game, and Steam has no other way to set them per game. The \

@@ -26,6 +26,12 @@ pub trait Improvement: Send + Sync {
         self.name()
     }
 
+    /// A one-line description for the `explain` index, where the reader is
+    /// scanning the catalog rather than reading one step. Defaults to `name`.
+    fn blurb(&self) -> &str {
+        self.name()
+    }
+
     /// Why this is worth doing, shown by `explain` and by `--verbose`.
     /// Written for someone deciding whether to let it run.
     fn rationale(&self) -> &str;

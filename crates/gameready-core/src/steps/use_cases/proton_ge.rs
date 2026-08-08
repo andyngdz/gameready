@@ -66,6 +66,10 @@ impl Improvement for ProtonGe {
         "Proton-GE"
     }
 
+    fn blurb(&self) -> &str {
+        "Latest Proton-GE"
+    }
+
     fn rationale(&self) -> &str {
         "Proton-GE includes game-specific patches and media codecs that Valve's \
          Proton does not ship. Installing it makes it available in Steam's \

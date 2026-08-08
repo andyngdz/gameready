@@ -66,6 +66,23 @@ impl<'a, W: fmt::Write> Section<'a, W> {
         writeln!(self.w)
     }
 
+    /// A group heading at the left margin with no blank line after it, for a
+    /// screen that stacks several labelled groups (the explain index).
+    pub(crate) fn heading(&mut self, text: &str) -> fmt::Result {
+        writeln!(self.w, "{text}")
+    }
+
+    /// A catalog row: a name padded to a shared column, then a dim note. The
+    /// eye runs down the column of names rather than following a leader out to a
+    /// value, which is what a list read top to bottom wants.
+    ///
+    /// Written directly rather than through `flow`, whose word-wrapping would
+    /// collapse the padding that lines the notes up.
+    pub(crate) fn entry(&mut self, name: &str, note: &str, column: usize) -> fmt::Result {
+        let padded = format!("{name:<column$}");
+        writeln!(self.w, "  {} {}", style(padded).bold(), style(note).dim())
+    }
+
     /// A 5-space-indented sub-line under a marked line.
     pub(crate) fn sub(&mut self, text: &str) -> fmt::Result {
         self.flow("     ", text)

@@ -4,9 +4,9 @@ use std::fmt;
 
 use console::style;
 use gameready_core::improvement::{CoreCx, CoreImprovement, Privilege, Probe, StepPlan};
-use gameready_core::steps::core_steps;
+use gameready_core::steps::{core_steps, game_steps};
 
-use crate::cli::ui::layout::{Mark, Section};
+use crate::cli::ui::layout::Section;
 use crate::cli::ui::UNDO;
 
 /// Everything `explain` found out about one step, ready to print.
@@ -93,35 +93,67 @@ impl fmt::Display for StepExplanation {
     }
 }
 
-/// Every step gameready knows, as one line each.
+/// Every step gameready knows, grouped as the explain index shows them.
 pub struct StepIndex {
-    steps: Vec<(String, String)>,
+    system: Vec<(String, String)>,
+    per_game: Vec<(String, String)>,
 }
 
 impl StepIndex {
     /// The whole catalog, in the order a run would work through it.
     #[must_use]
     pub fn all() -> Self {
-        Self {
-            steps: core_steps()
+        let cards = |steps: Vec<Box<dyn CoreImprovement>>| {
+            steps
                 .iter()
-                .map(|step| (step.id().to_string(), step.name().to_owned()))
-                .collect(),
+                .map(|step| (step.id().to_string(), step.blurb().to_owned()))
+                .collect()
+        };
+        Self {
+            system: cards(core_steps()),
+            per_game: cards(game_steps()),
         }
+    }
+
+    /// The id-column width shared by both groups, so their blurbs line up.
+    fn column(&self) -> usize {
+        self.system
+            .iter()
+            .chain(&self.per_game)
+            .map(|(id, _)| console::measure_text_width(id))
+            .max()
+            .unwrap_or(0)
+    }
+
+    /// One named group: a heading, then a row per step.
+    fn group<W: fmt::Write>(
+        &self,
+        s: &mut Section<'_, W>,
+        heading: &str,
+        rows: &[(String, String)],
+        column: usize,
+    ) -> fmt::Result {
+        s.heading(heading)?;
+        for (id, blurb) in rows {
+            s.entry(id, blurb, column)?;
+        }
+        Ok(())
     }
 }
 
 impl fmt::Display for StepIndex {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = Section::new(f);
-        s.title(crate::cli::ui::STEPS)?;
-        for (id, name) in &self.steps {
-            // The gutter stays empty here rather than closing up: this list
-            // shares its left edge with every screen that does carry marks.
-            s.row(Mark::None, id, Some(name))?;
-        }
+        s.title(&format!(
+            "{} tunings, in the order a run works through them",
+            self.system.len()
+        ))?;
+        let column = self.column();
+        self.group(&mut s, "System", &self.system, column)?;
         s.blank()?;
-        s.indented("Run `gameready explain <id>` for what one of them would do here.")?;
+        self.group(&mut s, "Per game", &self.per_game, column)?;
+        s.blank()?;
+        s.indented("Ask about any one: gameready explain core.io.scheduler")?;
         s.end()
     }
 }

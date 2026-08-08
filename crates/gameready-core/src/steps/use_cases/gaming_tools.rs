@@ -57,6 +57,10 @@ impl Improvement for GamingTools {
         "gamemode + mangohud"
     }
 
+    fn blurb(&self) -> &str {
+        "gamemode and mangohud"
+    }
+
     fn rationale(&self) -> &str {
         "gamemode raises the CPU governor and process priority for the duration \
          of a game and puts them back afterwards, which is safer than pinning \

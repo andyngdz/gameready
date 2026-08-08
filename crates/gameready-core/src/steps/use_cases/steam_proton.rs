@@ -62,6 +62,10 @@ impl Improvement for SteamProton {
         "Proton pin"
     }
 
+    fn blurb(&self) -> &str {
+        "A pinned Proton build"
+    }
+
     fn rationale(&self) -> &str {
         "A game that needs a particular Proton build needs it every time it \
          starts, and Steam's default is whatever it picks for itself. This sets \
