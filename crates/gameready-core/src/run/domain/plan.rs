@@ -99,6 +99,16 @@ pub struct RunPlan {
 }
 
 impl RunPlan {
+    /// How many steps the sweep will report on.
+    ///
+    /// Held-open steps are counted: one way or another every one of them ends
+    /// with a line, either because it was released and ran or because whatever
+    /// it waited on never came.
+    #[must_use]
+    pub fn to_apply(&self) -> usize {
+        self.pending.len() + self.deferred.len()
+    }
+
     /// Whether this run would put any software on the machine.
     #[must_use]
     pub fn installs_anything(&self) -> bool {

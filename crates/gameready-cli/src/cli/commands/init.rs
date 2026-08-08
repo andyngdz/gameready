@@ -161,7 +161,7 @@ pub fn run(
 
     let mut journal =
         Journal::open(paths.clone(), RunId::generate()).context(CANNOT_OPEN_JOURNAL)?;
-    let mut progress = ui::ProgressView::new();
+    let mut progress = ui::ProgressView::sweeping(request.mode, run_plan.to_apply());
     let report = apply_plan(
         run_plan,
         &cx,

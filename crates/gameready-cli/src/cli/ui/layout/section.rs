@@ -20,6 +20,14 @@ const INDENT: usize = 2;
 /// The bar down the left of a quoted block.
 const QUOTE: &str = "┃";
 
+/// Everything a result row spends on something other than its two ends: the
+/// indent, the mark, and a space either side of the leader.
+const ROW_FURNITURE: usize = 6;
+
+/// The shortest leader that still reads as one. Below this the dots look like a
+/// typo rather than like a line drawn between two columns.
+const MIN_LEADER: usize = 4;
+
 /// Writes structured output sections with consistent spacing and separators.
 ///
 /// Every section opens with a title and a blank line, carries indented content,
@@ -83,6 +91,29 @@ impl<'a, W: fmt::Write> Section<'a, W> {
     pub(crate) fn entry(&mut self, name: &str, note: &str, column: usize) -> fmt::Result {
         let padded = format!("{name:<column$}");
         writeln!(self.w, "  {} {}", style(padded).bold(), style(note).dim())
+    }
+
+    /// One result row: mark, name, a dotted leader, and the evidence for it at
+    /// the right edge.
+    ///
+    /// The leader is what lets the eye cross a wide terminal from a step's name
+    /// to what it actually did. When the two ends leave no room for a leader
+    /// worth drawing, the evidence drops to its own indented line instead: a
+    /// two-dot leader reads as a mistake, and a wrapped row reads as two rows.
+    pub(crate) fn row(&mut self, mark: Mark, name: &str, evidence: &str) -> fmt::Result {
+        let ends = console::measure_text_width(name) + console::measure_text_width(evidence);
+        let leader = self.width.saturating_sub(ends + ROW_FURNITURE);
+        if leader < MIN_LEADER {
+            self.marked(mark, name)?;
+            return self.sub(&style(evidence).dim().to_string());
+        }
+        writeln!(
+            self.w,
+            "  {} {name} {} {}",
+            mark.glyph(),
+            style(".".repeat(leader)).dim(),
+            style(evidence).dim()
+        )
     }
 
     /// A label, then a rule running out to the right edge.

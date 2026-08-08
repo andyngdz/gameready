@@ -113,3 +113,33 @@ fn a_quoted_block_carries_its_bar_down_every_wrapped_line() {
         "{rendered}"
     );
 }
+
+#[test]
+fn a_row_puts_its_evidence_at_the_right_edge() {
+    let mut buf = String::new();
+    Section::with_width(&mut buf, ROOMY)
+        .row(Mark::Applied, "Swappiness for zram", "already 180")
+        .unwrap();
+    let rendered = plain(&buf);
+
+    assert!(
+        rendered.starts_with("  ✓ Swappiness for zram ."),
+        "{rendered}"
+    );
+    assert!(rendered.trim_end().ends_with("already 180"), "{rendered}");
+    assert_eq!(console::measure_text_width(rendered.trim_end()), ROOMY);
+}
+
+#[test]
+fn a_row_with_no_room_for_a_leader_drops_its_evidence_to_the_next_line() {
+    // Two dots read as a typo, and a row wrapped mid-leader reads as two rows.
+    let mut buf = String::new();
+    let evidence = "wrote 60 and read back 180, which is not what was asked for";
+    Section::with_width(&mut buf, CRAMPED)
+        .row(Mark::Failed, "Swappiness for zram", evidence)
+        .unwrap();
+    let rendered = plain(&buf);
+
+    assert!(rendered.lines().count() > 1, "{rendered}");
+    assert!(!rendered.contains(".."), "{rendered}");
+}

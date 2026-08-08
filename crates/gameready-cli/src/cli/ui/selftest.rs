@@ -1,14 +1,12 @@
 //! Rendering a selftest run.
 
-use std::collections::HashMap;
 use std::fmt;
 
 use console::style;
-use gameready_core::improvement::ImprovementId;
 use gameready_core::run::{RevertCheck, SelftestResult, StepSelftest};
-use gameready_core::steps::{core_steps, game_steps};
 
 use crate::cli::ui::layout::{Mark, Section};
+use crate::cli::ui::short_names;
 
 /// The reassurance under the counts: whatever the test found, it put the
 /// machine back, so a failed test never leaves a half-applied tuning behind.
@@ -73,7 +71,7 @@ impl<'a> SelftestSummary<'a> {
 
 impl fmt::Display for SelftestSummary<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let names = step_names();
+        let names = short_names();
         let mut s = Section::new(f);
         s.blank()?;
         s.title("Applying each tuning, then undoing it, to prove both halves work")?;
@@ -93,16 +91,6 @@ impl fmt::Display for SelftestSummary<'_> {
         s.blank()?;
         self.summary(&mut s)
     }
-}
-
-/// Every step's short name, keyed by id, so a result can be shown by the name a
-/// reader knows rather than by the id it was recorded under.
-fn step_names() -> HashMap<ImprovementId, String> {
-    core_steps()
-        .iter()
-        .chain(game_steps().iter())
-        .map(|step| (step.id(), step.short_name().to_owned()))
-        .collect()
 }
 
 #[cfg(test)]
