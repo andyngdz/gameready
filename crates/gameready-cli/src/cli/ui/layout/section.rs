@@ -20,14 +20,6 @@ const INDENT: usize = 2;
 /// The bar down the left of a quoted block.
 const QUOTE: &str = "┃";
 
-/// Everything a result row spends on something other than its two ends: the
-/// indent, the mark, and a space either side of the leader.
-const ROW_FURNITURE: usize = 6;
-
-/// The shortest leader that still reads as one. Below this the dots look like a
-/// typo rather than like a line drawn between two columns.
-const MIN_LEADER: usize = 4;
-
 /// Writes structured output sections with consistent spacing and separators.
 ///
 /// Every section opens with a title and a blank line, carries indented content,
@@ -93,27 +85,23 @@ impl<'a, W: fmt::Write> Section<'a, W> {
         writeln!(self.w, "  {} {}", style(padded).bold(), style(note).dim())
     }
 
-    /// One result row: mark, name, a dotted leader, and the evidence for it at
-    /// the right edge.
+    /// One result row: mark, name in a shared column, then the evidence.
     ///
-    /// The leader is what lets the eye cross a wide terminal from a step's name
-    /// to what it actually did. When the two ends leave no room for a leader
-    /// worth drawing, the evidence drops to its own indented line instead: a
-    /// two-dot leader reads as a mistake, and a wrapped row reads as two rows.
-    pub(crate) fn row(&mut self, mark: Mark, name: &str, evidence: &str) -> fmt::Result {
-        let ends = console::measure_text_width(name) + console::measure_text_width(evidence);
-        let leader = self.width.saturating_sub(ends + ROW_FURNITURE);
-        if leader < MIN_LEADER {
-            self.marked(mark, name)?;
-            return self.sub(&style(evidence).dim().to_string());
-        }
-        writeln!(
-            self.w,
-            "  {} {name} {} {}",
-            mark.glyph(),
-            style(".".repeat(leader)).dim(),
-            style(evidence).dim()
-        )
+    /// A table rather than a dotted leader out to the right edge. Every row's
+    /// evidence starts at the same column, so the eye runs down one edge
+    /// instead of tracking along a different length of dots on every line. A
+    /// name wider than the column pushes its own evidence along rather than
+    /// shifting the whole table.
+    pub(crate) fn row(
+        &mut self,
+        mark: Mark,
+        name: &str,
+        evidence: &str,
+        column: usize,
+    ) -> fmt::Result {
+        let padding = column.saturating_sub(console::measure_text_width(name));
+        let prefix = format!("  {} {name}{} ", mark.glyph(), " ".repeat(padding));
+        self.flow(&prefix, &style(evidence).dim().to_string())
     }
 
     /// A label, then a rule running out to the right edge.
@@ -172,20 +160,6 @@ impl<'a, W: fmt::Write> Section<'a, W> {
             writeln!(self.w, "{}", format!("{lead}{line}").trim_end())?;
         }
         Ok(())
-    }
-
-    /// A row whose short evidence sits inline after a dim separator.
-    ///
-    /// The value sits after the name as "name · note" and reflows with it,
-    /// which reads better for the short values the doctor and rollback screens
-    /// show than pushing each one out to the right edge.
-    pub(crate) fn noted(&mut self, mark: Mark, name: &str, note: &str) -> fmt::Result {
-        let text = format!(
-            "{} {}",
-            style(name).bold(),
-            style(format!("· {note}")).dim()
-        );
-        self.marked(mark, &text)
     }
 
     /// A label in its own column, with the text wrapped and aligned under it.

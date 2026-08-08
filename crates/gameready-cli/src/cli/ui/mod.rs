@@ -62,7 +62,7 @@ pub use install::{consent_to_install, InstallList};
 pub use launch_choice::{choose_how_to_apply, LaunchChoice, SteamWork};
 pub use launch_report::LaunchReport;
 pub use looking::{LookingAtMachine, SteamGames};
-pub use names::short_names;
+pub use names::{name_column, short_names, widest};
 pub use overlay::choose_overlay;
 pub use plan::InitPlan;
 pub use progress::ProgressView;

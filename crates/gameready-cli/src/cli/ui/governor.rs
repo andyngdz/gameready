@@ -48,7 +48,7 @@ pub fn choose_governor_persistence() -> Result<bool> {
         &theme::asked(QUESTION, WHY_ASKED),
         vec![Persistence::ThisBoot, Persistence::KeepIt],
     )
-    .with_render_config(theme::questions())
+    .with_render_config(theme::Prompts::choices())
     .with_help_message(EITHER_WAY)
     .prompt_skippable()?;
 

@@ -83,25 +83,17 @@ impl LiveRegion {
         }
     }
 
-    /// Replaces the live line with a finished one and leaves it on screen.
+    /// Takes the live line down so a finished one can be printed in its place.
     ///
-    /// Returns whether the bar took the message. A line that wraps has to be
-    /// printed instead: `finish_with_message` pads whatever it is given to one
-    /// bar's width, which turns a two-line row into a wall of spaces.
-    pub(crate) fn settle(&mut self, message: &str) -> bool {
-        let counting = self.counting.take();
-        let Some(bar) = self.bar.take() else {
-            return false;
-        };
-        // A counting bar's style still holds the bar itself, so finishing it
-        // with a row would leave the row trailing a full bar of the thing that
-        // just ended.
-        if counting.is_some() || message.contains('\n') {
+    /// The finished row is never handed to the bar. `finish_with_message`
+    /// re-renders through the bar's own template, so a row that already carries
+    /// its mark and its indent comes back wearing a second copy of both, padded
+    /// out to the width of the terminal rather than the width of the layout.
+    pub(crate) fn settle(&mut self) {
+        self.counting = None;
+        if let Some(bar) = self.bar.take() {
             bar.finish_and_clear();
-            return false;
         }
-        bar.finish_with_message(message.to_owned());
-        true
     }
 
     /// One bar, styled and started.

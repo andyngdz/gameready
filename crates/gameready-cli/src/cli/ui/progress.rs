@@ -9,7 +9,7 @@ use std::collections::HashMap;
 
 use crate::cli::ui::layout::{Mark, Section};
 use crate::cli::ui::region::LiveRegion;
-use crate::cli::ui::{short_names, tunings};
+use crate::cli::ui::{name_column, short_names, tunings};
 use gameready_core::improvement::ImprovementId;
 use gameready_core::run::{Mode, RunEvent};
 
@@ -22,13 +22,18 @@ pub struct ProgressView {
 }
 
 impl ProgressView {
-    /// A view for the planning phase, which only ever shows a count.
+    /// A view for the planning phase.
+    ///
+    /// Carries the name catalog like the sweep does. Planning is not only a
+    /// count: every step the probe settles leaves a row here, and a view with
+    /// no catalog prints each one by the sentence the event carried rather than
+    /// by the name the rest of the run calls it.
     #[must_use]
     pub fn new() -> Self {
         Self {
             region: LiveRegion::default(),
             applying: None,
-            names: HashMap::new(),
+            names: short_names(),
         }
     }
 
@@ -43,11 +48,7 @@ impl ProgressView {
         if mode.mutates() && total > 0 {
             print(&format!("\nApplying {total} {}\n", tunings(total)));
         }
-        Self {
-            region: LiveRegion::default(),
-            applying: None,
-            names: short_names(),
-        }
+        Self::new()
     }
 
     /// Handles one event from the executor.
@@ -150,17 +151,16 @@ impl ProgressView {
         self.region.count(&name, done, total);
     }
 
-    /// Stops the live line and leaves the finished one on screen.
+    /// Takes the live line down and prints the finished one in its place.
     fn settle(&mut self, message: &str) {
-        if !self.region.settle(message) {
-            print(&format!("{message}\n"));
-        }
+        self.region.settle();
+        print(&format!("{message}\n"));
     }
 
     /// One finished step, with the evidence for what it did.
     fn settle_row(&mut self, mark: Mark, name: &str, detail: Option<&str>) {
         let line = match detail {
-            Some(evidence) => result_row(mark, name, evidence),
+            Some(evidence) => result_row(mark, name, evidence, name_column(&self.names)),
             None => marked_line(mark, name),
         };
         self.settle(&line);
@@ -176,11 +176,11 @@ fn marked_line(mark: Mark, text: &str) -> String {
     out.trim_end().to_owned()
 }
 
-/// A result row, with the leader drawn between its two ends.
-fn result_row(mark: Mark, name: &str, evidence: &str) -> String {
+/// A result row, with its evidence in the shared column.
+fn result_row(mark: Mark, name: &str, evidence: &str, column: usize) -> String {
     let mut out = String::new();
     let mut section = Section::new(&mut out);
-    let _ = section.row(mark, name, evidence);
+    let _ = section.row(mark, name, evidence, column);
     out.trim_end().to_owned()
 }
 

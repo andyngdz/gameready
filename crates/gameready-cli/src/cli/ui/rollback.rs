@@ -8,7 +8,8 @@ use console::style;
 use gameready_core::journal::Undo;
 use gameready_core::rollback::{RollbackReport, UndoOutcome, UndoReport};
 
-use crate::cli::ui::layout::{Mark, Section};
+use crate::cli::ui::layout::{Mark, ResultTable, Section};
+use crate::cli::ui::widest;
 
 /// A rollback report paired with where its journal lives, ready to print.
 ///
@@ -52,17 +53,23 @@ impl<'a> RollbackSummary<'a> {
     /// row: it did nothing to the system, so it belongs in the note below rather
     /// than in the list of things that were put back.
     fn rows<W: fmt::Write>(&self, s: &mut Section<'_, W>) -> fmt::Result {
-        for report in &self.report.undos {
-            if matches!(report.undo, Undo::ReportPackages { .. }) {
-                continue;
-            }
-            s.noted(
-                Self::mark(&report.outcome),
-                &report.undo.subject(),
-                &Self::note(report),
-            )?;
+        let subjects: Vec<String> = self.undone().map(|report| report.undo.subject()).collect();
+        let mut table = ResultTable::new(widest(subjects.iter().map(String::as_str)));
+        for (report, subject) in self.undone().zip(&subjects) {
+            table.row(Self::mark(&report.outcome), subject, &Self::note(report));
         }
-        Ok(())
+        s.heading(&table.to_string())
+    }
+
+    /// Every undo that stands for something that was put back.
+    ///
+    /// The package report is not one: it did nothing to the system, so it
+    /// belongs in the note below rather than in the list of things undone.
+    fn undone(&self) -> impl Iterator<Item = &UndoReport> {
+        self.report
+            .undos
+            .iter()
+            .filter(|report| !matches!(report.undo, Undo::ReportPackages { .. }))
     }
 
     /// The packages the run installed and rollback left in place, gathered from

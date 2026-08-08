@@ -20,6 +20,27 @@ pub fn short_names() -> HashMap<ImprovementId, String> {
         .collect()
 }
 
+/// How wide a column has to be to hold every one of these names.
+///
+/// Every screen that lists results is a table, and this is what sets the edge
+/// the evidence starts at. A screen measures the names it is about to print,
+/// except where the catalog is the better answer: see [`name_column`].
+#[must_use]
+pub fn widest<'a>(names: impl Iterator<Item = &'a str>) -> usize {
+    names.map(console::measure_text_width).max().unwrap_or(0)
+}
+
+/// How wide the name column in a list of steps is.
+///
+/// Taken from the widest name in the catalog rather than from whichever steps
+/// this run happens to report on. Two runs of the same machine that settle
+/// different steps would otherwise line their evidence up at different columns,
+/// and a user comparing them would read that as a difference in the result.
+#[must_use]
+pub fn name_column(names: &HashMap<ImprovementId, String>) -> usize {
+    widest(names.values().map(String::as_str))
+}
+
 #[cfg(test)]
 #[path = "names_test.rs"]
 mod names_test;

@@ -14,7 +14,12 @@ const QUESTION: &str = "Which games should I set up?";
 const SCOPE: &str = "Only the ones you pick are touched. You can rerun this later.";
 
 /// The keys, in the order a user reaches for them.
-const KEYS: &str = "space toggle · → all · ← none · enter continue · esc skip";
+/// Every key named the same way: as the word on the key.
+///
+/// The arrows used to be drawn as glyphs, which put a second right-pointing
+/// mark on a screen whose cursor is already one. A reader then has to work out
+/// that one of them is a key and the other is where they are.
+const KEYS: &str = "space toggle · right all · left none · enter continue · esc skip";
 
 /// What a game gets when a profile of its own matched.
 const TUNED: &str = "tuned profile";
@@ -78,7 +83,7 @@ pub fn choose_games(setups: &[GameSetup]) -> Result<Vec<GameSetup>> {
         .collect();
 
     let picked = MultiSelect::new(&theme::asked(QUESTION, SCOPE), choices)
-        .with_render_config(theme::questions())
+        .with_render_config(theme::Prompts::many())
         .with_help_message(KEYS)
         .prompt_skippable()?
         .unwrap_or_default();

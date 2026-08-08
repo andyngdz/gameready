@@ -5,7 +5,8 @@ use std::fmt;
 use console::style;
 use gameready_core::facts::SystemFacts;
 
-use crate::cli::ui::layout::{Mark, Section};
+use crate::cli::ui::layout::{Mark, ResultTable, Section};
+use crate::cli::ui::{name_column, short_names};
 
 /// The promise the whole probing phase rests on. It is the answer to the only
 /// question someone running an unfamiliar tuning tool actually has.
@@ -100,10 +101,13 @@ impl fmt::Display for LookingAtMachine<'_> {
             style("Looking at your machine.").bold(),
             style(NOTHING_YET).dim()
         ))?;
-        s.noted(Mark::Applied, &self.facts.distro.name, &self.system())?;
-
         let (mark, name, note) = self.games.line();
-        s.noted(mark, name, &note)
+        // The catalog's column, not these two lines': the probe rows that
+        // follow are printed one at a time against that same edge.
+        let mut table = ResultTable::new(name_column(&short_names()));
+        table.row(Mark::Applied, &self.facts.distro.name, &self.system());
+        table.row(mark, name, &note);
+        s.heading(&table.to_string())
     }
 }
 

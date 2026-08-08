@@ -44,14 +44,16 @@ fn a_second_transfer_gets_its_own_bar() {
 }
 
 #[test]
-fn settling_hands_a_single_line_to_the_bar_and_takes_a_wrapped_one_back() {
+fn settling_takes_the_line_down_so_the_finished_row_can_be_printed_plainly() {
+    // The row is never handed to the bar: finish_with_message re-renders it
+    // through the bar's own template, which puts a second mark and indent in
+    // front of a row that already has both.
     let mut region = LiveRegion::default();
 
     region.spin("Downloading".to_owned());
-    assert!(region.settle("  ✓ Proton-GE ... installed"));
+    region.settle();
 
-    region.spin("Downloading".to_owned());
-    assert!(!region.settle("  ✘ Proton-GE\n     github.com timed out"));
+    assert!(!region.is_live());
 }
 
 #[test]
@@ -59,16 +61,19 @@ fn settling_a_download_takes_the_bar_away_rather_than_leaving_it_under_the_row()
     let mut region = LiveRegion::default();
 
     region.count("Proton-GE", 186_703_872, 186_703_872);
+    region.settle();
 
-    assert!(!region.settle("  ✓ Proton-GE ... installed"));
     assert_eq!(region.counting(), None);
+    assert!(!region.is_live());
 }
 
 #[test]
-fn settling_with_nothing_live_leaves_the_line_to_the_caller() {
+fn settling_with_nothing_live_is_harmless() {
     let mut region = LiveRegion::default();
 
-    assert!(!region.settle("  • Swappiness ... already 180"));
+    region.settle();
+
+    assert!(!region.is_live());
 }
 
 #[test]

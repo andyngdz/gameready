@@ -2,7 +2,7 @@ use gameready_core::improvement::{ImprovementId, OutcomeKind};
 use gameready_core::run::{Mode, RunEvent};
 
 use super::{marked_line, result_row, ProgressView};
-use crate::cli::ui::layout::{width, Mark};
+use crate::cli::ui::layout::Mark;
 
 fn plain(text: &str) -> String {
     console::strip_ansi_codes(text).into_owned()
@@ -97,15 +97,20 @@ fn a_download_turns_the_spinner_into_a_bar_and_finishing_takes_it_away() {
 }
 
 #[test]
-fn a_row_runs_its_leader_out_to_the_layout_width() {
+fn a_row_puts_its_evidence_in_the_shared_column() {
+    let column = 24;
     let row = plain(&result_row(
         Mark::Applied,
         "vm.max_map_count",
         "65530 to 2147483642",
+        column,
     ));
 
-    assert!(row.contains(".."), "{row}");
-    assert_eq!(console::measure_text_width(&row), width());
+    assert!(row.starts_with("  ✓ vm.max_map_count"), "{row}");
+    // Measured in columns, not bytes: the mark is three bytes wide and one
+    // column wide, and it is the column the reader's eye runs down.
+    let before = row.split("65530").next().expect("the evidence");
+    assert_eq!(console::measure_text_width(before), 4 + column + 1, "{row}");
 }
 
 #[test]

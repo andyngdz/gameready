@@ -113,21 +113,26 @@ fn each_undo_reads_as_a_subject_and_what_became_of_it() {
 
     let text = RollbackSummary::new(&report, Path::new("/state/journal.jsonl")).to_string();
 
-    // Subject and note, split by the middle dot.
+    // Each subject and its note read as one row, whatever the column ends up
+    // being: the layout is the table's job, and asserting on the spacing here
+    // would only pin how wide the widest subject happened to be.
+    let row = |subject: &str| {
+        text.lines()
+            .find(|line| line.contains(subject))
+            .unwrap_or_else(|| panic!("no row for {subject} in {text}"))
+            .to_owned()
+    };
+    assert!(row("vm.max_map_count").contains("back to 65530"), "{text}");
     assert!(
-        text.contains("vm.max_map_count \u{b7} back to 65530"),
+        row("I/O scheduler nvme0n1").contains("back to mq-deadline"),
         "{text}"
     );
     assert!(
-        text.contains("I/O scheduler nvme0n1 \u{b7} back to mq-deadline"),
+        row("CPU scheduler ").contains("sched_ext unloaded, kernel scheduler back"),
         "{text}"
     );
     assert!(
-        text.contains("CPU scheduler \u{b7} sched_ext unloaded, kernel scheduler back"),
-        "{text}"
-    );
-    assert!(
-        text.contains("scx_loader.service \u{b7} could not stop: unit not found"),
+        row("scx_loader.service").contains("could not stop: unit not found"),
         "{text}"
     );
     // The package report is a note, not a row, and reads as a list.

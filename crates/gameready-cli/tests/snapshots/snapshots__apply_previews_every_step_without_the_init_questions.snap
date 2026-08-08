@@ -1,6 +1,6 @@
 ---
 source: crates/gameready-cli/tests/snapshots.rs
-expression: "run_with(&[\"apply\", \"--dry-run\", \"--yes\"], | _, _ | {})"
+expression: "run_with(&[\"apply\", \"--dry-run\", \"--yes\"], Reads :: Fixture, | _, _ | {})"
 ---
 exit code: 0
 ----- stdout -----
@@ -20,15 +20,15 @@ exit code: 0
 
 Dry run. 5 would apply · 2 already set · 2 not applicable
 
-  • Competing daemons ................................................... no competing daemons found
-  • I/O schedulers ................................................................. nvme0n1 on none
-  - Swappiness .......................... swap is on disk, not zram; the default swappiness is right
-  - Proton-GE ................................................................. Steam root not found
-  - vm.max_map_count ....................................................................... dry run
-  - gamemode + mangohud .................................................................... dry run
-  - scx repository ......................................................................... dry run
-  - CPU governor ........................................................................... dry run
-  - CPU scheduler scx_lavd ................................................................. dry run
+  • Competing daemons      no competing daemons found
+  • I/O schedulers         nvme0n1 on none
+  - Swappiness             swap is on disk, not zram; the default swappiness is right
+  - Proton-GE              Steam root not found
+  - vm.max_map_count       dry run
+  - gamemode + mangohud    dry run
+  - scx repository         dry run
+  - CPU governor           dry run
+  - CPU scheduler scx_lavd dry run
 
   Nothing was touched. Drop --dry-run to apply.
 ----------------------------------------------------------------------------------------------------

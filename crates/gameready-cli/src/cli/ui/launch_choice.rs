@@ -122,7 +122,7 @@ pub fn choose_how_to_apply(work: &SteamWork) -> Result<LaunchChoice> {
             LaunchChoice::CloseSteamAndWrite,
         ],
     )
-    .with_render_config(theme::questions())
+    .with_render_config(theme::Prompts::choices())
     .with_help_message(EITHER_WAY)
     .prompt_skippable()?;
 

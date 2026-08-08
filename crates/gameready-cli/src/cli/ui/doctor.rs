@@ -8,7 +8,8 @@ use gameready_core::doctor::{MachineReport, Warning};
 use gameready_core::facts::SystemFacts;
 use gameready_core::improvement::{CoreCx, CoreImprovement, Probe};
 
-use crate::cli::ui::layout::{Mark, Section};
+use crate::cli::ui::layout::{Mark, ResultTable, Section};
+use crate::cli::ui::{name_column, short_names};
 
 /// The word a swap-less or disk-less machine shows.
 const NONE: &str = "none";
@@ -116,14 +117,15 @@ impl<'a> DoctorReport<'a> {
     /// the finding inline.
     fn tunings_block<W: fmt::Write>(&self, s: &mut Section<'_, W>) -> fmt::Result {
         s.heading(&style("What each tuning would do here").bold().to_string())?;
+        let mut table = ResultTable::new(name_column(&short_names()));
         for finding in self.findings {
             let mark = finding
                 .found
                 .as_ref()
                 .map_or(Mark::Warning, Mark::for_probe);
-            s.noted(mark, &finding.short_name, &finding.note())?;
+            table.row(mark, &finding.short_name, &finding.note());
         }
-        Ok(())
+        s.heading(&table.to_string())
     }
 
     /// The warnings, if any: something the user should act on but gameready will

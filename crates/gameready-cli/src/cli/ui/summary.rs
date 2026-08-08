@@ -9,7 +9,7 @@ use gameready_core::run::RunReport;
 use itertools::Itertools as _;
 
 use crate::cli::ui::layout::{Mark, Section};
-use crate::cli::ui::{short_names, WentWrong, PROMPT};
+use crate::cli::ui::{name_column, short_names, WentWrong, PROMPT};
 
 /// What the rollback block offers, in the words of someone reconsidering.
 const CHANGED_YOUR_MIND: &str = "Changed your mind? This puts everything back.";
@@ -123,6 +123,7 @@ impl<'a> Summary<'a> {
     /// every line they can skip.
     fn steps<W: fmt::Write>(&self, s: &mut Section<'_, W>) -> fmt::Result {
         let names = short_names();
+        let column = name_column(&names);
         for step in &self.report.steps {
             let name = names
                 .get(&step.step)
@@ -133,7 +134,7 @@ impl<'a> Summary<'a> {
                 (Some(trouble), _) => {
                     WentWrong::new(mark, &name, &trouble, &self.report.run).write(s)?;
                 }
-                (None, Some(detail)) => s.row(mark, &name, &detail)?,
+                (None, Some(detail)) => s.row(mark, &name, &detail, column)?,
                 (None, None) => s.marked(mark, &name)?,
             }
         }

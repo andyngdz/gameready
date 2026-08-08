@@ -23,7 +23,7 @@ const DECLINING: &str =
     "Say no and the steps that need them stand down. Everything else still runs.";
 
 /// The keys, in the order a user reaches for them.
-const KEYS: &str = "↑↓ move · enter confirm · esc installs nothing";
+const KEYS: &str = "up down move · enter confirm · esc installs nothing";
 
 /// The two answers to the install question.
 #[derive(Clone, Copy)]
@@ -132,7 +132,7 @@ impl InstallList {
             &theme::asked(&self.question(), DECLINING),
             vec![Take::NotNow, Take::Install],
         )
-        .with_render_config(theme::questions())
+        .with_render_config(theme::Prompts::choices())
         .with_help_message(KEYS)
         .prompt_skippable()?;
 

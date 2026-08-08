@@ -17,7 +17,7 @@ const WHAT_IT_IS: &str = "MangoHud draws FPS and temperatures over the game. It 
                           whether any of this helped. Toggle it later any time.";
 
 /// The keys, in the order a user reaches for them.
-const KEYS: &str = "↑↓ move · enter confirm · esc keeps the default";
+const KEYS: &str = "up down move · enter confirm · esc keeps the default";
 
 /// Display wrapper so the Select prompt can render `Overlay` values.
 struct OverlayOption(Overlay);
@@ -41,7 +41,7 @@ pub fn choose_overlay() -> Result<Overlay> {
         &theme::asked(QUESTION, WHAT_IT_IS),
         vec![OverlayOption(Overlay::Hide), OverlayOption(Overlay::Show)],
     )
-    .with_render_config(theme::questions())
+    .with_render_config(theme::Prompts::choices())
     .with_help_message(KEYS)
     .prompt_skippable()?;
 

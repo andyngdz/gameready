@@ -70,10 +70,11 @@ fn a_step_that_is_already_set_is_not_asked_what_it_would_do() {
 
     let rendered = plain(&DoctorReport::new(&facts, &machine, &findings, &[]).to_string());
 
-    assert!(
-        rendered.contains("Swappiness · already set, swappiness is 180"),
-        "{rendered}"
-    );
+    let row = rendered
+        .lines()
+        .find(|line| line.contains("Swappiness"))
+        .expect("the row");
+    assert!(row.contains("already set, swappiness is 180"), "{rendered}");
 }
 
 #[test]

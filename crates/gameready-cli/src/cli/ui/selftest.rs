@@ -5,8 +5,8 @@ use std::fmt;
 use console::style;
 use gameready_core::run::{RevertCheck, SelftestResult, StepSelftest};
 
-use crate::cli::ui::layout::{Mark, Section};
-use crate::cli::ui::short_names;
+use crate::cli::ui::layout::{Mark, ResultTable, Section};
+use crate::cli::ui::{name_column, short_names};
 
 /// The reassurance under the counts: whatever the test found, it put the
 /// machine back, so a failed test never leaves a half-applied tuning behind.
@@ -75,21 +75,24 @@ impl<'a> SelftestSummary<'a> {
 impl fmt::Display for SelftestSummary<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let names = short_names();
+        let column = name_column(&names);
         let mut s = Section::new(f);
         s.blank()?;
         s.title("Applying each tuning, then undoing it, to prove both halves work")?;
 
+        let mut table = ResultTable::new(column);
         for result in self.results {
             let subject = names
                 .get(&result.step)
                 .cloned()
                 .unwrap_or_else(|| result.step.to_string());
-            s.noted(
+            table.row(
                 Self::mark(&result.result),
                 &subject,
                 &Self::note(&result.result),
-            )?;
+            );
         }
+        s.heading(&table.to_string())?;
 
         s.blank()?;
         self.summary(&mut s)

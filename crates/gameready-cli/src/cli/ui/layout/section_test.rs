@@ -114,32 +114,55 @@ fn a_quoted_block_carries_its_bar_down_every_wrapped_line() {
     );
 }
 
+/// Wide enough to hold the longest name these tests use.
+const COLUMN: usize = 24;
+
 #[test]
-fn a_row_puts_its_evidence_at_the_right_edge() {
+fn every_rows_evidence_starts_at_the_same_column() {
+    let mut buf = String::new();
+    let mut section = Section::with_width(&mut buf, ROOMY);
+    section
+        .row(Mark::Applied, "Swappiness", "already 180", COLUMN)
+        .unwrap();
+    section
+        .row(Mark::AlreadySet, "CPU scheduler scx_lavd", "loaded", COLUMN)
+        .unwrap();
+    let rendered = plain(&buf);
+
+    let starts: Vec<usize> = rendered
+        .lines()
+        .map(|line| line.rfind("  ").expect("a gap before the evidence"))
+        .collect();
+    assert_eq!(starts[0], starts[1], "{rendered}");
+}
+
+#[test]
+fn a_long_evidence_wraps_under_itself_rather_than_under_the_mark() {
+    let mut buf = String::new();
+    let evidence = "wrote 60 and read back 180, which is not what was asked for";
+    Section::with_width(&mut buf, CRAMPED)
+        .row(Mark::Failed, "Swappiness", evidence, COLUMN)
+        .unwrap();
+    let rendered = plain(&buf);
+
+    let mut lines = rendered.lines();
+    let first = lines.next().expect("a first line");
+    let second = lines.next().expect("a wrapped line");
+    assert!(first.starts_with("  ✘ Swappiness"), "{rendered}");
+    // Wrapped text lands in the evidence column, clear of the name.
+    assert!(second.starts_with(&" ".repeat(COLUMN)), "{rendered}");
+}
+
+#[test]
+fn a_name_wider_than_the_column_pushes_only_its_own_evidence() {
     let mut buf = String::new();
     Section::with_width(&mut buf, ROOMY)
-        .row(Mark::Applied, "Swappiness for zram", "already 180")
+        .row(Mark::Applied, "a step nobody gave a short name", "done", 8)
         .unwrap();
     let rendered = plain(&buf);
 
     assert!(
-        rendered.starts_with("  ✓ Swappiness for zram ."),
+        rendered.starts_with("  ✓ a step nobody gave a short name done"),
         "{rendered}"
     );
-    assert!(rendered.trim_end().ends_with("already 180"), "{rendered}");
-    assert_eq!(console::measure_text_width(rendered.trim_end()), ROOMY);
-}
-
-#[test]
-fn a_row_with_no_room_for_a_leader_drops_its_evidence_to_the_next_line() {
-    // Two dots read as a typo, and a row wrapped mid-leader reads as two rows.
-    let mut buf = String::new();
-    let evidence = "wrote 60 and read back 180, which is not what was asked for";
-    Section::with_width(&mut buf, CRAMPED)
-        .row(Mark::Failed, "Swappiness for zram", evidence)
-        .unwrap();
-    let rendered = plain(&buf);
-
-    assert!(rendered.lines().count() > 1, "{rendered}");
-    assert!(!rendered.contains(".."), "{rendered}");
 }
