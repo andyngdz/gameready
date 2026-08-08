@@ -53,7 +53,7 @@ fn a_step_that_does_not_apply_here_shows_no_empty_plan() {
 fn the_reason_wraps_instead_of_running_off_the_screen() {
     let rendered = explanation("applicable", None).to_string();
 
-    let width = crate::cli::ui::colors::width();
+    let width = crate::cli::ui::layout::width();
     for line in rendered.lines() {
         let plain = console::strip_ansi_codes(line);
         assert!(plain.chars().count() <= width, "too long: {line}");

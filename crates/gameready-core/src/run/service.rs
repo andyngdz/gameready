@@ -2,10 +2,12 @@
 
 use crate::improvement::{CoreCx, CoreImprovement, ImprovementId, Outcome, SkipReason};
 use crate::journal::{Change, Journal, JournalEvent};
-use crate::run::domain::{InstallConsent, Mode, RunEvent, RunPlan, RunReport, StepReport};
+use crate::run::domain::{
+    Deferred, InstallConsent, Mode, RunEvent, RunPlan, RunReport, StepReport,
+};
 use crate::run::errors::RunError;
-use crate::run::use_cases::apply_step::apply_and_verify;
 use crate::run::use_cases::plan::plan_run;
+use crate::run::use_cases::sweep::apply_all;
 
 /// Plans a run and carries it out in one call.
 ///
@@ -39,13 +41,14 @@ pub fn apply_plan(
     let RunPlan {
         mut settled,
         mut pending,
+        mut deferred,
         preflight,
         started,
         ..
     } = plan;
 
     if !mode.mutates() {
-        settle_as_dry_run(pending, &mut settled);
+        settle_as_dry_run(pending, deferred, &mut settled);
         return Ok(report(journal, mode, settled, Vec::new(), started));
     }
 
@@ -55,12 +58,17 @@ pub fn apply_plan(
         }
         InstallConsent::Granted => Vec::new(),
         InstallConsent::Declined => {
-            decline(&mut pending, &mut settled, &waiting_on_install);
+            decline(
+                &mut pending,
+                &mut deferred,
+                &mut settled,
+                &waiting_on_install,
+            );
             Vec::new()
         }
     };
 
-    apply_all(pending, cx, journal, &mut settled, on_event)?;
+    apply_all(pending, deferred, cx, journal, &mut settled, on_event)?;
 
     Ok(report(journal, mode, settled, installed, started))
 }
@@ -82,8 +90,18 @@ fn report(
 }
 
 /// Records every step a real run would have applied, without applying it.
-fn settle_as_dry_run(pending: Vec<Box<dyn CoreImprovement>>, settled: &mut Vec<StepReport>) {
-    for step in pending {
+///
+/// Held-open steps are listed too. A dry run cannot know how the second probe
+/// would answer, but dropping the step entirely would tell the user a real run
+/// has nothing to do about it, which is the one thing that is definitely
+/// wrong.
+fn settle_as_dry_run(
+    pending: Vec<Box<dyn CoreImprovement>>,
+    deferred: Vec<Deferred>,
+    settled: &mut Vec<StepReport>,
+) {
+    let held = deferred.into_iter().map(|entry| entry.step);
+    for step in pending.into_iter().chain(held) {
         settled.push(StepReport::for_step(
             step.as_ref(),
             Outcome::Skipped {
@@ -138,62 +156,33 @@ fn install(
 /// need nothing.
 fn decline(
     pending: &mut Vec<Box<dyn CoreImprovement>>,
+    deferred: &mut Vec<Deferred>,
     settled: &mut Vec<StepReport>,
     waiting: &[ImprovementId],
 ) {
-    pending.retain(|step| {
-        if waiting.contains(&step.id()) {
-            settled.push(StepReport::for_step(
-                step.as_ref(),
-                Outcome::Skipped {
-                    reason: SkipReason::UserDeclined,
-                },
-            ));
-            false
-        } else {
-            true
-        }
-    });
+    pending.retain(|step| keep_unless_waiting(step.as_ref(), waiting, settled));
+    deferred.retain(|held| keep_unless_waiting(held.step.as_ref(), waiting, settled));
 }
 
-fn apply_all(
-    pending: Vec<Box<dyn CoreImprovement>>,
-    cx: &CoreCx<'_>,
-    journal: &mut Journal,
+/// Whether one step survives a declined install.
+///
+/// A held-open step is filtered by the same list as a pending one. Its
+/// packages went onto the same screen, so a no there is a no here.
+fn keep_unless_waiting(
+    step: &dyn CoreImprovement,
+    waiting: &[ImprovementId],
     settled: &mut Vec<StepReport>,
-    on_event: &mut dyn FnMut(RunEvent),
-) -> Result<(), RunError> {
-    for step in pending {
-        on_event(RunEvent::Applying {
-            step: step.id(),
-            name: step.name().to_owned(),
-        });
-
-        journal.append(JournalEvent::StepBegin { step: step.id() })?;
-
-        let step_id = step.id();
-        let progress: Box<dyn FnMut(&str) + '_> = Box::new(|msg: &str| {
-            on_event(RunEvent::StepProgress {
-                step: step_id.clone(),
-                message: msg.to_owned(),
-            });
-        });
-        let outcome = apply_and_verify(step.as_ref(), cx, cx.runner, journal, Some(progress));
-
-        journal.append(JournalEvent::StepEnd {
-            step: step.id(),
-            outcome: outcome.label().to_owned(),
-        })?;
-        on_event(RunEvent::Finished {
-            step: step.id(),
-            name: step.name().to_owned(),
-            kind: outcome.kind(),
-            detail: outcome.detail(),
-        });
-
-        settled.push(StepReport::for_step(step.as_ref(), outcome));
+) -> bool {
+    if !waiting.contains(&step.id()) {
+        return true;
     }
-    Ok(())
+    settled.push(StepReport::for_step(
+        step,
+        Outcome::Skipped {
+            reason: SkipReason::UserDeclined,
+        },
+    ));
+    false
 }
 
 #[cfg(test)]

@@ -10,13 +10,13 @@ pub(crate) const UNDO: &str = "Undo";
 /// The heading over a list of steps, wherever one is printed.
 pub(crate) const STEPS: &str = "Steps";
 
-pub(crate) mod colors;
 mod explain;
 mod games;
 mod init;
 mod install;
 mod launch_choice;
 mod launch_report;
+pub(crate) mod layout;
 mod overlay;
 mod plan;
 mod progress;

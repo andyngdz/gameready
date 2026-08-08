@@ -6,7 +6,7 @@ mod service;
 pub(crate) mod use_cases;
 
 pub use domain::{
-    DependencyStatus, InstallConsent, MissingDependency, Mode, Phase, PlannedInstall,
+    Deferred, DependencyStatus, InstallConsent, MissingDependency, Mode, Phase, PlannedInstall,
     PreflightReport, ResolvedDependency, RevertCheck, RunEvent, RunPlan, RunReport, RunStatus,
     SelftestResult, StepReport, StepSelftest,
 };

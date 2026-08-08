@@ -6,6 +6,8 @@ use std::sync::Mutex;
 
 use crate::exec::{Cmd, CmdOutput, ExecError};
 
+use super::mock_runner_change::Unlock;
+
 /// Reported when the fake system's lock is poisoned, which only happens if a
 /// test panicked while holding it. Named once so the three call sites that can
 /// hit it stay in step.
@@ -24,9 +26,9 @@ pub(super) const POISONED: &str = "mock state poisoned";
 #[derive(Debug, Default)]
 pub struct MockRunner {
     pub(super) state: Mutex<MockState>,
-    pub(super) binaries: HashSet<String>,
     responses: HashMap<String, CmdOutput>,
-    effects: HashMap<String, (PathBuf, String)>,
+    effects: HashMap<String, Vec<(PathBuf, String)>>,
+    pub(super) triggers: HashMap<String, Vec<Unlock>>,
     failing: HashSet<String>,
     fail_at: Option<usize>,
 }
@@ -36,6 +38,11 @@ pub struct MockRunner {
 pub(super) struct MockState {
     pub(super) files: HashMap<PathBuf, String>,
     pub(super) commands: Vec<String>,
+    pub(super) binaries: HashSet<String>,
+    /// Answers a trigger has switched on. Consulted ahead of everything the
+    /// test seeded, because that is the whole point: a command seeded as
+    /// failing has to start succeeding once the command that fixes it has run.
+    pub(super) unlocked: HashMap<String, CmdOutput>,
 }
 
 impl MockRunner {
@@ -57,8 +64,10 @@ impl MockRunner {
 
     /// Seeds an executable that is on `PATH`.
     #[must_use]
-    pub fn with_binary(mut self, name: impl Into<String>) -> Self {
-        self.binaries.insert(name.into());
+    pub fn with_binary(self, name: impl Into<String>) -> Self {
+        if let Ok(mut state) = self.state.lock() {
+            state.binaries.insert(name.into());
+        }
         self
     }
 
@@ -105,7 +114,9 @@ impl MockRunner {
         contents: impl Into<String>,
     ) -> Self {
         self.effects
-            .insert(command.into(), (path.into(), contents.into()));
+            .entry(command.into())
+            .or_default()
+            .push((path.into(), contents.into()));
         self
     }
 
@@ -162,6 +173,15 @@ impl MockRunner {
             }
         };
 
+        self.unlock(&rendered);
+
+        // Ahead of everything the test seeded: a command seeded as failing is
+        // exactly the one an earlier step is meant to have fixed, so a seed
+        // that still won here would make the feature untestable.
+        if let Some(answer) = self.unlocked_answer(&rendered) {
+            return Ok(answer);
+        }
+
         if self.failing.contains(&rendered) {
             return Ok(CmdOutput {
                 code: 1,
@@ -179,9 +199,11 @@ impl MockRunner {
             });
         }
 
-        if let Some((path, contents)) = self.effects.get(&rendered) {
+        if let Some(writes) = self.effects.get(&rendered) {
             if let Ok(mut state) = self.state.lock() {
-                state.files.insert(path.clone(), contents.clone());
+                for (path, contents) in writes {
+                    state.files.insert(path.clone(), contents.clone());
+                }
             }
         }
 

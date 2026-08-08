@@ -1,10 +1,11 @@
-//! Shared formatting for CLI output sections.
+//! The shapes every screen is built from: titles, rows, labelled paragraphs.
 
 use std::fmt;
 
 use console::style;
-use gameready_core::improvement::OutcomeKind;
-use terminal_size::{terminal_size, Width};
+
+use super::marks::Mark;
+use super::width::width;
 
 /// How wide the label column in a labelled paragraph is.
 ///
@@ -22,61 +23,6 @@ const ROW_FURNITURE: usize = 6;
 
 /// The shortest leader worth drawing. Two dots read as a typo.
 const MIN_LEADER: usize = 4;
-
-/// The layout width when there is no terminal to ask, such as a pipe.
-const PIPED: usize = 80;
-
-/// The narrowest layout, below which the label column and the body collide.
-const NARROWEST: usize = 60;
-
-/// The widest layout. Past this a line of prose is too long to track back to
-/// its own start, which is why books are not printed on a metre-wide page.
-const WIDEST: usize = 100;
-
-/// How wide to lay out, in columns.
-///
-/// Clamped rather than taken raw, between `NARROWEST` and `WIDEST`. `COLUMNS`
-/// wins over the real terminal so a test can pin the layout.
-pub(crate) fn width() -> usize {
-    usable(asked_width())
-}
-
-/// What this run was told the terminal is, before the clamp.
-fn asked_width() -> usize {
-    columns_env()
-        .or_else(|| terminal_size().map(|(Width(columns), _)| usize::from(columns)))
-        .unwrap_or(PIPED)
-}
-
-/// Brings a requested column count into the range this lays out at.
-fn usable(asked: usize) -> usize {
-    asked.clamp(NARROWEST, WIDEST)
-}
-
-/// The `COLUMNS` override, when it is set to something usable.
-fn columns_env() -> Option<usize> {
-    std::env::var("COLUMNS").ok()?.trim().parse().ok()
-}
-
-/// The gutter mark for a step outcome.
-///
-/// Applied and already-set carry different marks on purpose. A tick next to a
-/// step the run did not touch tells the user their machine changed, and the
-/// next thing they do with that belief is roll back something that was never
-/// applied.
-pub(crate) fn outcome_mark(kind: OutcomeKind) -> String {
-    match kind {
-        OutcomeKind::Applied => style("\u{2714}").green().to_string(),
-        OutcomeKind::AlreadySet => style("\u{2022}").green().dim().to_string(),
-        OutcomeKind::Failed => style("\u{2718}").red().bold().to_string(),
-        OutcomeKind::Skipped | OutcomeKind::NotApplicable => style("-").dim().to_string(),
-    }
-}
-
-/// The gutter mark for something worth reading that did not fail.
-pub(crate) fn warning_mark() -> String {
-    style("!").yellow().to_string()
-}
 
 /// Writes structured output sections with consistent spacing and separators.
 ///
@@ -106,8 +52,8 @@ impl<'a, W: fmt::Write> Section<'a, W> {
     }
 
     /// A 2-space-indented line with a leading mark and the body text.
-    pub(crate) fn marked(&mut self, mark: &str, text: &str) -> fmt::Result {
-        self.flow(&format!("  {mark} "), text)
+    pub(crate) fn marked(&mut self, mark: Mark, text: &str) -> fmt::Result {
+        self.flow(&format!("  {} ", mark.glyph()), text)
     }
 
     /// A 2-space-indented line with no mark.
@@ -152,7 +98,7 @@ impl<'a, W: fmt::Write> Section<'a, W> {
     ///
     /// Both strings arrive unstyled and are styled here, because the leader
     /// length is measured in columns and an escape code counts as none.
-    pub(crate) fn row(&mut self, mark: &str, name: &str, evidence: Option<&str>) -> fmt::Result {
+    pub(crate) fn row(&mut self, mark: Mark, name: &str, evidence: Option<&str>) -> fmt::Result {
         let named = style(name).bold().to_string();
         let Some(evidence) = evidence else {
             return self.marked(mark, &named);
@@ -169,7 +115,8 @@ impl<'a, W: fmt::Write> Section<'a, W> {
 
         writeln!(
             self.w,
-            "  {mark} {named} {} {}",
+            "  {} {named} {} {}",
+            mark.glyph(),
             style(".".repeat(leader)).dim(),
             style(evidence).dim()
         )
@@ -222,5 +169,5 @@ impl<'a, W: fmt::Write> Section<'a, W> {
 }
 
 #[cfg(test)]
-#[path = "colors_test.rs"]
-mod colors_test;
+#[path = "section_test.rs"]
+mod section_test;

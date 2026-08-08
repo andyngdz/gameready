@@ -80,7 +80,7 @@ fn binary_on_path_is_present() {
     );
     let step: Box<dyn CoreImprovement> = Box::new(StepWithDeps::new("test.a", vec![dep]));
 
-    let report = resolve_dependencies(&[step], &facts(), &runner, &pm);
+    let report = resolve_dependencies(&[step.as_ref()], &facts(), &runner, &pm);
 
     assert_eq!(report.dependencies.len(), 1);
     assert_eq!(report.dependencies[0].status, DependencyStatus::Present);
@@ -102,7 +102,7 @@ fn missing_binary_with_available_package_is_missing() {
     );
     let step: Box<dyn CoreImprovement> = Box::new(StepWithDeps::new("test.a", vec![dep]));
 
-    let report = resolve_dependencies(&[step], &facts(), &runner, &pm);
+    let report = resolve_dependencies(&[step.as_ref()], &facts(), &runner, &pm);
 
     assert_eq!(report.dependencies[0].status, DependencyStatus::Missing);
     assert!(report.needs_install());
@@ -127,7 +127,7 @@ fn unavailable_package_blocks_step() {
     );
     let step: Box<dyn CoreImprovement> = Box::new(StepWithDeps::new("test.a", vec![dep]));
 
-    let report = resolve_dependencies(&[step], &facts(), &runner, &pm);
+    let report = resolve_dependencies(&[step.as_ref()], &facts(), &runner, &pm);
 
     assert_eq!(report.dependencies[0].status, DependencyStatus::Unavailable);
     assert_eq!(
@@ -151,7 +151,7 @@ fn duplicate_dependency_across_steps_is_probed_once() {
     let step_a: Box<dyn CoreImprovement> = Box::new(StepWithDeps::new("test.a", vec![dep.clone()]));
     let step_b: Box<dyn CoreImprovement> = Box::new(StepWithDeps::new("test.b", vec![dep]));
 
-    let report = resolve_dependencies(&[step_a, step_b], &facts(), &runner, &pm);
+    let report = resolve_dependencies(&[step_a.as_ref(), step_b.as_ref()], &facts(), &runner, &pm);
 
     assert_eq!(report.dependencies.len(), 1);
     assert_eq!(report.dependencies[0].wanted_by.len(), 2);
@@ -170,7 +170,7 @@ fn kernel_version_too_low_is_unavailable() {
     );
     let step: Box<dyn CoreImprovement> = Box::new(StepWithDeps::new("test.a", vec![dep]));
 
-    let report = resolve_dependencies(&[step], &facts(), &runner, &pm);
+    let report = resolve_dependencies(&[step.as_ref()], &facts(), &runner, &pm);
 
     assert_eq!(report.dependencies[0].status, DependencyStatus::Unavailable);
 }
@@ -188,7 +188,7 @@ fn feature_path_present_is_present() {
     );
     let step: Box<dyn CoreImprovement> = Box::new(StepWithDeps::new("test.a", vec![dep]));
 
-    let report = resolve_dependencies(&[step], &facts(), &runner, &pm);
+    let report = resolve_dependencies(&[step.as_ref()], &facts(), &runner, &pm);
 
     assert_eq!(report.dependencies[0].status, DependencyStatus::Present);
 }
@@ -207,7 +207,7 @@ fn packages_to_install_returns_distro_names() {
     );
     let step: Box<dyn CoreImprovement> = Box::new(StepWithDeps::new("test.a", vec![dep]));
 
-    let report = resolve_dependencies(&[step], &facts(), &runner, &pm);
+    let report = resolve_dependencies(&[step.as_ref()], &facts(), &runner, &pm);
 
     let names = report.packages_to_install(PackageManagerKind::Apt);
     assert_eq!(names, vec!["mangohud"]);

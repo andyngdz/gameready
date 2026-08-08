@@ -151,8 +151,24 @@ pub enum RunEvent {
     /// Probing has started for one step.
     Probing { step: ImprovementId },
 
+    /// A step the probe ruled out is being held open, because a step it names
+    /// in `requires()` is going to run and may change the answer.
+    Deferred {
+        step: ImprovementId,
+        name: String,
+        reason: String,
+        waiting_on: Vec<ImprovementId>,
+    },
+
     /// Every step has been probed and the plan is settled.
     Planned { applicable: usize, skipped: usize },
+
+    /// A held-open step is being probed a second time, now that the step named
+    /// here has finished.
+    Reprobing {
+        step: ImprovementId,
+        after: ImprovementId,
+    },
 
     /// Dependencies have been resolved. The CLI renders the preflight screen
     /// from this.

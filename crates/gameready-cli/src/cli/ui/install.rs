@@ -8,6 +8,7 @@ use gameready_core::facts::PackageManagerKind;
 use gameready_core::run::{InstallConsent, Mode, PlannedInstall, RunPlan};
 use inquire::Confirm;
 
+use crate::cli::ui::layout::Mark;
 use crate::cli::ui::questions::Picker;
 
 /// What a run would put on this machine, laid out before it puts any of it
@@ -79,7 +80,7 @@ impl fmt::Display for InstallList {
             writeln!(
                 f,
                 "  {} {}",
-                style("*").green(),
+                Mark::Chosen.glyph(),
                 style(&install.package).bold()
             )?;
             writeln!(f, "      What  {}", install.what)?;

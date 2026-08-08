@@ -37,6 +37,7 @@ fn empty_plan() -> RunPlan {
     RunPlan {
         settled: Vec::new(),
         pending: Vec::new(),
+        deferred: Vec::new(),
         preflight: PreflightReport {
             dependencies: Vec::new(),
             total_install_bytes: 0,

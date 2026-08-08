@@ -1,7 +1,7 @@
 use super::*;
 use crate::facts::{Family, SystemFacts};
 use crate::improvement::{
-    ApplyCx, Dependency, DependencyKind, Improvement, ImprovementId, PackageSpec, Privilege,
+    ApplyCx, Dependency, DependencyKind, Improvement, ImprovementId, PackageSpec, Privilege, Probe,
     StepError, StepPlan, Verification,
 };
 use crate::infra::exec::MockRunner;

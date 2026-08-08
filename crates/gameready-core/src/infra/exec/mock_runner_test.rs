@@ -58,3 +58,53 @@ fn which_answers_only_for_seeded_binaries() {
     assert!(runner.which("sudo").is_some());
     assert!(runner.which("clang").is_none());
 }
+
+#[test]
+fn a_command_seeded_as_failing_succeeds_once_the_command_that_fixes_it_has_run() {
+    // The whole reason the feature exists: apt cannot see scx until the PPA is
+    // added, and a mock whose answers never move cannot express that.
+    let runner = MockRunner::new()
+        .failing("apt-cache show scx")
+        .where_command_changes_answer(
+            "sudo add-apt-repository ppa:scx",
+            "apt-cache show scx",
+            "Package: scx\n",
+        );
+
+    runner
+        .run(&Cmd::user("apt-cache").arg("show").arg("scx"))
+        .expect_err("nothing has added the repository yet");
+
+    runner
+        .run(&Cmd::root("add-apt-repository").arg("ppa:scx"))
+        .expect("adds the repository");
+
+    let output = runner
+        .run(&Cmd::user("apt-cache").arg("show").arg("scx"))
+        .expect("the package is visible now");
+    assert_eq!(output.stdout_trimmed(), "Package: scx");
+}
+
+#[test]
+fn a_binary_appears_on_the_path_once_its_install_has_run() {
+    let runner =
+        MockRunner::new().where_command_adds_binary("sudo pacman -S gamemode", "gamemoderun");
+
+    assert!(runner.which("gamemoderun").is_none());
+    runner
+        .run(&Cmd::root("pacman").arg("-S").arg("gamemode"))
+        .expect("installs");
+    assert!(runner.which("gamemoderun").is_some());
+}
+
+#[test]
+fn one_command_can_write_more_than_one_file() {
+    let runner = MockRunner::new()
+        .where_command_writes("sudo tune", "/proc/sys/a", "1")
+        .where_command_writes("sudo tune", "/proc/sys/b", "2");
+
+    runner.run(&Cmd::root("tune")).expect("runs");
+
+    assert_eq!(runner.file("/proc/sys/a").as_deref(), Some("1"));
+    assert_eq!(runner.file("/proc/sys/b").as_deref(), Some("2"));
+}

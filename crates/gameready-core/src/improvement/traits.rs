@@ -28,7 +28,16 @@ pub trait Improvement: Send + Sync {
     /// prompt at a moment the user was not told about.
     fn privilege(&self) -> Privilege;
 
-    /// Steps that must succeed before this one runs.
+    /// Steps whose success can change what this one's probe answers.
+    ///
+    /// Not an ordering constraint. The run already applies steps in registry
+    /// order, and a step named here may well have been ruled out itself. What
+    /// this buys is a second look: a step the first probe ruled out is held
+    /// open, and probed once more after every step it names has finished, so a
+    /// tuning unlocked by an install earlier in the same run does not have to
+    /// wait for the user to run gameready again.
+    ///
+    /// A step that names nobody is probed once and never again.
     fn requires(&self) -> &[ImprovementId] {
         &[]
     }

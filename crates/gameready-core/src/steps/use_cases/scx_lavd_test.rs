@@ -17,8 +17,14 @@ fn idle_kernel() -> MockRunner {
 }
 
 /// The same kernel with scx already installed, so no package work is needed.
+///
+/// The package query is seeded as well as the binary: `scxctl` is on `PATH`
+/// precisely because the package is installed, and a fixture where one is true
+/// and the other is not describes no real machine.
 fn ready_kernel() -> MockRunner {
-    idle_kernel().with_binary(SCXCTL_BIN)
+    idle_kernel()
+        .with_binary(SCXCTL_BIN)
+        .answering("dpkg-query --showformat=${Version} --show scx", "1.0.19")
 }
 
 fn journal(dir: &TempDir) -> Journal {
@@ -88,7 +94,7 @@ fn a_scheduler_somebody_else_loaded_is_a_conflict_not_something_to_replace() {
 }
 
 #[test]
-fn a_system_whose_repositories_have_no_scx_says_where_to_get_it() {
+fn a_system_whose_repositories_have_no_scx_is_not_sent_away_to_run_gameready_twice() {
     let runner = idle_kernel()
         .failing("dpkg-query --showformat=${Version} --show scx")
         .failing("apt-cache show scx");
@@ -97,11 +103,12 @@ fn a_system_whose_repositories_have_no_scx_says_where_to_get_it() {
 
     match ScxLavd.probe(&cx).expect("probed") {
         Probe::NotApplicable { reason } => {
-            // Ubuntu is told about the step in this same run that fixes it,
-            // not sent away to add a repository by hand.
+            // Ubuntu is told about the step in this same run that fixes it.
+            // The promise of a second run went with the re-probe that made it
+            // untrue: this step is held open and looked at again in this pass.
             assert!(reason.contains("core.repo.scx-ppa"), "{reason}");
             assert!(
-                reason.contains("the next time you run gameready"),
+                !reason.contains("the next time you run gameready"),
                 "{reason}"
             );
         }

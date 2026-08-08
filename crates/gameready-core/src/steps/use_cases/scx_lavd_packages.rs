@@ -64,15 +64,14 @@ impl ScxPackages {
     /// Why this system cannot get scx, in terms a user can act on.
     ///
     /// Apt gets a different answer because gameready has a step that fixes it.
-    /// Every step is probed before any step applies, so the repository this run
-    /// is about to add is not there yet when this one is asked: the honest
-    /// answer names the second run rather than pretending one will do.
+    /// The repository is not there yet when this probe is asked, but the run is
+    /// about to add it and will ask again afterwards, so this says what is true
+    /// right now without sending the user away to run gameready twice.
     pub fn why_not(&self, cx: &CoreCx<'_>) -> String {
         if cx.facts.distro.package_manager() == PackageManagerKind::Apt {
             return format!(
                 "scx is not in this system's repositories yet ({}); the \"{}\" step in this \
-                 run adds the PPA that carries it, and this step applies the next time you \
-                 run gameready",
+                 run adds the PPA that carries it, and this step is looked at again once it has",
                 cx.facts.distro.name,
                 ScxPpa::id_const(),
             );
@@ -85,8 +84,13 @@ impl ScxPackages {
     }
 
     /// The packages that will be fetched, with the text the screen asks with.
+    ///
+    /// Read from `wanted` rather than `fetchable`, because on Ubuntu the PPA
+    /// that makes them resolvable is added by another step in this same run.
+    /// Listing only what apt can already see would show an empty install
+    /// screen and then fetch 178 MB nobody agreed to.
     pub fn to_install(&self) -> Vec<PlannedPackage> {
-        self.fetchable()
+        self.wanted()
             .map(|candidate| PlannedPackage {
                 name: candidate.name.clone(),
                 what: candidate.what.to_owned(),
@@ -136,6 +140,20 @@ impl ScxPackages {
         )
     }
 
+    /// What this machine does not have yet, whatever apt can currently see.
+    ///
+    /// The plan-time list. A package the repositories do not carry yet is still
+    /// wanted: another step in this run is about to make it resolvable.
+    fn wanted(&self) -> impl Iterator<Item = &Candidate> {
+        self.candidates
+            .iter()
+            .filter(|candidate| !matches!(candidate.state, PackageState::Installed { .. }))
+    }
+
+    /// What the package manager can fetch right now.
+    ///
+    /// The apply-time list, read again after the repository has been added, so
+    /// it is narrower than `wanted` only when something went wrong.
     fn fetchable(&self) -> impl Iterator<Item = &Candidate> {
         self.candidates
             .iter()

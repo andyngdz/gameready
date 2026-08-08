@@ -6,7 +6,7 @@ use console::style;
 use gameready_core::run::Mode;
 use gameready_core::steam::GameSetup;
 
-use crate::cli::ui::colors::Section;
+use crate::cli::ui::layout::{Mark, Section};
 use crate::cli::ui::questions::Answers;
 
 /// The agreed plan, printed before the first change.
@@ -36,9 +36,8 @@ impl fmt::Display for InitPlan<'_> {
 
         let mut s = Section::new(f);
         s.title("Game selected:")?;
-        let mark = style("*").green().bold().to_string();
         for setup in &self.answers.selected {
-            s.marked(&mark, &setup.game.name)?;
+            s.marked(Mark::Chosen, &setup.game.name)?;
         }
         if !self.mode.mutates() {
             s.indented(&style("Dry run: nothing will change.").dim().to_string())?;

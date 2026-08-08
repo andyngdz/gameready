@@ -16,7 +16,7 @@ use crate::run::domain::{DependencyStatus, PreflightReport, ResolvedDependency};
 /// to all steps that declared it. The caller gets a single list with no
 /// duplicates, ready for the install prompt.
 pub fn resolve_dependencies(
-    steps: &[Box<dyn CoreImprovement>],
+    steps: &[&dyn CoreImprovement],
     facts: &SystemFacts,
     runner: &dyn CommandRunner,
     pkg_manager: &dyn PackageManager,

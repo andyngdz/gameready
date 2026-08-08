@@ -4,12 +4,10 @@
 //! user sees a growing checklist rather than a single spinner that replaces
 //! itself.
 
-use console::style;
-use gameready_core::improvement::OutcomeKind;
 use gameready_core::run::RunEvent;
 use indicatif::ProgressBar;
 
-use crate::cli::ui::colors::outcome_mark;
+use crate::cli::ui::layout::Mark;
 
 /// Renders step progress as a checklist on stderr.
 pub struct ProgressView {
@@ -35,7 +33,18 @@ impl ProgressView {
                 }
             }
 
+            // Held-open steps belong on the plan screen the user reads a
+            // moment later. A line here would land inside the probing spinner,
+            // before they have been told what any of it is for.
+            RunEvent::Deferred { .. } => {}
+
             RunEvent::Planned { .. } => self.clear(),
+
+            RunEvent::Reprobing { step, after } => {
+                self.recheck(&format!(
+                    "Re-checking {step}, now that {after} has finished"
+                ));
+            }
 
             RunEvent::InstallingDependencies { count } => {
                 self.start(format!("Installing {count} package(s)..."));
@@ -53,7 +62,7 @@ impl ProgressView {
             }
 
             RunEvent::Finished { kind, .. } => {
-                self.finish_phase_with(kind);
+                self.finish_phase_with(Mark::of(kind));
                 self.clear();
             }
 
@@ -84,21 +93,27 @@ impl ProgressView {
         }
     }
 
-    /// Prints the previous phase as a completed line.
-    fn finish_phase(&mut self) {
-        if let Some(phase) = self.last_phase.take() {
-            self.settle(format!("  {} {phase}", style("✓").green()));
-        }
+    /// Leaves a line on screen for the run looking again, which belongs to no
+    /// single step: it is the boundary between the step that just finished and
+    /// the one its success brought back.
+    fn recheck(&mut self, message: &str) {
+        self.finish_phase();
+        self.start(message.to_owned());
+        self.settle(format!("  {} {message}", Mark::Recheck.glyph()));
     }
 
-    /// Prints the last phase with a symbol matching the outcome.
+    /// Prints the previous phase as a completed line.
     ///
-    /// The marks come from `outcome_mark` rather than a table of their own, so
-    /// a mark cannot mean one thing while a step runs and another in the
-    /// summary printed a second later.
-    fn finish_phase_with(&mut self, kind: OutcomeKind) {
+    /// A sub-phase that finished is a change that landed, so it carries the
+    /// same mark the summary will print for it a second later.
+    fn finish_phase(&mut self) {
+        self.finish_phase_with(Mark::Applied);
+    }
+
+    /// Prints the last phase with the mark its outcome calls for.
+    fn finish_phase_with(&mut self, mark: Mark) {
         if let Some(phase) = self.last_phase.take() {
-            self.settle(format!("  {} {phase}", outcome_mark(kind)));
+            self.settle(format!("  {} {phase}", mark.glyph()));
         }
     }
 }

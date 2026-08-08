@@ -6,7 +6,7 @@ use std::path::Path;
 use console::style;
 use gameready_core::run::RunReport;
 
-use crate::cli::ui::colors::{outcome_mark, Section};
+use crate::cli::ui::layout::{Mark, Section};
 
 /// The full report printed after a run completes.
 pub struct Summary<'a> {
@@ -95,13 +95,13 @@ impl fmt::Display for Summary<'_> {
         s.blank()?;
         s.title(self.heading())?;
         for step in &self.report.steps {
-            let mark = outcome_mark(step.outcome.kind());
+            let mark = Mark::of(step.outcome.kind());
             let detail = step
                 .outcome
                 .detail()
                 .map(|d| format!(" {}", style(format!("({d})")).dim()))
                 .unwrap_or_default();
-            s.marked(&mark, &format!("{}{detail}", step.name))?;
+            s.marked(mark, &format!("{}{detail}", step.name))?;
         }
 
         // A run that recorded nothing has no undo command to offer and no new

@@ -12,6 +12,7 @@ use crate::steps::constants::{LAVD_SCHEDULER, SCHED_EXT_STATE, SCXCTL_BIN, SCX_U
 use crate::steps::domain::{restore_scheduler, SchedExt};
 use crate::steps::use_cases::scx_lavd_loader::Loader;
 use crate::steps::use_cases::scx_lavd_packages::ScxPackages;
+use crate::steps::use_cases::scx_ppa::ScxPpa;
 use crate::steps::use_cases::scx_state::read_sched_ext;
 use crate::systemd::{DISABLE, NOW, SYSTEMCTL};
 
@@ -88,7 +89,20 @@ impl Improvement for ScxLavd {
     fn tags(&self) -> &[Tag] {
         &[Tag::Cpu]
     }
+
+    /// On Ubuntu the packages only resolve once the PPA step has run, so a
+    /// probe taken before it says no about a machine that is minutes from
+    /// saying yes. Naming it here is what buys the second look.
+    fn requires(&self) -> &[ImprovementId] {
+        &UNLOCKED_BY
+    }
 }
+
+/// The step that makes scx resolvable on apt systems.
+///
+/// A `static` rather than a `const`: a const is inlined at every use site, so
+/// `requires` would hand back a reference to a temporary.
+static UNLOCKED_BY: [ImprovementId; 1] = [ScxPpa::id_const()];
 
 impl CoreImprovement for ScxLavd {
     fn probe(&self, cx: &CoreCx<'_>) -> Result<Probe, StepError> {

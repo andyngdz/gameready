@@ -11,6 +11,8 @@ mod sysfs;
 #[cfg(any(test, feature = "testkit"))]
 pub(crate) mod mock_runner;
 #[cfg(any(test, feature = "testkit"))]
+mod mock_runner_change;
+#[cfg(any(test, feature = "testkit"))]
 mod mock_runner_impl;
 
 pub use dry_runner::DryRunner;

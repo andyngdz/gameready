@@ -6,7 +6,7 @@ use console::style;
 use gameready_core::improvement::{CoreCx, CoreImprovement, Privilege, Probe, StepPlan};
 use gameready_core::steps::core_steps;
 
-use crate::cli::ui::colors::Section;
+use crate::cli::ui::layout::{Mark, Section};
 use crate::cli::ui::UNDO;
 
 /// Everything `explain` found out about one step, ready to print.
@@ -118,7 +118,7 @@ impl fmt::Display for StepIndex {
         for (id, name) in &self.steps {
             // The gutter stays empty here rather than closing up: this list
             // shares its left edge with every screen that does carry marks.
-            s.row(" ", id, Some(name))?;
+            s.row(Mark::None, id, Some(name))?;
         }
         s.blank()?;
         s.indented("Run `gameready explain <id>` for what one of them would do here.")?;

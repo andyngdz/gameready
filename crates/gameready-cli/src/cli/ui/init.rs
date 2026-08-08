@@ -5,7 +5,7 @@ use std::fmt;
 use console::style;
 use gameready_core::games::AppId;
 
-use crate::cli::ui::colors::Section;
+use crate::cli::ui::layout::{Mark, Section};
 use crate::cli::ui::questions::Answers;
 
 /// The per-game settings for the user to enter into Steam themselves.
@@ -54,7 +54,7 @@ impl fmt::Display for LaunchInstructions<'_> {
                 continue;
             }
 
-            s.marked("-", &setup.game.name)?;
+            s.marked(Mark::Chosen, &setup.game.name)?;
             s.sub("- Go to Steam > right click the game > Properties")?;
             if !options.is_empty() {
                 s.sub(&format!(

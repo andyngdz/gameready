@@ -4,7 +4,7 @@ use std::fmt;
 
 use gameready_core::games::{Catalog, GameError, ProtonChoice};
 
-use crate::cli::ui::colors::{warning_mark, Section};
+use crate::cli::ui::layout::{Mark, Section};
 
 /// The catalog as printable lines, with anything that failed to load after it.
 ///
@@ -36,7 +36,7 @@ impl fmt::Display for GameList<'_> {
         for entry in self.catalog.entries() {
             let profile = &entry.profile;
             let origin = format!("{}  {}", profile.app_id, entry.source.label());
-            s.row(" ", &profile.name, Some(&origin))?;
+            s.row(Mark::None, &profile.name, Some(&origin))?;
 
             let wrappers: Vec<&str> = profile
                 .wrappers
@@ -59,7 +59,7 @@ impl fmt::Display for GameList<'_> {
             s.blank()?;
             s.title("Could not read")?;
             for failure in self.failures {
-                s.marked(&warning_mark(), &failure.to_string())?;
+                s.marked(Mark::Warning, &failure.to_string())?;
             }
         }
 

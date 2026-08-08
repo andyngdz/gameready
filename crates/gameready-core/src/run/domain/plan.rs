@@ -29,6 +29,38 @@ pub struct PlannedInstall {
     pub approx_bytes: u64,
 }
 
+/// A step the first probe ruled out, held open because the run contains a step
+/// that could change the answer.
+///
+/// It is neither settled nor pending: settling it would report a verdict the
+/// run is about to invalidate, and putting it in `pending` would apply a step
+/// whose own probe currently says no.
+pub struct Deferred {
+    /// The step itself, still live so it can be probed again and then applied.
+    pub step: Box<dyn CoreImprovement>,
+
+    /// What the first probe said. Kept because a step that is still ruled out
+    /// after the second look has to report something, and the first reason is
+    /// what the user would otherwise have seen.
+    pub reason: String,
+
+    /// The steps whose completion releases it. Every one of them is pending,
+    /// so this list is never empty.
+    pub waiting_on: Vec<ImprovementId>,
+}
+
+impl std::fmt::Debug for Deferred {
+    /// Hand-written for the same reason `RunPlan`'s is: `CoreImprovement` is a
+    /// trait object with no `Debug` bound.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Deferred")
+            .field("step", &self.step.id())
+            .field("reason", &self.reason)
+            .field("waiting_on", &self.waiting_on)
+            .finish()
+    }
+}
+
 /// Everything a run learned by reading the system, and nothing it did.
 ///
 /// Holding the probed steps, the dependency report, and what each step means to
@@ -42,6 +74,11 @@ pub struct RunPlan {
 
     /// Steps that would run, in order.
     pub pending: Vec<Box<dyn CoreImprovement>>,
+
+    /// Steps the probe ruled out that a pending step may yet unlock. Their
+    /// packages ride the same install screen as everybody else's, because a
+    /// step promoted mid-run must not fetch anything nobody agreed to.
+    pub deferred: Vec<Deferred>,
 
     /// What those steps need, and whether this system has it.
     pub preflight: PreflightReport,
@@ -120,9 +157,23 @@ impl RunPlan {
     }
 
     /// Whether the run would do anything at all.
+    ///
+    /// A held-open step counts: the run has something left to decide about it,
+    /// which is the opposite of empty.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.pending.is_empty()
+        self.pending.is_empty() && self.deferred.is_empty()
+    }
+
+    /// Every step this run may still apply, held open ones included.
+    ///
+    /// The list the pre-flight resolver and the install screen both read, so a
+    /// step that is promoted mid-run has already had its packages agreed to.
+    #[must_use]
+    pub fn considered(&self) -> Vec<&dyn CoreImprovement> {
+        let pending = self.pending.iter().map(AsRef::as_ref);
+        let deferred = self.deferred.iter().map(|held| held.step.as_ref());
+        pending.chain(deferred).collect()
     }
 }
 
@@ -134,6 +185,7 @@ impl std::fmt::Debug for RunPlan {
         f.debug_struct("RunPlan")
             .field("settled", &self.settled)
             .field("pending", &self.pending.len())
+            .field("deferred", &self.deferred)
             .field("preflight", &self.preflight)
             .field("step_installs", &self.step_installs)
             .finish()

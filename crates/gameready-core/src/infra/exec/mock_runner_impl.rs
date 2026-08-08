@@ -128,9 +128,11 @@ impl CommandRunner for MockRunner {
     }
 
     fn which(&self, binary: &str) -> Option<PathBuf> {
-        self.binaries
-            .contains(binary)
-            .then(|| PathBuf::from(FAKE_BIN_DIR).join(binary))
+        let present = self
+            .state
+            .lock()
+            .is_ok_and(|state| state.binaries.contains(binary));
+        present.then(|| PathBuf::from(FAKE_BIN_DIR).join(binary))
     }
 }
 

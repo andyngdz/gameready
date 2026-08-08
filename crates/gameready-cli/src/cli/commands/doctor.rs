@@ -9,7 +9,7 @@ use gameready_core::infra::pkg;
 use gameready_core::steps::core_steps;
 
 use crate::cli::commands::constants::CANNOT_READ_SYSTEM;
-use crate::cli::ui::colors::{warning_mark, Section};
+use crate::cli::ui::layout::{Mark, Section};
 
 /// Reports system facts and what each step currently finds.
 pub fn run(runner: &dyn CommandRunner) -> Result<String> {
@@ -37,7 +37,7 @@ pub fn run(runner: &dyn CommandRunner) -> Result<String> {
             |error| format!("probe failed: {}", error.describe()),
             |probe| probe.describe(),
         );
-        report.row(" ", step.id().as_str(), Some(&state))?;
+        report.row(Mark::None, step.id().as_str(), Some(&state))?;
     }
 
     let warnings = doctor::check_warnings(&facts, runner);
@@ -45,7 +45,7 @@ pub fn run(runner: &dyn CommandRunner) -> Result<String> {
         report.blank()?;
         report.title("Warnings")?;
         for warning in &warnings {
-            report.marked(&warning_mark(), &warning.finding)?;
+            report.marked(Mark::Warning, &warning.finding)?;
             report.sub(&warning.explanation)?;
             report.sub(&format!("Fix: {}", warning.suggestion))?;
         }

@@ -6,7 +6,7 @@ use console::style;
 use gameready_core::improvement::OutcomeKind;
 use gameready_core::run::RunReport;
 
-use crate::cli::ui::colors::outcome_mark;
+use crate::cli::ui::layout::Mark;
 
 /// The outcome of writing Steam's launch options.
 pub struct LaunchReport<'a> {
@@ -29,20 +29,20 @@ impl fmt::Display for LaunchReport<'_> {
                     writeln!(
                         f,
                         "  {} Launch options set. Steam is restarting.",
-                        outcome_mark(kind)
+                        Mark::of(kind).glyph()
                     )?;
                 }
                 OutcomeKind::AlreadySet => {
                     writeln!(
                         f,
                         "  {} {}",
-                        outcome_mark(kind),
+                        Mark::of(kind).glyph(),
                         style("Launch options already set.").dim()
                     )?;
                 }
                 OutcomeKind::Failed => {
                     let detail = step.outcome.detail().unwrap_or_default();
-                    writeln!(f, "  {} Launch options: {detail}", outcome_mark(kind))?;
+                    writeln!(f, "  {} Launch options: {detail}", Mark::of(kind).glyph())?;
                 }
                 OutcomeKind::Skipped | OutcomeKind::NotApplicable => {}
             }
