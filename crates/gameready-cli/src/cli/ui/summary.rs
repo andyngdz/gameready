@@ -4,15 +4,12 @@ use std::fmt;
 use std::path::Path;
 
 use console::style;
-use gameready_core::improvement::OutcomeKind;
+use gameready_core::improvement::{Outcome, OutcomeKind, SkipReason};
 use gameready_core::run::RunReport;
 use itertools::Itertools as _;
 
 use crate::cli::ui::layout::{Mark, Section};
-use crate::cli::ui::short_names;
-
-/// The shell glyph in front of the command the user can copy.
-const PROMPT: &str = "❯";
+use crate::cli::ui::{short_names, WentWrong, PROMPT};
 
 /// What the rollback block offers, in the words of someone reconsidering.
 const CHANGED_YOUR_MIND: &str = "Changed your mind? This puts everything back.";
@@ -65,18 +62,48 @@ impl<'a> Summary<'a> {
             OutcomeKind::NotApplicable,
             OutcomeKind::Failed,
         ];
-        ORDER
-            .iter()
-            .filter_map(|kind| {
-                let count = self
-                    .report
-                    .steps
-                    .iter()
-                    .filter(|step| step.outcome.kind() == *kind)
-                    .count();
-                (count > 0).then(|| format!("{count} {}", kind.label()))
-            })
+        let waiting = self.would_apply();
+        let counted = ORDER.iter().filter_map(|kind| {
+            let mut count = self.tally(*kind);
+            if *kind == OutcomeKind::Skipped {
+                count = count.saturating_sub(waiting);
+            }
+            (count > 0).then(|| format!("{count} {}", kind.label()))
+        });
+        (waiting > 0)
+            .then(|| format!("{waiting} would apply"))
+            .into_iter()
+            .chain(counted)
             .join(" · ")
+    }
+
+    /// How many steps ended one way.
+    fn tally(&self, kind: OutcomeKind) -> usize {
+        self.report
+            .steps
+            .iter()
+            .filter(|step| step.outcome.kind() == kind)
+            .count()
+    }
+
+    /// Steps a dry run stopped short of.
+    ///
+    /// They are recorded as skips, which is true of the machine and no use to a
+    /// reader: what they want off this screen is how much work dropping the
+    /// flag would do, not how much this run declined to do.
+    fn would_apply(&self) -> usize {
+        self.report
+            .steps
+            .iter()
+            .filter(|step| {
+                matches!(
+                    &step.outcome,
+                    Outcome::Skipped {
+                        reason: SkipReason::DryRun
+                    }
+                )
+            })
+            .count()
     }
 
     /// Whether this run wrote anything to the journal.
@@ -89,6 +116,11 @@ impl<'a> Summary<'a> {
     }
 
     /// One row per step, each with what it did after the leader.
+    ///
+    /// A step that went wrong breaks out of the row shape entirely. Its
+    /// evidence is three sentences rather than a value, and squeezing that
+    /// after a leader would leave the one line the reader needs looking like
+    /// every line they can skip.
     fn steps<W: fmt::Write>(&self, s: &mut Section<'_, W>) -> fmt::Result {
         let names = short_names();
         for step in &self.report.steps {
@@ -96,9 +128,13 @@ impl<'a> Summary<'a> {
                 .get(&step.step)
                 .cloned()
                 .unwrap_or_else(|| step.name.clone());
-            match step.outcome.detail() {
-                Some(detail) => s.row(Mark::of(step.outcome.kind()), &name, &detail)?,
-                None => s.marked(Mark::of(step.outcome.kind()), &name)?,
+            let mark = Mark::of(step.outcome.kind());
+            match (step.outcome.trouble(), step.outcome.detail()) {
+                (Some(trouble), _) => {
+                    WentWrong::new(mark, &name, &trouble, &self.report.run).write(s)?;
+                }
+                (None, Some(detail)) => s.row(mark, &name, &detail)?,
+                (None, None) => s.marked(mark, &name)?,
             }
         }
         Ok(())

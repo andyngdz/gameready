@@ -112,6 +112,7 @@ impl CoreImprovement for CpuGovernor {
                     "{daemon} sets the governor on its own schedule, so a pin here would be \
                      overwritten seconds later"
                 ),
+                yours: Some(format!("systemctl disable --now {daemon}")),
             });
         }
         if cx.runner.which(GAMEMODE.binary).is_some() {

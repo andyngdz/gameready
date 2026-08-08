@@ -93,10 +93,14 @@ impl CoreImprovement for Conflicts {
             Some((first, rest)) => Ok(Probe::Conflict {
                 with: first.clone(),
                 detail: if rest.is_empty() {
-                    "it overwrites what gamemode sets while a game runs".to_owned()
+                    format!("{first} overwrites what gamemode sets while a game runs")
                 } else {
-                    format!("along with {}", rest.join(", "))
+                    format!(
+                        "{first}, along with {}, overwrites what gamemode sets while a game runs",
+                        rest.join(", ")
+                    )
                 },
+                yours: Some(format!("systemctl disable --now {first}")),
             }),
         }
     }

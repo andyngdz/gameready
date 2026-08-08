@@ -77,9 +77,17 @@ fn two_live_daemons_are_named_together() {
     let cx = CoreCx::new(&facts, &runner);
 
     match Conflicts.probe(&cx).expect("probed") {
-        Probe::Conflict { with, detail } => {
+        Probe::Conflict {
+            with,
+            detail,
+            yours,
+        } => {
             assert!(with.starts_with("ananicy-cpp.service"), "{with}");
             assert!(detail.contains("tuned.service"), "{detail}");
+            assert_eq!(
+                yours,
+                Some("systemctl disable --now ananicy-cpp.service".to_owned())
+            );
         }
         other @ (Probe::Applicable
         | Probe::AlreadyApplied { .. }

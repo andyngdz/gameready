@@ -4,6 +4,9 @@
 /// The label that introduces the command that puts things back.
 pub(crate) const UNDO: &str = "Undo";
 
+/// The shell glyph in front of a command the user can copy.
+pub(crate) const PROMPT: &str = "❯";
+
 /// What the tunings that are about the machine itself are called.
 pub(crate) const SYSTEM: &str = "System";
 
@@ -45,6 +48,7 @@ mod selftest;
 mod steps;
 mod summary;
 mod theme;
+mod trouble;
 
 pub use answers::{ask_everything, Answers};
 pub use doctor::{DoctorReport, StepFinding};
@@ -67,3 +71,4 @@ pub use rollback::RollbackSummary;
 pub use selftest::SelftestSummary;
 pub use steps::Steps;
 pub use summary::Summary;
+pub(crate) use trouble::WentWrong;

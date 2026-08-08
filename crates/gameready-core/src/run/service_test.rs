@@ -4,7 +4,7 @@ use super::*;
 use crate::facts::SystemFacts;
 use crate::improvement::{
     ApplyCx, Check, Dependency, Improvement, PlannedAction, PlannedPackage, Privilege, Probe,
-    RollbackStatus, StepError, StepPlan, Verification,
+    RollbackStatus, SkipReason, StepError, StepPlan, Verification,
 };
 use crate::infra::exec::MockRunner;
 use crate::journal::{RunId, StatePaths};
@@ -256,9 +256,13 @@ fn an_unreadable_probe_never_becomes_permission_to_apply() {
     let report = run_with(vec![Box::new(step)], Mode::Apply, &runner);
 
     assert!(runner.paths().is_empty());
+    // A skip rather than a not-applicable: this machine may well take the
+    // step, and saying otherwise would settle a question nothing answered.
     assert!(matches!(
         report.steps[0].outcome,
-        Outcome::NotApplicable { .. }
+        Outcome::Skipped {
+            reason: SkipReason::CouldNotTell { .. }
+        }
     ));
 }
 

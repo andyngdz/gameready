@@ -82,11 +82,18 @@ pub(super) fn finish(
 
 /// Whether a ruled-out step could answer differently later in this run.
 ///
-/// `Probe::Unknown` maps to the same outcome as `NotApplicable`, so both are
-/// covered here: a step that could not tell has as much reason for a second
-/// look as one that read a clear no.
+/// A step that could not tell has as much reason for a second look as one that
+/// read a clear no, so both endings are held open. A conflict is not: what owns
+/// the setting is not something this run is going to take away.
 fn may_reopen(step: &dyn CoreImprovement, outcome: &Outcome) -> bool {
-    !step.requires().is_empty() && matches!(outcome, Outcome::NotApplicable { .. })
+    let reopenable = matches!(
+        outcome,
+        Outcome::NotApplicable { .. }
+            | Outcome::Skipped {
+                reason: SkipReason::CouldNotTell { .. }
+            }
+    );
+    !step.requires().is_empty() && reopenable
 }
 
 /// Sorts the candidates by whether the run really contains their unlocker.
@@ -149,10 +156,20 @@ pub(super) fn probe_outcome(step: &dyn CoreImprovement, cx: &CoreCx<'_>) -> Sett
             Settled::Now(Outcome::AlreadyApplied { evidence })
         }
         Ok(Probe::NotApplicable { reason }) => Settled::Now(Outcome::NotApplicable { reason }),
-        Ok(Probe::Conflict { with, detail: _ }) => Settled::Now(Outcome::Skipped {
-            reason: SkipReason::Conflict { with },
+        Ok(Probe::Conflict {
+            with,
+            detail,
+            yours,
+        }) => Settled::Now(Outcome::Skipped {
+            reason: SkipReason::Conflict {
+                with,
+                detail,
+                yours,
+            },
         }),
-        Ok(Probe::Unknown { reason }) => Settled::Now(Outcome::NotApplicable { reason }),
+        Ok(Probe::Unknown { reason }) => Settled::Now(Outcome::Skipped {
+            reason: SkipReason::CouldNotTell { detail: reason },
+        }),
         Err(error) => Settled::Now(Outcome::Failed {
             error: error.describe(),
             rolled_back: RollbackStatus::NotAttempted,

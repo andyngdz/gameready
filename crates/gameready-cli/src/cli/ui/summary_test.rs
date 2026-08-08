@@ -128,6 +128,42 @@ fn a_dry_run_is_not_reported_as_a_system_that_was_already_correct() {
 }
 
 #[test]
+fn a_failed_step_explains_itself_instead_of_squeezing_it_after_a_leader() {
+    let failed = Outcome::Failed {
+        error: "wrote 60, read back 180".to_owned(),
+        rolled_back: gameready_core::improvement::RollbackStatus::Succeeded,
+    };
+    let text = rendered(&with_steps(vec![step("core.io.scheduler", failed)]), "/j");
+
+    let broke = text
+        .lines()
+        .find(|line| line.contains("wrote 60"))
+        .expect("what broke");
+    assert!(!broke.contains(".."), "leader in a failure block: {text}");
+    assert!(text.contains("I undid the partial change"), "{text}");
+}
+
+#[test]
+fn a_dry_run_counts_what_dropping_the_flag_would_do() {
+    // Reporting these as skips is true of the machine and no use to a reader
+    // deciding whether to run it for real.
+    let mut dry = with_steps(vec![
+        step(
+            "core.sysctl.max-map-count",
+            Outcome::Skipped {
+                reason: SkipReason::DryRun,
+            },
+        ),
+        step("core.io.scheduler", already_set()),
+    ]);
+    dry.mode = Mode::DryRun;
+    let text = rendered(&dry, "/j");
+
+    assert!(text.contains("1 would apply · 1 already set"), "{text}");
+    assert!(!text.contains("skipped"), "{text}");
+}
+
+#[test]
 fn a_finished_run_says_what_to_do_next() {
     let text = rendered(&report(applied()), "/j");
 

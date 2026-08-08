@@ -26,7 +26,17 @@ pub enum Probe {
     NotApplicable { reason: String },
 
     /// Something else owns this setting and would fight us over it.
-    Conflict { with: String, detail: String },
+    ///
+    /// `detail` names the owner itself, because it is the sentence the user
+    /// reads. `yours` is the one command that would hand the setting back, and
+    /// only the step knows it: disabling a systemd unit and unloading a
+    /// scheduler somebody else started are not the same instruction, and for
+    /// some owners there is no single command at all.
+    Conflict {
+        with: String,
+        detail: String,
+        yours: Option<String>,
+    },
 
     /// Probing itself failed. Treated as a skip, never as permission to apply,
     /// because a step that cannot read the current state cannot restore it.
@@ -46,7 +56,7 @@ impl Probe {
             Self::Applicable => "I would apply this".to_owned(),
             Self::AlreadyApplied { evidence } => format!("already set ({evidence})"),
             Self::NotApplicable { reason } => format!("not applicable ({reason})"),
-            Self::Conflict { with, detail } => format!("conflicts with {with}: {detail}"),
+            Self::Conflict { detail, .. } => detail.clone(),
             Self::Unknown { reason } => format!("I could not tell ({reason})"),
         }
     }
@@ -162,8 +172,21 @@ pub enum SkipReason {
     /// The user declined it on the plan screen.
     UserDeclined,
 
-    /// Something else owns the setting.
-    Conflict { with: String },
+    /// Something else owns the setting. Carries what the probe found whole,
+    /// because the summary has to say what owns it, why that settles it, and
+    /// what the user could run about it.
+    Conflict {
+        with: String,
+        detail: String,
+        yours: Option<String>,
+    },
+
+    /// The probe could not read the current state. Never a reason to apply: a
+    /// step that cannot tell what is there cannot put it back.
+    ///
+    /// Carries `detail` rather than `reason`, which is the tag this enum
+    /// serializes its variant name into.
+    CouldNotTell { detail: String },
 
     /// A step this one declared in `requires()` failed, so running this would
     /// build on a state that does not exist.
@@ -182,7 +205,8 @@ impl SkipReason {
     pub fn describe(&self) -> String {
         match self {
             Self::UserDeclined => "you declined it".to_owned(),
-            Self::Conflict { with } => format!("I left it to {with}, which is running"),
+            Self::Conflict { with, .. } => format!("I left it to {with}, which is running"),
+            Self::CouldNotTell { detail } => format!("I could not tell ({detail})"),
             Self::DependencyFailed { on } => format!("{on} failed, so I did not build on it"),
             Self::MissingDependency { name, detail } => {
                 format!("I could not get {name}: {detail}")

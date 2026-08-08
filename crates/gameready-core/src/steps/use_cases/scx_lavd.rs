@@ -138,12 +138,16 @@ impl CoreImprovement for ScxLavd {
             // Somebody else loaded a scheduler. Replacing it would take over a
             // choice this run did not make, so the step stands down and says
             // what is there.
+            // No command to hand back: what started the other scheduler is
+            // whatever the user set up, and guessing at it would be worse than
+            // saying so.
             SchedExt::Running { .. } => Ok(Probe::Conflict {
                 with: state.describe().to_owned(),
                 detail: format!(
                     "{} is already scheduling this machine; stop it first if you want {LAVD_SCHEDULER}",
                     state.describe()
                 ),
+                yours: None,
             }),
 
             SchedExt::Idle => Self::probe_tooling(cx),
