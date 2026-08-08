@@ -3,20 +3,64 @@
 
 use std::fmt;
 
+use console::style;
 use gameready_core::doctor::{MachineReport, Warning};
 use gameready_core::facts::SystemFacts;
-use gameready_core::improvement::Probe;
+use gameready_core::improvement::{CoreCx, CoreImprovement, Probe};
 
 use crate::cli::ui::layout::{Mark, Section};
 
 /// The word a swap-less or disk-less machine shows.
 const NONE: &str = "none";
 
+/// The label in front of what the user could do about a warning.
+const FIX: &str = "Fix";
+
+/// The closing line: what this screen did not do, and what does.
+const NOTHING_CHANGED: &str = "Nothing above has been changed. Run gameready init to apply.";
+
 /// One tuning's probe result, ready to render: its short label and either what
 /// probing found or why probing failed.
 pub struct StepFinding {
     pub short_name: String,
     pub found: Result<Probe, String>,
+
+    /// What the step would do, for the steps that would do something. A row
+    /// reading only "would apply" tells the user this screen has an answer and
+    /// then keeps it, which is the opposite of what they opened it for.
+    pub would_do: Option<String>,
+}
+
+impl StepFinding {
+    /// Probes one step, and asks a step that would run what it would do.
+    ///
+    /// The plan is worked out only for a step that would actually apply. It is
+    /// the more expensive of the two calls, and for a step that is already set
+    /// or ruled out it answers a question nobody asked.
+    #[must_use]
+    pub fn of(step: &dyn CoreImprovement, cx: &CoreCx<'_>) -> Self {
+        let found = step.probe(cx).map_err(|error| error.describe());
+        let would_do = matches!(found, Ok(Probe::Applicable))
+            .then(|| step.plan(cx).ok().map(|plan| plan.summary))
+            .flatten();
+        Self {
+            short_name: step.short_name().to_owned(),
+            found,
+            would_do,
+        }
+    }
+
+    /// What this row says after the step's name.
+    fn note(&self) -> String {
+        let found = match &self.found {
+            Ok(probe) => probe.describe(),
+            Err(error) => format!("probe failed: {error}"),
+        };
+        match &self.would_do {
+            Some(plan) => format!("{found}, {plan}"),
+            None => found,
+        }
+    }
 }
 
 /// The whole doctor screen, built from borrowed facts and probe results.
@@ -45,7 +89,7 @@ impl<'a> DoctorReport<'a> {
 
     /// The "Your machine" block: what a user reads to recognise their own box.
     fn machine_block<W: fmt::Write>(&self, s: &mut Section<'_, W>) -> fmt::Result {
-        s.title("Your machine")?;
+        s.heading(&style("Your machine").bold().to_string())?;
         s.labelled("distro", &self.facts.distro.name)?;
         s.labelled(
             "family",
@@ -71,17 +115,13 @@ impl<'a> DoctorReport<'a> {
     /// The per-tuning rows: a mark for what probing found, the short name, and
     /// the finding inline.
     fn tunings_block<W: fmt::Write>(&self, s: &mut Section<'_, W>) -> fmt::Result {
-        s.title("What each tuning would do here")?;
+        s.heading(&style("What each tuning would do here").bold().to_string())?;
         for finding in self.findings {
             let mark = finding
                 .found
                 .as_ref()
                 .map_or(Mark::Warning, Mark::for_probe);
-            let note = match &finding.found {
-                Ok(probe) => probe.describe(),
-                Err(error) => format!("probe failed: {error}"),
-            };
-            s.noted(mark, &finding.short_name, &note)?;
+            s.noted(mark, &finding.short_name, &finding.note())?;
         }
         Ok(())
     }
@@ -93,11 +133,15 @@ impl<'a> DoctorReport<'a> {
             return Ok(());
         }
         s.blank()?;
-        s.title("Worth knowing")?;
+        s.heading(&style("Worth knowing").yellow().bold().to_string())?;
         for warning in self.warnings {
             s.marked(Mark::Warning, &warning.finding)?;
-            s.sub(&warning.explanation)?;
-            s.sub(&format!("Fix  {}", warning.suggestion))?;
+            s.sub(&style(&warning.explanation).dim().to_string())?;
+            s.sub(&format!(
+                "{} {}",
+                style(FIX).dim(),
+                style(&warning.suggestion).bold()
+            ))?;
         }
         Ok(())
     }
@@ -148,7 +192,7 @@ impl fmt::Display for DoctorReport<'_> {
         self.tunings_block(&mut s)?;
         self.worth_knowing(&mut s)?;
         s.blank()?;
-        s.indented("Nothing above has been changed. Run gameready init to apply.")
+        s.indented(&style(NOTHING_CHANGED).dim().to_string())
     }
 }
 

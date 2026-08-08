@@ -1,0 +1,36 @@
+---
+source: crates/gameready-cli/tests/snapshots.rs
+expression: "run_with(&[\"apply\", \"--dry-run\", \"--yes\"], | _, _ | {})"
+---
+exit code: 0
+----- stdout -----
+
+2 packages to install · 184 MB
+
+  ┃ mangohud · 5 MB
+  ┃ draws frame rate, frame times and temperatures over the game
+  ┃ so you can check whether any of this actually helped
+
+  ┃ scx · 178 MB
+  ┃ the sched_ext CPU schedulers, scx_lavd among them
+  ┃ lavd cannot be loaded without it
+
+  ! Rollback restores your config, but leaves packages installed. Removing them is your call, not
+    mine.
+
+Dry run. 5 would apply · 2 already set · 2 not applicable
+
+  • Competing daemons ................................................... no competing daemons found
+  • I/O schedulers ................................................................. nvme0n1 on none
+  - Swappiness .......................... swap is on disk, not zram; the default swappiness is right
+  - Proton-GE ................................................................. Steam root not found
+  - vm.max_map_count ....................................................................... dry run
+  - gamemode + mangohud .................................................................... dry run
+  - scx repository ......................................................................... dry run
+  - CPU governor ........................................................................... dry run
+  - CPU scheduler scx_lavd ................................................................. dry run
+
+  Nothing was touched. Drop --dry-run to apply.
+----------------------------------------------------------------------------------------------------
+
+----- stderr -----

@@ -17,6 +17,7 @@ fn it_names_the_machine_and_every_tuning() {
     let findings = vec![StepFinding {
         short_name: "CPU governor".to_owned(),
         found: Ok(Probe::Applicable),
+        would_do: Some("pin every CPU policy to performance".to_owned()),
     }];
 
     let rendered = plain(&DoctorReport::new(&facts, &machine, &findings, &[]).to_string());
@@ -26,6 +27,82 @@ fn it_names_the_machine_and_every_tuning() {
     assert!(rendered.contains("What each tuning would do here"));
     assert!(rendered.contains("CPU governor"));
     assert!(rendered.contains("Nothing above has been changed"));
+}
+
+#[test]
+fn a_step_that_would_run_says_what_it_would_do_rather_than_that_it_would() {
+    // "would apply" on its own is the screen having the answer and keeping it.
+    let facts = SystemFacts::fixture(Family::Arch);
+    let machine = MachineReport {
+        sched_ext_ready: true,
+        swap: None,
+        disks: Vec::new(),
+    };
+    let findings = vec![StepFinding {
+        short_name: "vm.max_map_count".to_owned(),
+        found: Ok(Probe::Applicable),
+        would_do: Some("vm.max_map_count 65530 -> 2147483642".to_owned()),
+    }];
+
+    let rendered = plain(&DoctorReport::new(&facts, &machine, &findings, &[]).to_string());
+
+    assert!(
+        rendered.contains("would apply, vm.max_map_count 65530 -> 2147483642"),
+        "{rendered}"
+    );
+}
+
+#[test]
+fn a_step_that_is_already_set_is_not_asked_what_it_would_do() {
+    let facts = SystemFacts::fixture(Family::Arch);
+    let machine = MachineReport {
+        sched_ext_ready: true,
+        swap: None,
+        disks: Vec::new(),
+    };
+    let findings = vec![StepFinding {
+        short_name: "Swappiness".to_owned(),
+        found: Ok(Probe::AlreadyApplied {
+            evidence: "swappiness is 180".to_owned(),
+        }),
+        would_do: None,
+    }];
+
+    let rendered = plain(&DoctorReport::new(&facts, &machine, &findings, &[]).to_string());
+
+    assert!(
+        rendered.contains("Swappiness · already set, swappiness is 180"),
+        "{rendered}"
+    );
+}
+
+#[test]
+fn a_warning_says_what_it_is_why_it_matters_and_what_to_run() {
+    let facts = SystemFacts::fixture(Family::Arch);
+    let machine = MachineReport {
+        sched_ext_ready: true,
+        swap: None,
+        disks: Vec::new(),
+    };
+    let warnings = vec![gameready_core::doctor::Warning {
+        finding: "power-profiles-daemon is running".to_owned(),
+        explanation: "It resets the CPU governor on its own schedule, so gamemode's changes get \
+                      overwritten seconds later."
+            .to_owned(),
+        suggestion: "systemctl disable --now power-profiles-daemon".to_owned(),
+    }];
+
+    let rendered = plain(&DoctorReport::new(&facts, &machine, &[], &warnings).to_string());
+
+    assert!(rendered.contains("Worth knowing"), "{rendered}");
+    assert!(
+        rendered.contains("! power-profiles-daemon is running"),
+        "{rendered}"
+    );
+    assert!(
+        rendered.contains("Fix systemctl disable --now power-profiles-daemon"),
+        "{rendered}"
+    );
 }
 
 #[test]

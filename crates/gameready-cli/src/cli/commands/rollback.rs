@@ -36,8 +36,11 @@ pub fn run(
     }
 
     // Asked here rather than at the top, so a malformed run id and a run with
-    // nothing to undo both answer without a password.
-    escalation.ask()?;
+    // nothing to undo both answer without a password. A run that only touched
+    // the user's own files is not asked for one at all.
+    if undo_plan.needs_root() || packages == PackagePolicy::Purge {
+        escalation.ask()?;
+    }
 
     // Journalled under a new run id, so a rollback that itself fails partway is
     // inspectable rather than invisible.

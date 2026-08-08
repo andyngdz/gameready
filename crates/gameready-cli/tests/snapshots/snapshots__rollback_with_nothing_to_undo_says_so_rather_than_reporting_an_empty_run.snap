@@ -1,0 +1,9 @@
+---
+source: crates/gameready-cli/tests/snapshots.rs
+expression: "run_with(&[\"rollback\"], | _, _ | {})"
+---
+exit code: 2
+----- stdout -----
+
+----- stderr -----
+gameready: the journal has no runs to undo

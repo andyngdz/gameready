@@ -22,10 +22,7 @@ pub fn run(runner: &dyn CommandRunner) -> Result<String> {
 
     let findings: Vec<StepFinding> = core_steps()
         .iter()
-        .map(|step| StepFinding {
-            short_name: step.short_name().to_owned(),
-            found: step.probe(&cx).map_err(|error| error.describe()),
-        })
+        .map(|step| StepFinding::of(step.as_ref(), &cx))
         .collect();
     let warnings = doctor::check_warnings(&facts, runner);
 

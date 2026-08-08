@@ -38,7 +38,10 @@ fn a_reverted_change_is_counted_and_described() {
 
     assert!(text.contains("vm.max_map_count"), "{text}");
     assert!(text.contains("back to 1048576"), "{text}");
-    assert!(text.contains("1 reverted, 0 failed"), "{text}");
+    // Nothing failed, so nothing says so: a zero the reader has to find is a
+    // question they were made to ask.
+    assert!(text.contains("1 reverted"), "{text}");
+    assert!(!text.contains("failed"), "{text}");
 }
 
 #[test]
@@ -51,7 +54,7 @@ fn a_refused_change_says_why_and_is_not_counted_as_failed() {
     let text = RollbackSummary::new(&report, Path::new("/state/journal.jsonl")).to_string();
 
     assert!(text.contains("changed since gameready wrote it"));
-    assert!(text.contains("0 failed"));
+    assert!(!text.contains("failed"), "{text}");
 }
 
 #[test]

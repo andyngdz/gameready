@@ -106,6 +106,31 @@ impl Undo {
             | Self::RemoveDirTree { path, .. } => file_name(path),
         }
     }
+
+    /// What this operation has to be run as.
+    ///
+    /// The file operations carry the privilege the write was made with, so
+    /// undoing a file in the user's own home is a user's job. Everything else
+    /// touches the system by definition: `/proc/sys`, `/sys`, a systemd unit,
+    /// an apt repository. `RemoveDirIfEmpty` has no privilege recorded and is
+    /// only ever written beside a root-owned tree, so it counts as root.
+    #[must_use]
+    pub const fn privilege(&self) -> Privilege {
+        match self {
+            Self::RestoreFile { privilege, .. }
+            | Self::DeleteFile { privilege, .. }
+            | Self::RemoveDirTree { privilege, .. } => *privilege,
+            Self::SetSysctl { .. }
+            | Self::WriteSysfs { .. }
+            | Self::RestoreScxScheduler { .. }
+            | Self::RestoreUnit { .. }
+            | Self::RemoveAptRepository { .. }
+            | Self::RemoveDirIfEmpty { .. } => Privilege::Root,
+            // Reporting packages changes nothing. Removing them does, and that
+            // is the caller's policy rather than a property of this record.
+            Self::ReportPackages { .. } => Privilege::User,
+        }
+    }
 }
 
 /// Names a sysfs write by its block device, since the only attribute gameready

@@ -39,6 +39,21 @@ fn a_failure_names_the_phase_and_the_detail() {
 }
 
 #[test]
+fn the_verdict_carries_the_reassurance_rather_than_standing_above_it() {
+    let results = [result(SelftestResult::Failed {
+        phase: Phase::Rollback,
+        detail: "the undo command exited 1".to_owned(),
+    })];
+    let rendered = SelftestSummary::new(&results).to_string();
+
+    let verdict = rendered
+        .lines()
+        .find(|line| line.contains("1 of 1 failed"))
+        .expect("the verdict");
+    assert!(verdict.contains("Your machine is as it was"), "{rendered}");
+}
+
+#[test]
 fn a_skip_says_why() {
     let results = [result(SelftestResult::Skipped {
         reason: "already set (vm.max_map_count is already 2147483642)".to_owned(),

@@ -1,6 +1,6 @@
 ---
 source: crates/gameready-cli/tests/snapshots.rs
-expression: "gameready(&[\"explain\", \"core.sysctl.max-map-count\"])"
+expression: "run_with(&[\"explain\", \"core.sysctl.max-map-count\"], | _, _ | {})"
 ---
 exit code: 0
 ----- stdout -----
@@ -12,7 +12,7 @@ Raise vm.max_map_count for Proton titles  core.sysctl.max-map-count
   Gets      Proton games that need many memory regions start, instead of refusing to.
 
   Needs     your password, because it changes something outside your home
-  Here      I would apply this
+  Here      would apply
 
   Would do  vm.max_map_count 1048576 -> 2147483642
             create /etc/sysctl.d/99-gameready.conf

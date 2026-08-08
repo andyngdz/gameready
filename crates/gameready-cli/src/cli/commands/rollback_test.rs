@@ -123,3 +123,51 @@ fn a_run_with_nothing_to_undo_does_not_ask_for_a_password() {
         "asking for a password to undo nothing is a question with no purpose"
     );
 }
+
+/// Writes a run whose one change is a file in the user's own home, so undoing
+/// it is a user's job.
+fn recorded_user_file_run(dir: &TempDir, file: &std::path::Path) -> StatePaths {
+    let paths = StatePaths::new(dir.path().to_path_buf());
+    let mut journal = Journal::open(paths.clone(), RunId::generate()).expect("journal opens");
+    journal
+        .append(JournalEvent::Changed {
+            step: ImprovementId::from_static("core.sysctl.max-map-count"),
+            change: Change::FileWritten {
+                path: file.to_path_buf(),
+                existed: false,
+                backup: None,
+                sha256_after: gameready_core::journal::digest("wrote this"),
+                mode: 0o644,
+                privilege: gameready_core::improvement::Privilege::User,
+            },
+        })
+        .expect("appends");
+    paths
+}
+
+#[test]
+fn undoing_a_run_that_only_touched_the_users_files_never_asks_for_a_password() {
+    // Asking to delete a file they own teaches a user to type their password
+    // without reading what asked for it.
+    let dir = TempDir::new().expect("temp dir");
+    let file = dir.path().join("99-gameready.conf");
+    std::fs::write(&file, "wrote this").expect("the file the run wrote");
+    let paths = recorded_user_file_run(&dir, &file);
+    let runner = MockRunner::new();
+    let asked = std::cell::Cell::new(false);
+    let prompt = || {
+        asked.set(true);
+        Ok(())
+    };
+
+    run(
+        &runner,
+        paths,
+        None,
+        PackagePolicy::Keep,
+        Escalation::Ask(&prompt),
+    )
+    .expect("the rollback runs");
+
+    assert!(!asked.get(), "a user-owned file was undone behind a prompt");
+}

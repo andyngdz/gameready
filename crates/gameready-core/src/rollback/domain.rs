@@ -1,6 +1,6 @@
 //! What undoing a run involves, and how it went.
 
-use crate::improvement::ImprovementId;
+use crate::improvement::{ImprovementId, Privilege};
 use crate::journal::{RunId, Undo};
 
 /// One recorded change, paired with the step that made it.
@@ -37,6 +37,18 @@ impl RollbackPlan {
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.undos.is_empty()
+    }
+
+    /// Whether undoing this run needs root.
+    ///
+    /// A run that only wrote in the user's own home is undone as the user, and
+    /// asking for a password to delete a file they own teaches them to type it
+    /// without reading what asked.
+    #[must_use]
+    pub fn needs_root(&self) -> bool {
+        self.undos
+            .iter()
+            .any(|planned| planned.undo.privilege() == Privilege::Root)
     }
 }
 

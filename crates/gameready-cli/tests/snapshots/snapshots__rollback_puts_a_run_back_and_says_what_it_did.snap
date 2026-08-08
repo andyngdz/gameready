@@ -1,0 +1,16 @@
+---
+source: crates/gameready-cli/tests/snapshots.rs
+expression: "run_with(&[\"rollback\"], Reads::ThisMachine, seed_a_finished_run)"
+---
+exit code: 0
+----- stdout -----
+
+Putting back the run from 10 Aug, 12:50
+
+  ✓ demo.conf · removed
+
+1 reverted
+
+  journal · [TMP]
+
+----- stderr -----

@@ -34,6 +34,20 @@ impl<'a> RollbackSummary<'a> {
         started.format("%-d %b, %H:%M").to_string()
     }
 
+    /// How the rollback ended, counted.
+    ///
+    /// A clean rollback does not carry "0 failed" along with it. The zero is
+    /// the good news, and a user who has to read a number to find it out has
+    /// been made to check rather than told.
+    fn counts(&self) -> String {
+        let reverted = style(format!("{} reverted", self.report.reverted())).bold();
+        let failed = self.report.failed();
+        if failed == 0 {
+            return reverted.green().to_string();
+        }
+        format!("{reverted}, {}", style(format!("{failed} failed")).red())
+    }
+
     /// One row per undo, except the package report, which is deliberately not a
     /// row: it did nothing to the system, so it belongs in the note below rather
     /// than in the list of things that were put back.
@@ -131,11 +145,7 @@ impl fmt::Display for RollbackSummary<'_> {
         self.rows(&mut s)?;
 
         s.blank()?;
-        s.heading(&format!(
-            "{} reverted, {} failed",
-            self.report.reverted(),
-            self.report.failed()
-        ))?;
+        s.heading(&self.counts())?;
         s.blank()?;
 
         self.packages(&mut s)?;

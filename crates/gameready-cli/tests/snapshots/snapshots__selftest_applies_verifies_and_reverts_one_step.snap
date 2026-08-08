@@ -1,0 +1,15 @@
+---
+source: crates/gameready-cli/tests/snapshots.rs
+expression: "run_with(&[\"selftest\", \"--step\", \"core.conflicts\"], | _, _ | {})"
+---
+exit code: 0
+----- stdout -----
+
+Applying each tuning, then undoing it, to prove both halves work
+
+  - Competing daemons · skipped, already set, no competing daemons found
+
+All 1 passed. Your machine is as it was: selftest undoes its own work even when the test itself
+fails.
+
+----- stderr -----

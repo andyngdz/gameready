@@ -1,6 +1,6 @@
 ---
 source: crates/gameready-cli/tests/snapshots.rs
-expression: "gameready(&[\"explain\", \"core.memory.swappiness\"])"
+expression: "run_with(&[\"explain\", \"core.memory.swappiness\"], | _, _ | {})"
 ---
 exit code: 0
 ----- stdout -----
@@ -13,7 +13,7 @@ Raise vm.swappiness for zram swap  core.memory.swappiness
   Gets      More usable memory under pressure, at almost no cost, on a zram system.
 
   Needs     your password, because it changes something outside your home
-  Here      not applicable (swap is on disk, not zram; the default swappiness is right)
+  Here      not applicable, swap is on disk, not zram; the default swappiness is right
 
   Undo      gameready rollback
 ----------------------------------------------------------------------------------------------------

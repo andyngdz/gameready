@@ -1,4 +1,4 @@
-//! What probing found, and how a step ended.
+//! How a step ended, and what it left behind.
 
 use std::time::Duration;
 
@@ -7,60 +7,6 @@ use serde::{Deserialize, Serialize};
 use crate::improvement::domain::identity::ImprovementId;
 use crate::improvement::domain::verify::Verification;
 use crate::journal::Change;
-
-/// What probing a step found, before anything is changed. Probing must not
-/// mutate: the executor probes every selected step first so it can show a
-/// complete plan and fail cheaply on preconditions.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "state", rename_all = "snake_case")]
-pub enum Probe {
-    /// Not applied, and this system can take it.
-    Applicable,
-
-    /// Already in the desired state. `evidence` is what was read to decide,
-    /// so the summary can say why rather than just "skipped".
-    AlreadyApplied { evidence: String },
-
-    /// This system cannot take it, and no amount of installing will change
-    /// that: kernel too old, package absent from every configured repo.
-    NotApplicable { reason: String },
-
-    /// Something else owns this setting and would fight us over it.
-    ///
-    /// `detail` names the owner itself, because it is the sentence the user
-    /// reads. `yours` is the one command that would hand the setting back, and
-    /// only the step knows it: disabling a systemd unit and unloading a
-    /// scheduler somebody else started are not the same instruction, and for
-    /// some owners there is no single command at all.
-    Conflict {
-        with: String,
-        detail: String,
-        yours: Option<String>,
-    },
-
-    /// Probing itself failed. Treated as a skip, never as permission to apply,
-    /// because a step that cannot read the current state cannot restore it.
-    Unknown { reason: String },
-}
-
-impl Probe {
-    /// What was found, in the words shown to the user.
-    ///
-    /// Lives here rather than in the CLI for the same reason as
-    /// [`Outcome::detail`]: what there is to say about a probe result is a
-    /// property of the result. The CLI decides the layout, this decides the
-    /// words, and `doctor` and the plan screen cannot drift apart.
-    #[must_use]
-    pub fn describe(&self) -> String {
-        match self {
-            Self::Applicable => "I would apply this".to_owned(),
-            Self::AlreadyApplied { evidence } => format!("already set ({evidence})"),
-            Self::NotApplicable { reason } => format!("not applicable ({reason})"),
-            Self::Conflict { detail, .. } => detail.clone(),
-            Self::Unknown { reason } => format!("I could not tell ({reason})"),
-        }
-    }
-}
 
 /// How a step ended. One of these is recorded per step per run and is what the
 /// summary screen and `--json` output are built from.

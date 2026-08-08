@@ -27,7 +27,11 @@ impl<'a> SelftestSummary<'a> {
         Self { results }
     }
 
-    /// The counts, then the reassurance that the machine is back either way.
+    /// The verdict, with the reassurance running on from it.
+    ///
+    /// One paragraph rather than two lines: the reassurance is only worth
+    /// reading because of the verdict in front of it, and a line break between
+    /// them turns it into a standing disclaimer nobody reads twice.
     fn summary<W: fmt::Write>(&self, s: &mut Section<'_, W>) -> fmt::Result {
         let total = self.results.len();
         let failed = self
@@ -40,8 +44,7 @@ impl<'a> SelftestSummary<'a> {
         } else {
             style(format!("{failed} of {total} failed.")).red()
         };
-        s.heading(&headline.to_string())?;
-        s.paragraph(&style(REASSURANCE).dim().to_string())
+        s.paragraph(&format!("{} {}", headline.bold(), style(REASSURANCE).dim()))
     }
 
     /// The gutter mark for how one step's cycle ended.
