@@ -70,6 +70,13 @@ impl Improvement for ProtonGe {
         "Latest Proton-GE"
     }
 
+    fn gains(&self) -> Option<&str> {
+        Some(
+            "Game-specific patches and codecs Valve's Proton omits, in Steam's \
+             per-game picker.",
+        )
+    }
+
     fn rationale(&self) -> &str {
         "Proton-GE includes game-specific patches and media codecs that Valve's \
          Proton does not ship. Installing it makes it available in Steam's \

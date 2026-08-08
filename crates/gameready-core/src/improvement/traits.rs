@@ -32,6 +32,20 @@ pub trait Improvement: Send + Sync {
         self.name()
     }
 
+    /// What the user gets out of this, as opposed to how it works, which is
+    /// `rationale`. Shown by `explain` under "Gets". `None` when the payoff is
+    /// not separable from the mechanism, and then the line is left out.
+    fn gains(&self) -> Option<&str> {
+        None
+    }
+
+    /// A note appended after the rollback command in `explain`, for a step
+    /// whose undo is worth a word of reassurance ("no reboot"). `None` when the
+    /// bare command says everything.
+    fn undo_note(&self) -> Option<&str> {
+        None
+    }
+
     /// Why this is worth doing, shown by `explain` and by `--verbose`.
     /// Written for someone deciding whether to let it run.
     fn rationale(&self) -> &str;

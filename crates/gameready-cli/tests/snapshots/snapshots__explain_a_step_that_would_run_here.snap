@@ -4,11 +4,12 @@ expression: "gameready(&[\"explain\", \"core.sysctl.max-map-count\"])"
 ---
 exit code: 0
 ----- stdout -----
-core.sysctl.max-map-count  Raise vm.max_map_count for Proton titles
+Raise vm.max_map_count for Proton titles  core.sysctl.max-map-count
 
   Why       Some Proton games map far more memory regions than the kernel default allows and refuse
             to start. Raising the cap to the value SteamOS uses costs nothing: it limits how many
             mappings a process may hold, not how much memory it may use.
+  Gets      Proton games that need many memory regions start, instead of refusing to.
 
   Needs     your password, because it changes something outside your home
   Here      I would apply this

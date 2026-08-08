@@ -11,6 +11,8 @@ fn explanation(found: &str, plan: Option<StepPlan>) -> StepExplanation {
                     no cost."
             .to_owned(),
         privilege: Privilege::Root,
+        gains: Some("More usable memory under pressure, at almost no cost.".to_owned()),
+        undo_note: None,
         found: found.to_owned(),
         plan,
     }

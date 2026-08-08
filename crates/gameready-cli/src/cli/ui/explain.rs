@@ -9,6 +9,9 @@ use gameready_core::steps::{core_steps, game_steps};
 use crate::cli::ui::layout::Section;
 use crate::cli::ui::UNDO;
 
+/// The command that puts a run back, shown at the foot of every explanation.
+const ROLLBACK_COMMAND: &str = "gameready rollback";
+
 /// Everything `explain` found out about one step, ready to print.
 ///
 /// The plan is separate from what probing found, because a step that does not
@@ -20,6 +23,13 @@ pub struct StepExplanation {
     pub name: String,
     pub rationale: String,
     pub privilege: Privilege,
+
+    /// The payoff, as opposed to the mechanism in `rationale`. `None` when the
+    /// step has no benefit separable from how it works.
+    pub gains: Option<String>,
+
+    /// A word of reassurance after the rollback command, or `None`.
+    pub undo_note: Option<String>,
 
     /// What probing found on this machine, in the step's own words.
     pub found: String,
@@ -56,8 +66,19 @@ impl StepExplanation {
             name: step.name().to_owned(),
             rationale: step.rationale().to_owned(),
             privilege: step.privilege(),
+            gains: step.gains().map(str::to_owned),
+            undo_note: step.undo_note().map(str::to_owned),
             found,
             plan,
+        }
+    }
+
+    /// The rollback command, with the step's reassurance in parentheses when it
+    /// has one.
+    fn undo(&self) -> String {
+        match &self.undo_note {
+            None => ROLLBACK_COMMAND.to_owned(),
+            Some(note) => format!("{ROLLBACK_COMMAND} ({note})"),
         }
     }
 
@@ -73,8 +94,15 @@ impl StepExplanation {
 impl fmt::Display for StepExplanation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = Section::new(f);
-        s.title(&format!("{}  {}", style(&self.id).bold(), self.name))?;
+        s.title(&format!(
+            "{}  {}",
+            style(&self.name).bold(),
+            style(&self.id).dim()
+        ))?;
         s.labelled("Why", &self.rationale)?;
+        if let Some(gains) = &self.gains {
+            s.labelled("Gets", gains)?;
+        }
         s.blank()?;
         s.labelled("Needs", self.needs())?;
         s.labelled("Here", &self.found)?;
@@ -88,7 +116,7 @@ impl fmt::Display for StepExplanation {
         }
 
         s.blank()?;
-        s.labelled(UNDO, "gameready rollback")?;
+        s.labelled(UNDO, &self.undo())?;
         s.end()
     }
 }

@@ -79,15 +79,24 @@ impl Improvement for ScxLavd {
         "The scx_lavd CPU scheduler"
     }
 
+    fn gains(&self) -> Option<&str> {
+        Some(
+            "Steadier frame times when something else wants the CPU: a browser, a \
+             voice chat, a build. On an otherwise idle machine expect no \
+             difference, and on games that lean on one or two cores it has measured \
+             slower than the default.",
+        )
+    }
+
+    fn undo_note(&self) -> Option<&str> {
+        Some("hands the CPU straight back, no reboot")
+    }
+
     fn rationale(&self) -> &str {
         "A frame is a chain of threads waking each other, and the kernel's own \
          scheduler does not know the chain exists, so a thread the others are \
          blocked on waits its ordinary turn. scx_lavd measures which threads \
-         get waited on and runs those first. What that buys is steadier frame \
-         times when something else wants the CPU: a browser, a voice chat, a \
-         build. On an otherwise idle machine expect no difference, and on games \
-         that lean on one or two cores it has measured slower than the default. \
-         Rollback hands the CPU straight back, with no reboot needed."
+         get waited on and runs those first."
     }
 
     fn privilege(&self) -> Privilege {

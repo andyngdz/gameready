@@ -4,12 +4,13 @@ expression: "gameready(&[\"explain\", \"core.memory.swappiness\"])"
 ---
 exit code: 0
 ----- stdout -----
-core.memory.swappiness  Raise vm.swappiness for zram swap
+Raise vm.swappiness for zram swap  core.memory.swappiness
 
   Why       When swap lives in zram, a swapped-out page is compressed into RAM rather than written
             to disk, so swapping early frees more usable memory at almost no cost. This raises
             swappiness to the value zram setups use, and only when zram is the swap the kernel fills
             first.
+  Gets      More usable memory under pressure, at almost no cost, on a zram system.
 
   Needs     your password, because it changes something outside your home
   Here      not applicable (swap is on disk, not zram; the default swappiness is right)

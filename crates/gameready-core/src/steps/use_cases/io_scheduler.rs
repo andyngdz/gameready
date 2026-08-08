@@ -67,6 +67,10 @@ impl Improvement for IoScheduler {
         "An I/O scheduler per disk"
     }
 
+    fn gains(&self) -> Option<&str> {
+        Some("Lower I/O latency, and a desktop that stays responsive while a game loads.")
+    }
+
     fn rationale(&self) -> &str {
         "The kernel's default I/O scheduler is a compromise across hardware. An \
          NVMe drive does best with none, since it queues in hardware; a SATA SSD \

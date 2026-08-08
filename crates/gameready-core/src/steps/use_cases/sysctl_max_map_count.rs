@@ -87,6 +87,10 @@ impl Improvement for MaxMapCount {
         "Memory maps for Proton titles"
     }
 
+    fn gains(&self) -> Option<&str> {
+        Some("Proton games that need many memory regions start, instead of refusing to.")
+    }
+
     fn rationale(&self) -> &str {
         "Some Proton games map far more memory regions than the kernel default \
          allows and refuse to start. Raising the cap to the value SteamOS uses \

@@ -61,6 +61,13 @@ impl Improvement for GamingTools {
         "gamemode and mangohud"
     }
 
+    fn gains(&self) -> Option<&str> {
+        Some(
+            "gamemode tunes each game while it runs and puts it back after; mangohud \
+             shows whether it helped.",
+        )
+    }
+
     fn rationale(&self) -> &str {
         "gamemode raises the CPU governor and process priority for the duration \
          of a game and puts them back afterwards, which is safer than pinning \
