@@ -73,7 +73,7 @@ impl fmt::Display for InstallList {
             return Ok(());
         }
 
-        writeln!(f, "{}\n", self.headline())?;
+        writeln!(f, "\n{}\n", self.headline())?;
 
         for install in &self.installs {
             writeln!(
@@ -97,7 +97,7 @@ impl fmt::Display for InstallList {
         // The one consequence a user cannot undo with `gameready rollback`, so
         // it belongs on the screen where they agree to it rather than in the
         // summary afterwards.
-        write!(
+        writeln!(
             f,
             "\n  {}",
             style("Rollback puts config back but leaves packages installed.").dim()

@@ -7,6 +7,9 @@ pub(crate) const NOTHING: &str = "  none";
 /// The label that introduces the command that puts things back.
 pub(crate) const UNDO: &str = "Undo";
 
+/// The heading over a list of steps, wherever one is printed.
+pub(crate) const STEPS: &str = "Steps";
+
 pub(crate) mod colors;
 mod explain;
 mod games;

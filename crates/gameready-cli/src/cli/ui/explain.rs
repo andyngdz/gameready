@@ -114,9 +114,11 @@ impl StepIndex {
 impl fmt::Display for StepIndex {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = Section::new(f);
-        s.title("Steps")?;
+        s.title(crate::cli::ui::STEPS)?;
         for (id, name) in &self.steps {
-            s.indented(&format!("{:<28}{name}", style(id).bold().to_string()))?;
+            // The gutter stays empty here rather than closing up: this list
+            // shares its left edge with every screen that does carry marks.
+            s.row(" ", id, Some(name))?;
         }
         s.blank()?;
         s.indented("Run `gameready explain <id>` for what one of them would do here.")?;

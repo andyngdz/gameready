@@ -6,20 +6,27 @@ exit code: 0
 ----- stdout -----
 
 System
+
   distro    Ubuntu 26.04 LTS
   family    debian
   packages  apt-get
   kernel    7.0.0-29-generic
 
 Steps
-  core.conflicts  already set (no competing daemons found)
-  core.sysctl.max-map-count  would apply
-  core.io.scheduler  already set (nvme0n1 on none)
-  core.memory.swappiness  not applicable (swap is on disk, not zram; the default swappiness is right)
-  core.pkg.tools  would apply
-  core.proton.ge  not applicable (Steam root not found)
-  core.repo.scx-ppa  would apply
-  core.sched.scx-lavd  not applicable (scx is not in this system's repositories yet (Ubuntu 26.04 LTS); the "core.repo.scx-ppa" step in this run adds the PPA that carries it, and this step applies the next time you run gameready)
-  core.cpu.governor  not applicable (the governor is `schedutil`, gamemode handles this per-game)
+
+    core.conflicts ........................................ already set (no competing daemons found)
+    core.sysctl.max-map-count .......................................................... would apply
+    core.io.scheduler ................................................ already set (nvme0n1 on none)
+    core.memory.swappiness
+     not applicable (swap is on disk, not zram; the default swappiness is right)
+    core.pkg.tools ..................................................................... would apply
+    core.proton.ge ........................................... not applicable (Steam root not found)
+    core.repo.scx-ppa .................................................................. would apply
+    core.sched.scx-lavd
+     not applicable (scx is not in this system's repositories yet (Ubuntu 26.04 LTS); the
+     "core.repo.scx-ppa" step in this run adds the PPA that carries it, and this step applies the
+     next time you run gameready)
+    core.cpu.governor
+     not applicable (the governor is `schedutil`, gamemode handles this per-game)
 
 ----- stderr -----

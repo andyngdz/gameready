@@ -24,6 +24,7 @@ clap.workspace = true
 console.workspace = true
 indicatif.workspace = true
 inquire.workspace = true
+terminal_size.workspace = true
 tracing.workspace = true
 tracing-appender.workspace = true
 tracing-subscriber.workspace = true

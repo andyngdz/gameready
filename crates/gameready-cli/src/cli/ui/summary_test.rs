@@ -50,7 +50,7 @@ fn a_run_that_changed_nothing_does_not_head_the_list_with_config_changed() {
     // touched the machine.
     let text = Summary::new(&report(already_set()), Path::new("/j")).to_string();
 
-    assert!(text.starts_with("Nothing changed:"), "{text}");
+    assert!(text.trim_start().starts_with("Nothing changed:"), "{text}");
     assert!(text.contains("already set up"), "{text}");
 }
 
@@ -68,7 +68,7 @@ fn a_run_that_changed_nothing_offers_no_undo_and_no_journal() {
 fn a_run_that_applied_something_says_so_and_offers_the_undo() {
     let text = Summary::new(&report(applied()), Path::new("/state/journal.jsonl")).to_string();
 
-    assert!(text.starts_with("Config changed:"), "{text}");
+    assert!(text.trim_start().starts_with("Config changed:"), "{text}");
     assert!(text.contains("gameready rollback --run"), "{text}");
     assert!(text.contains("/state/journal.jsonl"), "{text}");
     assert!(text.contains("1 applied"), "{text}");

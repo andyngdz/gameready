@@ -4,18 +4,59 @@ use std::fmt;
 
 use console::style;
 use gameready_core::improvement::OutcomeKind;
-
-const SEPARATOR: &str = "--------------------------------------";
+use terminal_size::{terminal_size, Width};
 
 /// How wide the label column in a labelled paragraph is.
+///
+/// A gutter rather than a share of the line. The labels are a fixed vocabulary
+/// ("Why", "Needs", "Here"), so widening this with the terminal would only
+/// push the text further from the word that names it.
 const LABEL: usize = 10;
 
-/// How wide the body of a labelled paragraph is.
+/// The indent every line inside a section carries.
+const INDENT: usize = 2;
+
+/// Columns a row spends on anything that is not the name or the evidence:
+/// the indent, the mark and its space, and a space either side of the leader.
+const ROW_FURNITURE: usize = 6;
+
+/// The shortest leader worth drawing. Two dots read as a typo.
+const MIN_LEADER: usize = 4;
+
+/// The layout width when there is no terminal to ask, such as a pipe.
+const PIPED: usize = 80;
+
+/// The narrowest layout, below which the label column and the body collide.
+const NARROWEST: usize = 60;
+
+/// The widest layout. Past this a line of prose is too long to track back to
+/// its own start, which is why books are not printed on a metre-wide page.
+const WIDEST: usize = 100;
+
+/// How wide to lay out, in columns.
 ///
-/// Kept inside 80 columns with the two-space indent and the label column in
-/// front of it, because nothing here re-wraps to the real terminal width and a
-/// longer line breaks mid-word against the left margin.
-const BODY: usize = 66;
+/// Clamped rather than taken raw, between `NARROWEST` and `WIDEST`. `COLUMNS`
+/// wins over the real terminal so a test can pin the layout.
+pub(crate) fn width() -> usize {
+    usable(asked_width())
+}
+
+/// What this run was told the terminal is, before the clamp.
+fn asked_width() -> usize {
+    columns_env()
+        .or_else(|| terminal_size().map(|(Width(columns), _)| usize::from(columns)))
+        .unwrap_or(PIPED)
+}
+
+/// Brings a requested column count into the range this lays out at.
+fn usable(asked: usize) -> usize {
+    asked.clamp(NARROWEST, WIDEST)
+}
+
+/// The `COLUMNS` override, when it is set to something usable.
+fn columns_env() -> Option<usize> {
+    std::env::var("COLUMNS").ok()?.trim().parse().ok()
+}
 
 /// The gutter mark for a step outcome.
 ///
@@ -25,25 +66,38 @@ const BODY: usize = 66;
 /// applied.
 pub(crate) fn outcome_mark(kind: OutcomeKind) -> String {
     match kind {
-        OutcomeKind::Applied => style("\u{2713}").green().to_string(),
-        OutcomeKind::AlreadySet => style("=").green().dim().to_string(),
+        OutcomeKind::Applied => style("\u{2714}").green().to_string(),
+        OutcomeKind::AlreadySet => style("\u{2022}").green().dim().to_string(),
         OutcomeKind::Failed => style("\u{2718}").red().bold().to_string(),
-        OutcomeKind::Skipped | OutcomeKind::NotApplicable => style("~").dim().to_string(),
+        OutcomeKind::Skipped | OutcomeKind::NotApplicable => style("-").dim().to_string(),
     }
+}
+
+/// The gutter mark for something worth reading that did not fail.
+pub(crate) fn warning_mark() -> String {
+    style("!").yellow().to_string()
 }
 
 /// Writes structured output sections with consistent spacing and separators.
 ///
 /// Every section opens with a title and a blank line, carries indented content,
 /// and closes with a separator. Using this for every block keeps the layout in
-/// one place.
+/// one place, and keeps the terminal width in one place with it.
 pub(crate) struct Section<'a, W: fmt::Write> {
     w: &'a mut W,
+    width: usize,
 }
 
 impl<'a, W: fmt::Write> Section<'a, W> {
     pub(crate) fn new(w: &'a mut W) -> Self {
-        Self { w }
+        Self { w, width: width() }
+    }
+
+    /// A section laid out at a width the caller names, for tests that need the
+    /// wrapping to be the same on every machine.
+    #[cfg(test)]
+    pub(crate) fn with_width(w: &'a mut W, width: usize) -> Self {
+        Self { w, width }
     }
 
     /// Title line followed by a blank line.
@@ -53,12 +107,12 @@ impl<'a, W: fmt::Write> Section<'a, W> {
 
     /// A 2-space-indented line with a leading mark and the body text.
     pub(crate) fn marked(&mut self, mark: &str, text: &str) -> fmt::Result {
-        writeln!(self.w, "  {mark} {text}")
+        self.flow(&format!("  {mark} "), text)
     }
 
     /// A 2-space-indented line with no mark.
     pub(crate) fn indented(&mut self, text: &str) -> fmt::Result {
-        writeln!(self.w, "  {text}")
+        self.flow("  ", text)
     }
 
     /// A blank line inside a section.
@@ -68,7 +122,57 @@ impl<'a, W: fmt::Write> Section<'a, W> {
 
     /// A 5-space-indented sub-line under a marked line.
     pub(crate) fn sub(&mut self, text: &str) -> fmt::Result {
-        writeln!(self.w, "     {text}")
+        self.flow("     ", text)
+    }
+
+    /// Writes `text` after `prefix`, wrapped to the layout width, with every
+    /// line after the first indented to the column the text started at.
+    ///
+    /// The hanging indent is the whole point: a step name that runs onto a
+    /// second line has to stay clear of the gutter, or the wrapped remainder
+    /// reads as a step of its own.
+    fn flow(&mut self, prefix: &str, text: &str) -> fmt::Result {
+        let gutter = console::measure_text_width(prefix);
+        let hanging = " ".repeat(gutter);
+        let mut opening = Some(prefix);
+
+        for line in Self::wrap(text, self.width.saturating_sub(gutter)) {
+            let lead = opening.take().unwrap_or(&hanging);
+            writeln!(self.w, "{}", format!("{lead}{line}").trim_end())?;
+        }
+        Ok(())
+    }
+
+    /// One result row: mark, name, a dotted leader, and the evidence that
+    /// proves it, right-aligned to the layout width.
+    ///
+    /// The leader is what lets the eye run from a step's name to its value on a
+    /// wide terminal. When name and evidence together leave room for fewer than
+    /// `MIN_LEADER` dots, the evidence drops to its own sub-line instead.
+    ///
+    /// Both strings arrive unstyled and are styled here, because the leader
+    /// length is measured in columns and an escape code counts as none.
+    pub(crate) fn row(&mut self, mark: &str, name: &str, evidence: Option<&str>) -> fmt::Result {
+        let named = style(name).bold().to_string();
+        let Some(evidence) = evidence else {
+            return self.marked(mark, &named);
+        };
+
+        let spent = ROW_FURNITURE
+            + console::measure_text_width(name)
+            + console::measure_text_width(evidence);
+        let leader = self.width.saturating_sub(spent);
+        if leader < MIN_LEADER {
+            self.marked(mark, &named)?;
+            return self.sub(&style(evidence).dim().to_string());
+        }
+
+        writeln!(
+            self.w,
+            "  {mark} {named} {} {}",
+            style(".".repeat(leader)).dim(),
+            style(evidence).dim()
+        )
     }
 
     /// A label in its own column, with the text wrapped and aligned under it.
@@ -78,20 +182,27 @@ impl<'a, W: fmt::Write> Section<'a, W> {
     /// unlabelled fragments.
     pub(crate) fn labelled(&mut self, label: &str, text: &str) -> fmt::Result {
         let mut pending = Some(label);
-        for line in Self::wrap(text) {
+        for line in Self::wrap(text, self.width - INDENT - LABEL) {
             let shown = pending.take().unwrap_or("");
             writeln!(self.w, "  {shown:<LABEL$}{line}")?;
         }
         Ok(())
     }
 
-    /// Splits text into lines that fit the body column, breaking between words.
-    fn wrap(text: &str) -> Vec<String> {
+    /// Splits text into lines that fit `body` columns, breaking between words.
+    ///
+    /// Measured in columns rather than in bytes or chars, so a word already
+    /// wrapped in colour codes does not push the line over early. A word longer
+    /// than the column is left whole rather than cut: an overlong line is ugly,
+    /// but a package name or a path broken across two lines cannot be copied.
+    fn wrap(text: &str, body: usize) -> Vec<String> {
         let mut lines: Vec<String> = Vec::new();
         let mut current = String::new();
 
         for word in text.split_whitespace() {
-            if !current.is_empty() && current.len() + 1 + word.len() > BODY {
+            let grown =
+                console::measure_text_width(&current) + 1 + console::measure_text_width(word);
+            if !current.is_empty() && grown > body {
                 lines.push(std::mem::take(&mut current));
             }
             if !current.is_empty() {
@@ -106,7 +217,7 @@ impl<'a, W: fmt::Write> Section<'a, W> {
 
     /// Separator that closes the section.
     pub(crate) fn end(&mut self) -> fmt::Result {
-        writeln!(self.w, "{}", style(SEPARATOR).dim())
+        writeln!(self.w, "{}", style("-".repeat(self.width)).dim())
     }
 }
 

@@ -67,6 +67,11 @@ fn rendered(plan: &RunPlan) -> String {
     InstallList::new(plan, PackageManagerKind::Apt).to_string()
 }
 
+/// The screen without the blank line that separates it from the block above.
+fn body(plan: &RunPlan) -> String {
+    rendered(plan).trim_start().to_owned()
+}
+
 #[test]
 fn every_package_names_itself_what_it_is_and_why_it_is_needed() {
     let plan = plan_with(
@@ -105,7 +110,10 @@ fn a_step_that_installs_its_own_packages_reaches_the_screen() {
     );
     let text = rendered(&plan);
 
-    assert!(text.starts_with("2 to install, about 6 MB"), "{text}");
+    assert!(
+        body(&plan).starts_with("2 to install, about 6 MB"),
+        "{text}"
+    );
     assert!(text.contains("what gamemode is"), "{text}");
     assert!(text.contains("why the run wants gamemode"), "{text}");
 }
@@ -122,7 +130,7 @@ fn a_tool_the_machine_already_has_is_named_even_when_no_dependency_declared_it()
     );
     let text = rendered(&plan);
 
-    assert!(text.starts_with("1 to install"), "{text}");
+    assert!(body(&plan).starts_with("1 to install"), "{text}");
     assert!(text.contains("Already here: gamemode"), "{text}");
 }
 
@@ -131,7 +139,7 @@ fn a_run_with_no_size_estimate_does_not_claim_zero_megabytes() {
     let plan = plan_with(Vec::new(), 0, vec![self_install("gamemode", 0)]);
     let text = rendered(&plan);
 
-    assert!(text.starts_with("1 to install\n"), "{text}");
+    assert!(body(&plan).starts_with("1 to install\n"), "{text}");
     assert!(!text.contains("0 MB"), "{text}");
 }
 
@@ -169,7 +177,10 @@ fn what_is_already_installed_is_listed_but_not_counted() {
     );
     let text = rendered(&plan);
 
-    assert!(text.starts_with("1 to install, about 5 MB"), "{text}");
+    assert!(
+        body(&plan).starts_with("1 to install, about 5 MB"),
+        "{text}"
+    );
     assert!(text.contains("Already here: gamemode"), "{text}");
 }
 
@@ -196,4 +207,15 @@ fn a_size_under_a_megabyte_does_not_round_to_zero() {
     assert_eq!(approx_size(400_000), "under 1 MB");
     assert_eq!(approx_size(5_000_000), "about 5 MB");
     assert_eq!(approx_size(900_000_000), "about 900 MB");
+}
+
+#[test]
+fn the_screen_ends_on_its_own_line_so_the_summary_after_it_starts_on_a_new_one() {
+    // The bug this covers: the last line was written with `write!`, so the
+    // caller concatenating the summary onto it printed
+    // "leaves packages installed.Nothing changed:" on one line.
+    let plan = plan_with(Vec::new(), 0, vec![self_install("gamemode", 0)]);
+    let text = rendered(&plan);
+
+    assert!(text.ends_with('\n'), "{text}");
 }

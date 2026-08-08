@@ -89,6 +89,10 @@ impl fmt::Display for Summary<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = Section::new(f);
 
+        // Every block this is concatenated onto ends in a separator, and a
+        // heading pressed straight against one reads as part of the block
+        // above it.
+        s.blank()?;
         s.title(self.heading())?;
         for step in &self.report.steps {
             let mark = outcome_mark(step.outcome.kind());

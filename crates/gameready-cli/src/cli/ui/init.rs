@@ -45,6 +45,7 @@ impl fmt::Display for LaunchInstructions<'_> {
         }
 
         let mut s = Section::new(f);
+        s.blank()?;
         s.title("Per-game settings")?;
         for setup in &self.answers.selected {
             let options = setup.launch_options();

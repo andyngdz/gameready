@@ -4,6 +4,8 @@ use std::fmt;
 
 use gameready_core::games::{Catalog, GameError, ProtonChoice};
 
+use crate::cli::ui::colors::{warning_mark, Section};
+
 /// The catalog as printable lines, with anything that failed to load after it.
 ///
 /// The source column is not decoration: a user who copied a shipped profile
@@ -23,21 +25,18 @@ impl<'a> GameList<'a> {
 
 impl fmt::Display for GameList<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "\nGames")?;
+        let mut s = Section::new(f);
+        s.blank()?;
+        s.title("Games")?;
 
         if self.catalog.is_empty() {
-            writeln!(f, "{}", crate::cli::ui::NOTHING)?;
+            s.indented(crate::cli::ui::NOTHING.trim_start())?;
         }
 
         for entry in self.catalog.entries() {
             let profile = &entry.profile;
-            writeln!(
-                f,
-                "  {:<28} {:>8}  {}",
-                profile.name,
-                profile.app_id,
-                entry.source.label(),
-            )?;
+            let origin = format!("{}  {}", profile.app_id, entry.source.label());
+            s.row(" ", &profile.name, Some(&origin))?;
 
             let wrappers: Vec<&str> = profile
                 .wrappers
@@ -45,21 +44,22 @@ impl fmt::Display for GameList<'_> {
                 .map(|wrapper| wrapper.command())
                 .collect();
             if !wrappers.is_empty() {
-                writeln!(f, "  {:<28} launch through {}", "", wrappers.join(" "))?;
+                s.sub(&format!("launch through {}", wrappers.join(" ")))?;
             }
 
             // Listed for the same reason as the wrappers: a profile that pins a
             // Proton version changes how the game runs, and a list that shows
             // one setting and hides the other reads as if there is only one.
             if let Some(proton) = &profile.proton {
-                writeln!(f, "  {:<28} run under {}", "", describe(proton))?;
+                s.sub(&format!("run under {}", describe(proton)))?;
             }
         }
 
         if !self.failures.is_empty() {
-            writeln!(f, "\nCould not read")?;
+            s.blank()?;
+            s.title("Could not read")?;
             for failure in self.failures {
-                writeln!(f, "  ! {failure}")?;
+                s.marked(&warning_mark(), &failure.to_string())?;
             }
         }
 

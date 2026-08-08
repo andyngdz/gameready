@@ -6,10 +6,9 @@ exit code: 0
 ----- stdout -----
 core.sysctl.max-map-count  Raise vm.max_map_count for Proton titles
 
-  Why       Some Proton games map far more memory regions than the kernel
-            default allows and refuse to start. Raising the cap to the value
-            SteamOS uses costs nothing: it limits how many mappings a process
-            may hold, not how much memory it may use.
+  Why       Some Proton games map far more memory regions than the kernel default allows and refuse
+            to start. Raising the cap to the value SteamOS uses costs nothing: it limits how many
+            mappings a process may hold, not how much memory it may use.
 
   Needs     your password, because it changes something outside your home
   Here      would apply
@@ -19,6 +18,6 @@ core.sysctl.max-map-count  Raise vm.max_map_count for Proton titles
             set vm.max_map_count from 1048576 to 2147483642
 
   Undo      gameready rollback
---------------------------------------
+----------------------------------------------------------------------------------------------------
 
 ----- stderr -----
