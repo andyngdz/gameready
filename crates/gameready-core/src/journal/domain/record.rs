@@ -1,6 +1,7 @@
 //! The records that make up the journal.
 
 use std::fmt;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
@@ -28,6 +29,15 @@ impl RunId {
     #[must_use]
     pub fn parse(text: &str) -> Option<Self> {
         Ulid::from_string(text).ok().map(Self)
+    }
+
+    /// When the run started, read from the timestamp a ULID carries in its
+    /// leading bits. This is why the id is a ULID rather than a counter: the
+    /// time is in the id, so `rollback` can name a run by when it happened
+    /// without a separate clock field to keep in sync.
+    #[must_use]
+    pub fn started_at(&self) -> SystemTime {
+        UNIX_EPOCH + Duration::from_millis(self.0.timestamp_ms())
     }
 }
 

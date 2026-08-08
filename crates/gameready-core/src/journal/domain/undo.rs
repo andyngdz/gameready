@@ -1,6 +1,6 @@
 //! The operations that reverse a [`Change`](super::Change).
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -84,4 +84,46 @@ pub enum Undo {
         #[serde(default = "assumed_root")]
         privilege: Privilege,
     },
+}
+
+impl Undo {
+    /// A short human name for what this operation puts back, shown as the
+    /// subject of a rollback row before the note. Taken from the operation
+    /// rather than the step, because the row is about the thing restored, not
+    /// the tuning that touched it.
+    #[must_use]
+    pub fn subject(&self) -> String {
+        match self {
+            Self::SetSysctl { key, .. } => key.clone(),
+            Self::WriteSysfs { path, .. } => scheduler_subject(path),
+            Self::RestoreScxScheduler { .. } => "CPU scheduler".to_owned(),
+            Self::RestoreUnit { unit, .. } => unit.clone(),
+            Self::RemoveAptRepository { spec } => spec.clone(),
+            Self::ReportPackages { .. } => "packages".to_owned(),
+            Self::RestoreFile { path, .. }
+            | Self::DeleteFile { path, .. }
+            | Self::RemoveDirIfEmpty { path }
+            | Self::RemoveDirTree { path, .. } => file_name(path),
+        }
+    }
+}
+
+/// Names a sysfs write by its block device, since the only attribute gameready
+/// writes there is the per-disk I/O scheduler.
+fn scheduler_subject(path: &Path) -> String {
+    path.components()
+        .skip_while(|component| component.as_os_str() != "block")
+        .nth(1)
+        .map_or_else(
+            || file_name(path),
+            |device| format!("I/O scheduler {}", device.as_os_str().to_string_lossy()),
+        )
+}
+
+/// The last path component, for naming a file or directory undo.
+fn file_name(path: &Path) -> String {
+    path.file_name().map_or_else(
+        || path.display().to_string(),
+        |name| name.to_string_lossy().into_owned(),
+    )
 }

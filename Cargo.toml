@@ -14,6 +14,7 @@ description = "Reversible Linux gaming optimizer with per-step verification and 
 gameready-core = { path = "crates/gameready-core" }
 
 anyhow = "1"
+chrono = { version = "0.4.42", default-features = false, features = ["clock"] }
 clap = { version = "4.6.5", features = ["derive", "env", "wrap_help"] }
 console = "0.16.4"
 directories = "6.0.0"

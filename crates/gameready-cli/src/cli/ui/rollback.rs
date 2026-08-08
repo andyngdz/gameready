@@ -3,7 +3,12 @@
 use std::fmt;
 use std::path::Path;
 
-use gameready_core::rollback::RollbackReport;
+use chrono::{DateTime, Local};
+use console::style;
+use gameready_core::journal::Undo;
+use gameready_core::rollback::{RollbackReport, UndoOutcome, UndoReport};
+
+use crate::cli::ui::layout::{Mark, Section};
 
 /// A rollback report paired with where its journal lives, ready to print.
 ///
@@ -20,32 +25,134 @@ impl<'a> RollbackSummary<'a> {
     pub const fn new(report: &'a RollbackReport, journal: &'a Path) -> Self {
         Self { report, journal }
     }
+
+    /// When the run being undone started, in the reader's own time zone. The
+    /// point of the line is to name a run by when it happened, so a raw id would
+    /// defeat it.
+    fn when(&self) -> String {
+        let started: DateTime<Local> = self.report.run.started_at().into();
+        started.format("%-d %b, %H:%M").to_string()
+    }
+
+    /// One row per undo, except the package report, which is deliberately not a
+    /// row: it did nothing to the system, so it belongs in the note below rather
+    /// than in the list of things that were put back.
+    fn rows<W: fmt::Write>(&self, s: &mut Section<'_, W>) -> fmt::Result {
+        for report in &self.report.undos {
+            if matches!(report.undo, Undo::ReportPackages { .. }) {
+                continue;
+            }
+            s.noted(
+                Self::mark(&report.outcome),
+                &report.undo.subject(),
+                &Self::note(report),
+            )?;
+        }
+        Ok(())
+    }
+
+    /// The packages the run installed and rollback left in place, gathered from
+    /// every package report into one note rather than one line each.
+    fn packages<W: fmt::Write>(&self, s: &mut Section<'_, W>) -> fmt::Result {
+        let installed: Vec<&str> = self
+            .report
+            .undos
+            .iter()
+            .filter_map(|report| {
+                if let Undo::ReportPackages { installed, .. } = &report.undo {
+                    Some(installed.as_slice())
+                } else {
+                    None
+                }
+            })
+            .flatten()
+            .map(String::as_str)
+            .collect();
+        if installed.is_empty() {
+            return Ok(());
+        }
+
+        s.marked(
+            Mark::Warning,
+            &format!("{} are still installed.", join_and(&installed)),
+        )?;
+        s.sub("Remove them yourself, or rerun with --purge-packages.")?;
+        s.blank()
+    }
+
+    /// The gutter mark for how one undo ended.
+    fn mark(outcome: &UndoOutcome) -> Mark {
+        match outcome {
+            UndoOutcome::Reverted { .. } => Mark::Applied,
+            UndoOutcome::AlreadyGone => Mark::AlreadySet,
+            UndoOutcome::Left { .. } => Mark::Skipped,
+            UndoOutcome::Refused { .. } => Mark::Warning,
+            UndoOutcome::Failed { .. } => Mark::Failed,
+        }
+    }
+
+    /// The note after the subject: what was put back, or why it was not.
+    fn note(report: &UndoReport) -> String {
+        match &report.outcome {
+            UndoOutcome::Reverted { .. } => Self::reverted_note(&report.undo),
+            UndoOutcome::AlreadyGone => "was already gone".to_owned(),
+            UndoOutcome::Left { reason } | UndoOutcome::Refused { reason } => reason.clone(),
+            UndoOutcome::Failed { error } => error.clone(),
+        }
+    }
+
+    /// What a reverted operation reads as, phrased for the operation rather than
+    /// repeating the subject the row already shows.
+    fn reverted_note(undo: &Undo) -> String {
+        match undo {
+            Undo::SetSysctl { value, .. } | Undo::WriteSysfs { value, .. } => {
+                format!("back to {value}")
+            }
+            Undo::RestoreScxScheduler { previous } => previous.as_ref().map_or_else(
+                || "sched_ext unloaded, kernel scheduler back".to_owned(),
+                |scheduler| format!("back to {scheduler}"),
+            ),
+            Undo::RestoreFile { .. } => "restored from the copy taken first".to_owned(),
+            Undo::RestoreUnit { .. } => "disabled again".to_owned(),
+            Undo::DeleteFile { .. }
+            | Undo::RemoveAptRepository { .. }
+            | Undo::RemoveDirIfEmpty { .. }
+            | Undo::RemoveDirTree { .. } => "removed".to_owned(),
+            Undo::ReportPackages { .. } => String::new(),
+        }
+    }
 }
 
 impl fmt::Display for RollbackSummary<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f)?;
-        writeln!(f, "Rollback of run {}", self.report.run)?;
+        let mut s = Section::new(f);
+        s.blank()?;
+        s.title(&format!("Putting back the run from {}", self.when()))?;
+        self.rows(&mut s)?;
 
-        for undo in &self.report.undos {
-            let mark = if undo.outcome.is_failure() {
-                "!!"
-            } else {
-                "ok"
-            };
-            writeln!(f, "  {mark} {}", undo.outcome.describe())?;
-        }
-
-        writeln!(f)?;
-        writeln!(
-            f,
-            "Summary   {} reverted, {} failed",
+        s.blank()?;
+        s.heading(&format!(
+            "{} reverted, {} failed",
             self.report.reverted(),
-            self.report.failed(),
-        )?;
+            self.report.failed()
+        ))?;
+        s.blank()?;
 
-        writeln!(f)?;
-        writeln!(f, "  Journal   {}", self.journal.display())
+        self.packages(&mut s)?;
+        s.indented(
+            &style(format!("journal · {}", self.journal.display()))
+                .dim()
+                .to_string(),
+        )
+    }
+}
+
+/// Joins names as a reader would say them: "a", "a and b", "a, b and c".
+fn join_and(names: &[&str]) -> String {
+    match names {
+        [] => String::new(),
+        [only] => (*only).to_owned(),
+        [rest @ .., last] => format!("{} and {last}", rest.join(", ")),
     }
 }
 
