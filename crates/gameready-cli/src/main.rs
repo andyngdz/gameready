@@ -11,7 +11,6 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use anyhow::{Context as _, Result};
-use clap::Parser;
 use directories::ProjectDirs;
 use gameready_core::exec::CommandRunner;
 use gameready_core::journal::StatePaths;
@@ -29,7 +28,7 @@ use crate::cli::runtime::Machine;
 const PROJECT: &str = "gameready";
 
 fn main() -> ExitCode {
-    let cli = Cli::parse();
+    let cli = Cli::parsed();
 
     match dispatch(&cli) {
         Ok((status, output)) => {

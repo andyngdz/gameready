@@ -1,8 +1,8 @@
 //! Command line surface.
 
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory as _, FromArgMatches as _, Parser, Subcommand};
 
-use crate::cli::ui::Picker;
+use crate::cli::ui::{HelpCard, Picker};
 use gameready_core::run::Mode;
 
 /// Apply gaming-related system tuning on Linux, and undo it.
@@ -26,6 +26,24 @@ pub struct Cli {
     /// `~/.config/gameready/games`.
     #[arg(long, global = true, env = "GAMEREADY_GAMES_DIR")]
     pub games_dir: Option<std::path::PathBuf>,
+}
+
+impl Cli {
+    /// Parses the command line, with the hand-written help card standing in for
+    /// the flat list clap generates.
+    ///
+    /// Clap groups flags under headings but has no such thing for subcommands,
+    /// and the grouping is the whole point of the card: it answers "which one
+    /// do I type" rather than listing eight equally likely commands. Each
+    /// subcommand's own `--help` is still clap's, which is where the global
+    /// flags stay documented.
+    #[must_use]
+    pub fn parsed() -> Self {
+        let matches = Self::command()
+            .override_help(HelpCard.to_string())
+            .get_matches();
+        Self::from_arg_matches(&matches).unwrap_or_else(|error| error.exit())
+    }
 }
 
 /// Whether a command will change the system.

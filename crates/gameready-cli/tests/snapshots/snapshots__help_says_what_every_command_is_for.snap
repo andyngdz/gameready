@@ -4,29 +4,28 @@ expression: "gameready(&[\"--help\"])"
 ---
 exit code: 0
 ----- stdout -----
-Command line interface for gameready
+gameready 0.1.1 · tune a Linux desktop for gaming, and undo it.
 
-Usage: gameready [OPTIONS] <COMMAND>
+Start here
+  init       Find your games, ask what you want, apply it.
+  rollback   Put everything back. Any run, any time.
 
-Commands:
-  init        Set up this machine: find your games, pick which to tune, apply
-  doctor      Report system facts and what each step would do
-  explain     Say what a step does, why, and what it would change on this machine
-  list-games  List the game profiles gameready can see, and where each came from
-  apply       Apply improvements
-  rollback    Undo a previous run
-  selftest    Apply a step, verify it, roll it back, and verify it reverted
-  help        Print this message or the help of the given subcommand(s)
+Look before you leap
+  doctor     What your machine is, and what each tuning would do.
+  explain    One tuning: why it exists, and what it'd change here.
+  list-games The game profiles I can see, and where each came from.
 
-Options:
-      --json                   Print the run report as JSON instead of a rendered summary
-      --state-dir <STATE_DIR>  Write the state directory somewhere else. Used by tests to keep runs
-                               out of the invoking user's real journal [env:
-                               GAMEREADY_STATE_DIR=[TMP]
-      --games-dir <GAMES_DIR>  Read your own game profiles from somewhere other than
-                               `~/.config/gameready/games` [env:
-                               GAMEREADY_GAMES_DIR=[TMP]
-  -h, --help                   Print help
-  -V, --version                Print version
+For scripts and repeat runs
+  apply      Apply, optionally one tuning: --step <id>
+  selftest   Apply, verify, revert, verify. Proves a tuning works.
+
+Anywhere
+  --dry-run  Work out the plan, change nothing.
+  --yes      Take every default, install without asking.
+  --json     The run report as JSON instead of this.
+
+  Everything gameready changes is reversible, except installing a package. It says so before it
+  installs one.
+----------------------------------------------------------------------------------------------------
 
 ----- stderr -----
