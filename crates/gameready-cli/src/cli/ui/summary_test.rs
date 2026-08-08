@@ -8,14 +8,22 @@ use gameready_core::run::{Mode, RunReport, StepReport};
 use super::*;
 
 fn report(outcome: Outcome) -> RunReport {
+    with_steps(vec![step("core.sysctl.max-map-count", outcome)])
+}
+
+fn step(id: &'static str, outcome: Outcome) -> StepReport {
+    StepReport {
+        step: ImprovementId::from_static(id),
+        name: "Raise vm.max_map_count for Proton titles".to_owned(),
+        outcome,
+    }
+}
+
+fn with_steps(steps: Vec<StepReport>) -> RunReport {
     RunReport {
         run: RunId::generate(),
         mode: Mode::Apply,
-        steps: vec![StepReport {
-            step: ImprovementId::from_static("core.sysctl.max-map-count"),
-            name: "Raise vm.max_map_count".to_owned(),
-            outcome,
-        }],
+        steps,
         installed_dependencies: Vec::new(),
         took: Duration::from_millis(300),
     }
@@ -35,43 +43,72 @@ fn already_set() -> Outcome {
     }
 }
 
-#[test]
-fn every_step_is_listed_with_its_detail() {
-    let text = Summary::new(&report(applied()), Path::new("/j")).to_string();
+fn rendered(report: &RunReport, journal: &str) -> String {
+    console::strip_ansi_codes(&Summary::new(report, Path::new(journal)).to_string()).into_owned()
+}
 
-    assert!(text.contains("Raise vm.max_map_count"), "{text}");
+#[test]
+fn every_step_is_listed_with_what_it_did() {
+    let text = rendered(&report(applied()), "/j");
+
+    // Named the way the plan named it, not by the sentence the report carries.
+    assert!(text.contains("vm.max_map_count"), "{text}");
     assert!(text.contains("verified"), "{text}");
 }
 
 #[test]
-fn a_run_that_changed_nothing_does_not_head_the_list_with_config_changed() {
+fn a_run_that_changed_nothing_says_the_machine_was_already_right() {
     // The bug this covers: every step already correct still printed
     // "Config changed:" over a green tick, so the run read as if it had
     // touched the machine.
-    let text = Summary::new(&report(already_set()), Path::new("/j")).to_string();
+    let text = rendered(&report(already_set()), "/j");
 
-    assert!(text.trim_start().starts_with("Nothing changed:"), "{text}");
-    assert!(text.contains("already set up"), "{text}");
+    assert!(text.contains("was already set up"), "{text}");
 }
 
 #[test]
 fn a_run_that_changed_nothing_offers_no_undo_and_no_journal() {
     // Nothing was appended, so an undo command and a path to the record are
     // both offers the run cannot honour.
-    let text = Summary::new(&report(already_set()), Path::new("/state/journal.jsonl")).to_string();
+    let text = rendered(&report(already_set()), "/state/journal.jsonl");
 
-    assert!(!text.contains("Rollback saved"), "{text}");
+    assert!(!text.contains("gameready rollback"), "{text}");
     assert!(!text.contains("/state/journal.jsonl"), "{text}");
 }
 
 #[test]
 fn a_run_that_applied_something_says_so_and_offers_the_undo() {
-    let text = Summary::new(&report(applied()), Path::new("/state/journal.jsonl")).to_string();
+    let text = rendered(&report(applied()), "/state/journal.jsonl");
 
-    assert!(text.trim_start().starts_with("Config changed:"), "{text}");
+    assert!(text.contains("Your machine is set up."), "{text}");
     assert!(text.contains("gameready rollback --run"), "{text}");
     assert!(text.contains("/state/journal.jsonl"), "{text}");
     assert!(text.contains("1 applied"), "{text}");
+}
+
+#[test]
+fn a_failure_leads_the_screen_rather_than_hiding_in_the_list() {
+    let failed = Outcome::Failed {
+        error: "wrote 60, read back 180".to_owned(),
+        rolled_back: gameready_core::improvement::RollbackStatus::Succeeded,
+    };
+    let text = rendered(&with_steps(vec![step("core.io.scheduler", failed)]), "/j");
+
+    assert!(text.contains("did not land"), "{text}");
+    assert!(text.contains("1 failed"), "{text}");
+}
+
+#[test]
+fn the_counts_name_every_kind_of_ending_the_run_had() {
+    let text = rendered(
+        &with_steps(vec![
+            step("core.sysctl.max-map-count", applied()),
+            step("core.io.scheduler", already_set()),
+        ]),
+        "/j",
+    );
+
+    assert!(text.contains("1 applied · 1 already set"), "{text}");
 }
 
 #[test]
@@ -82,9 +119,17 @@ fn a_dry_run_is_not_reported_as_a_system_that_was_already_correct() {
         reason: SkipReason::DryRun,
     });
     dry.mode = Mode::DryRun;
-    let text = Summary::new(&dry, Path::new("/j")).to_string();
+    let text = rendered(&dry, "/j");
 
     assert!(text.contains("Dry run"), "{text}");
+    assert!(text.contains("Drop --dry-run"), "{text}");
     assert!(!text.contains("already set up"), "{text}");
-    assert!(!text.contains("Rollback saved"), "{text}");
+    assert!(!text.contains("gameready rollback"), "{text}");
+}
+
+#[test]
+fn a_finished_run_says_what_to_do_next() {
+    let text = rendered(&report(applied()), "/j");
+
+    assert!(text.contains("Play something"), "{text}");
 }
