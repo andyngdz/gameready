@@ -62,7 +62,7 @@ impl Phase {
             Self::Apply => "apply",
             Self::Verify => "verify",
             Self::Rollback => "rollback",
-            Self::Reverted => "reverted",
+            Self::Reverted => "revert",
         }
     }
 }

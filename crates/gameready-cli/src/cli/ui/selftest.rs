@@ -1,13 +1,24 @@
 //! Rendering a selftest run.
 
+use std::collections::HashMap;
 use std::fmt;
 
-use gameready_core::run::{SelftestResult, StepSelftest};
+use console::style;
+use gameready_core::improvement::ImprovementId;
+use gameready_core::run::{RevertCheck, SelftestResult, StepSelftest};
+use gameready_core::steps::{core_steps, game_steps};
+
+use crate::cli::ui::layout::{Mark, Section};
+
+/// The reassurance under the counts: whatever the test found, it put the
+/// machine back, so a failed test never leaves a half-applied tuning behind.
+const REASSURANCE: &str =
+    "Your machine is as it was: selftest undoes its own work even when the test itself fails.";
 
 /// The selftest results as printable lines.
 ///
-/// Each line leads with its marker rather than with the step id, so a failure
-/// is visible while the list scrolls past.
+/// Each row leads with its mark rather than with the step id, so a failure is
+/// visible while the list scrolls past.
 pub struct SelftestSummary<'a> {
     results: &'a [StepSelftest],
 }
@@ -17,30 +28,81 @@ impl<'a> SelftestSummary<'a> {
     pub const fn new(results: &'a [StepSelftest]) -> Self {
         Self { results }
     }
+
+    /// The counts, then the reassurance that the machine is back either way.
+    fn summary<W: fmt::Write>(&self, s: &mut Section<'_, W>) -> fmt::Result {
+        let total = self.results.len();
+        let failed = self
+            .results
+            .iter()
+            .filter(|result| result.is_failure())
+            .count();
+        let headline = if failed == 0 {
+            style(format!("All {total} passed.")).green()
+        } else {
+            style(format!("{failed} of {total} failed.")).red()
+        };
+        s.heading(&headline.to_string())?;
+        s.paragraph(&style(REASSURANCE).dim().to_string())
+    }
+
+    /// The gutter mark for how one step's cycle ended.
+    fn mark(result: &SelftestResult) -> Mark {
+        match result {
+            SelftestResult::Passed { .. } => Mark::Applied,
+            SelftestResult::Skipped { .. } => Mark::Skipped,
+            SelftestResult::ProbeFailed { .. } | SelftestResult::Failed { .. } => Mark::Failed,
+        }
+    }
+
+    /// What the step's cycle reads as after the subject.
+    fn note(result: &SelftestResult) -> String {
+        match result {
+            SelftestResult::Passed { reverted } => match reverted {
+                RevertCheck::Confirmed => "applied, verified, reverted".to_owned(),
+                RevertCheck::NotApplicable => "applied, verified, nothing to revert".to_owned(),
+            },
+            SelftestResult::Skipped { reason } => format!("skipped, {reason}"),
+            SelftestResult::ProbeFailed { error } => format!("probe failed: {error}"),
+            SelftestResult::Failed { phase, detail } => {
+                format!("{} failed: {detail}", phase.label())
+            }
+        }
+    }
 }
 
 impl fmt::Display for SelftestSummary<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "\nSelftest")?;
+        let names = step_names();
+        let mut s = Section::new(f);
+        s.blank()?;
+        s.title("Applying each tuning, then undoing it, to prove both halves work")?;
+
         for result in self.results {
-            let step = &result.step;
-            match &result.result {
-                SelftestResult::Passed { reverted } => {
-                    writeln!(f, "  ok  {step}  {}", reverted.label())?;
-                }
-                SelftestResult::Skipped { reason } => {
-                    writeln!(f, "  --  {step}  skipped, {reason}")?;
-                }
-                SelftestResult::ProbeFailed { error } => {
-                    writeln!(f, "  !!  {step}  probe failed: {error}")?;
-                }
-                SelftestResult::Failed { phase, detail } => {
-                    writeln!(f, "  !!  {step}  {} failed: {detail}", phase.label())?;
-                }
-            }
+            let subject = names
+                .get(&result.step)
+                .cloned()
+                .unwrap_or_else(|| result.step.to_string());
+            s.noted(
+                Self::mark(&result.result),
+                &subject,
+                &Self::note(&result.result),
+            )?;
         }
-        Ok(())
+
+        s.blank()?;
+        self.summary(&mut s)
     }
+}
+
+/// Every step's short name, keyed by id, so a result can be shown by the name a
+/// reader knows rather than by the id it was recorded under.
+fn step_names() -> HashMap<ImprovementId, String> {
+    core_steps()
+        .iter()
+        .chain(game_steps().iter())
+        .map(|step| (step.id(), step.short_name().to_owned()))
+        .collect()
 }
 
 #[cfg(test)]

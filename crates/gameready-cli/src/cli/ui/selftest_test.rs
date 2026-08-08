@@ -11,14 +11,16 @@ fn result(result: SelftestResult) -> StepSelftest {
 }
 
 #[test]
-fn a_pass_leads_with_its_marker() {
+fn a_pass_reads_as_the_whole_cycle() {
     let results = [result(SelftestResult::Passed {
         reverted: RevertCheck::Confirmed,
     })];
     let rendered = SelftestSummary::new(&results).to_string();
 
+    // The step is named by its short name, not the id it was recorded under.
+    assert!(rendered.contains("vm.max_map_count"), "{rendered}");
     assert!(
-        rendered.contains("ok  core.sysctl.max-map-count"),
+        rendered.contains("applied, verified, reverted"),
         "{rendered}"
     );
 }
@@ -31,9 +33,9 @@ fn a_failure_names_the_phase_and_the_detail() {
     })];
     let rendered = SelftestSummary::new(&results).to_string();
 
-    assert!(rendered.contains("!!"), "{rendered}");
     assert!(rendered.contains("rollback failed"), "{rendered}");
     assert!(rendered.contains("the undo command exited 1"), "{rendered}");
+    assert!(rendered.contains("1 of 1 failed"), "{rendered}");
 }
 
 #[test]
@@ -43,8 +45,7 @@ fn a_skip_says_why() {
     })];
     let rendered = SelftestSummary::new(&results).to_string();
 
-    assert!(rendered.contains("--"), "{rendered}");
-    assert!(rendered.contains("already set"), "{rendered}");
+    assert!(rendered.contains("skipped, already set"), "{rendered}");
 }
 
 #[test]
@@ -58,7 +59,7 @@ fn a_step_with_nothing_to_revert_says_so_rather_than_claiming_a_readback() {
 }
 
 #[test]
-fn every_result_gets_one_line() {
+fn every_result_gets_its_own_line() {
     let results = [
         result(SelftestResult::Passed {
             reverted: RevertCheck::Confirmed,
@@ -69,6 +70,14 @@ fn every_result_gets_one_line() {
     ];
     let rendered = SelftestSummary::new(&results).to_string();
 
-    // One header line, one blank line before it, and one line per result.
-    assert_eq!(rendered.lines().filter(|line| !line.is_empty()).count(), 3);
+    // Each result reads on its own line, so neither is folded into the other.
+    assert!(
+        rendered.contains("applied, verified, reverted"),
+        "{rendered}"
+    );
+    assert!(
+        rendered.contains("probe failed: permission denied"),
+        "{rendered}"
+    );
+    assert!(rendered.contains("1 of 2 failed"), "{rendered}");
 }

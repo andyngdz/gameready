@@ -65,6 +65,12 @@ impl<'a, W: fmt::Write> Section<'a, W> {
         writeln!(self.w, "{text}")
     }
 
+    /// A paragraph wrapped at the left margin, for a closing sentence that runs
+    /// past one line, such as the selftest reassurance.
+    pub(crate) fn paragraph(&mut self, text: &str) -> fmt::Result {
+        self.flow("", text)
+    }
+
     /// A catalog row: a name padded to a shared column, then a dim note. The
     /// eye runs down the column of names rather than following a leader out to a
     /// value, which is what a list read top to bottom wants.
