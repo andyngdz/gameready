@@ -62,6 +62,10 @@ impl Improvement for ProtonGe {
         "Install latest Proton-GE"
     }
 
+    fn short_name(&self) -> &str {
+        "Proton-GE"
+    }
+
     fn rationale(&self) -> &str {
         "Proton-GE includes game-specific patches and media codecs that Valve's \
          Proton does not ship. Installing it makes it available in Steam's \

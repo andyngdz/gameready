@@ -71,6 +71,10 @@ impl Improvement for ScxLavd {
         "Switch the CPU scheduler to scx_lavd"
     }
 
+    fn short_name(&self) -> &str {
+        "CPU scheduler scx_lavd"
+    }
+
     fn rationale(&self) -> &str {
         "A frame is a chain of threads waking each other, and the kernel's own \
          scheduler does not know the chain exists, so a thread the others are \

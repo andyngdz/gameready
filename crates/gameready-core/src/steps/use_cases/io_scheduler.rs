@@ -59,6 +59,10 @@ impl Improvement for IoScheduler {
         "Set each disk's I/O scheduler"
     }
 
+    fn short_name(&self) -> &str {
+        "I/O schedulers"
+    }
+
     fn rationale(&self) -> &str {
         "The kernel's default I/O scheduler is a compromise across hardware. An \
          NVMe drive does best with none, since it queues in hardware; a SATA SSD \

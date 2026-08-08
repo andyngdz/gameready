@@ -11,7 +11,7 @@ core.sysctl.max-map-count  Raise vm.max_map_count for Proton titles
             mappings a process may hold, not how much memory it may use.
 
   Needs     your password, because it changes something outside your home
-  Here      would apply
+  Here      I would apply this
 
   Would do  vm.max_map_count 1048576 -> 2147483642
             create /etc/sysctl.d/99-gameready.conf

@@ -20,7 +20,7 @@ fn reports_the_kernel_and_every_step() {
         text.contains("apt-get"),
         "names the package manager: {text}"
     );
-    assert!(text.contains("core.sysctl.max-map-count"));
+    assert!(text.contains("vm.max_map_count"));
     assert!(text.contains("would apply"));
 }
 

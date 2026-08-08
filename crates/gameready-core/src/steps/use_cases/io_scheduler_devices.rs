@@ -75,6 +75,34 @@ fn read_rotational(runner: &dyn CommandRunner, entry: &Path) -> Option<bool> {
     Some(raw.trim() == "1")
 }
 
+/// One disk and the scheduler it is on now, for the doctor screen.
+///
+/// Owned and free of the target/change machinery so it can cross out of this
+/// feature: doctor only wants to report what is there, not what would change.
+pub struct DiskInventory {
+    pub name: String,
+    pub scheduler: String,
+}
+
+/// Every tunable disk with its active scheduler, for the doctor screen.
+///
+/// A `/sys/block` that cannot be read lists nothing rather than failing, since
+/// doctor reports rather than acts.
+#[must_use]
+pub(crate) fn disk_inventory(runner: &dyn CommandRunner) -> Vec<DiskInventory> {
+    scan_disks(runner)
+        .map(|disks| {
+            disks
+                .into_iter()
+                .map(|disk| DiskInventory {
+                    name: disk.name,
+                    scheduler: disk.state.active,
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 /// A one-line summary of what will change, for the plan screen.
 pub(super) fn summary(disks: &[DiskScheduler]) -> String {
     let changing = disks

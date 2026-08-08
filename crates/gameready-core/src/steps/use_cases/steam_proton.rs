@@ -58,6 +58,10 @@ impl Improvement for SteamProton {
         "Pin the Proton version for the selected games"
     }
 
+    fn short_name(&self) -> &str {
+        "Proton pin"
+    }
+
     fn rationale(&self) -> &str {
         "A game that needs a particular Proton build needs it every time it \
          starts, and Steam's default is whatever it picks for itself. This sets \

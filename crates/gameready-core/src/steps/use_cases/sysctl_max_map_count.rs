@@ -79,6 +79,10 @@ impl Improvement for MaxMapCount {
         "Raise vm.max_map_count for Proton titles"
     }
 
+    fn short_name(&self) -> &str {
+        "vm.max_map_count"
+    }
+
     fn rationale(&self) -> &str {
         "Some Proton games map far more memory regions than the kernel default \
          allows and refuse to start. Raising the cap to the value SteamOS uses \

@@ -19,6 +19,13 @@ pub trait Improvement: Send + Sync {
     /// Short title for the plan and summary screens.
     fn name(&self) -> &str;
 
+    /// A terser identity label for rows where the full `name` would crowd the
+    /// line, such as the doctor screen and the live region. Defaults to `name`
+    /// for steps whose title is already short.
+    fn short_name(&self) -> &str {
+        self.name()
+    }
+
     /// Why this is worth doing, shown by `explain` and by `--verbose`.
     /// Written for someone deciding whether to let it run.
     fn rationale(&self) -> &str;

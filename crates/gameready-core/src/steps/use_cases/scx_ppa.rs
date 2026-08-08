@@ -54,6 +54,10 @@ impl Improvement for ScxPpa {
         "Add the scx package repository"
     }
 
+    fn short_name(&self) -> &str {
+        "scx repository"
+    }
+
     fn rationale(&self) -> &str {
         "Ubuntu's own archive carries no sched_ext schedulers at any release, \
          so scx_lavd cannot be installed without a third-party repository. This \

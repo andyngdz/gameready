@@ -43,11 +43,11 @@ impl Probe {
     #[must_use]
     pub fn describe(&self) -> String {
         match self {
-            Self::Applicable => "would apply".to_owned(),
+            Self::Applicable => "I would apply this".to_owned(),
             Self::AlreadyApplied { evidence } => format!("already set ({evidence})"),
             Self::NotApplicable { reason } => format!("not applicable ({reason})"),
             Self::Conflict { with, detail } => format!("conflicts with {with}: {detail}"),
-            Self::Unknown { reason } => format!("could not tell ({reason})"),
+            Self::Unknown { reason } => format!("I could not tell ({reason})"),
         }
     }
 }
@@ -99,7 +99,7 @@ impl Outcome {
     pub fn detail(&self) -> Option<String> {
         match self {
             Self::Applied { verification, .. } => Some(format!(
-                "verified, {} of {} checks passed",
+                "I verified {} of {} checks",
                 verification.total_count() - verification.failed_count(),
                 verification.total_count(),
             )),
@@ -172,10 +172,6 @@ pub enum SkipReason {
     /// A prerequisite could not be installed, so the step cannot run.
     MissingDependency { name: String, detail: String },
 
-    /// Steam holds its config in memory and rewrites the file on exit, so
-    /// writing it now would be silently discarded. Queued as pending.
-    SteamRunning,
-
     /// `--dry-run`: the plan was computed, nothing was touched.
     DryRun,
 }
@@ -186,14 +182,11 @@ impl SkipReason {
     pub fn describe(&self) -> String {
         match self {
             Self::UserDeclined => "you declined it".to_owned(),
-            Self::Conflict { with } => format!("skipped, {with} active"),
-            Self::DependencyFailed { on } => format!("{on} failed, and this builds on it"),
+            Self::Conflict { with } => format!("I left it to {with}, which is running"),
+            Self::DependencyFailed { on } => format!("{on} failed, so I did not build on it"),
             Self::MissingDependency { name, detail } => {
-                format!("needs {name}, which is not available: {detail}")
+                format!("I could not get {name}: {detail}")
             }
-            Self::SteamRunning => "Steam is running and would overwrite this on exit; quit Steam, \
-                 then run `gameready apply --pending`"
-                .to_owned(),
             Self::DryRun => "dry run".to_owned(),
         }
     }
@@ -221,9 +214,9 @@ impl RollbackStatus {
     pub fn describe(&self) -> String {
         match self {
             Self::NotAttempted => "nothing had changed yet".to_owned(),
-            Self::Succeeded => "the partial change was undone".to_owned(),
+            Self::Succeeded => "I undid the partial change".to_owned(),
             Self::Failed { detail } => {
-                format!("the undo also failed ({detail}), run `gameready rollback`")
+                format!("I could not finish undoing it ({detail}); run `gameready rollback`")
             }
         }
     }

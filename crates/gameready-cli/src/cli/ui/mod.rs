@@ -10,6 +10,7 @@ pub(crate) const UNDO: &str = "Undo";
 /// The heading over a list of steps, wherever one is printed.
 pub(crate) const STEPS: &str = "Steps";
 
+mod doctor;
 mod explain;
 mod games;
 mod governor;
@@ -27,6 +28,7 @@ mod rollback;
 mod selftest;
 mod summary;
 
+pub use doctor::{DoctorReport, StepFinding};
 pub use explain::{StepExplanation, StepIndex};
 pub use games::GameList;
 pub use governor::choose_governor_persistence;

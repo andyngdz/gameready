@@ -5,27 +5,28 @@ expression: "gameready(&[\"doctor\"])"
 exit code: 0
 ----- stdout -----
 
-System
+Your machine
 
   distro    Ubuntu 26.04 LTS
-  family    debian
-  packages  apt-get
-  kernel    7.0.0-29-generic
+  family    debian · apt-get
+  kernel    7.0.0-29-generic · sched_ext ready
+  swap      disk, 8 GB
+  disks     nvme0n1 · none
 
-Steps
+What each tuning would do here
 
-    core.conflicts ........................................ already set (no competing daemons found)
-    core.sysctl.max-map-count .......................................................... would apply
-    core.io.scheduler ................................................ already set (nvme0n1 on none)
-    core.memory.swappiness
-     not applicable (swap is on disk, not zram; the default swappiness is right)
-    core.pkg.tools ..................................................................... would apply
-    core.proton.ge ........................................... not applicable (Steam root not found)
-    core.repo.scx-ppa .................................................................. would apply
-    core.sched.scx-lavd
-     not applicable (scx is not in this system's repositories yet (Ubuntu 26.04 LTS); the
-     "core.repo.scx-ppa" step in this run adds the PPA that carries it, and this step is looked at
-     again once it has)
-    core.cpu.governor .................................................................. would apply
+  • Competing daemons · already set (no competing daemons found)
+  ✓ vm.max_map_count · I would apply this
+  • I/O schedulers · already set (nvme0n1 on none)
+  - Swappiness · not applicable (swap is on disk, not zram; the default swappiness is right)
+  ✓ gamemode + mangohud · I would apply this
+  - Proton-GE · not applicable (Steam root not found)
+  ✓ scx repository · I would apply this
+  - CPU scheduler scx_lavd · not applicable (scx is not in this system's repositories yet (Ubuntu
+    26.04 LTS); the "core.repo.scx-ppa" step in this run adds the PPA that carries it, and this step
+    is looked at again once it has)
+  ✓ CPU governor · I would apply this
+
+  Nothing above has been changed. Run gameready init to apply.
 
 ----- stderr -----

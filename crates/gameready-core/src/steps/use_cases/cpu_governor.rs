@@ -56,6 +56,10 @@ impl Improvement for CpuGovernor {
         "Pin the CPU governor to performance"
     }
 
+    fn short_name(&self) -> &str {
+        "CPU governor"
+    }
+
     fn rationale(&self) -> &str {
         "A frame is late when the CPU is still ramping its clocks as it arrives. \
          The performance governor holds them up so it does not. gamemode does \

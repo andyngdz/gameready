@@ -39,7 +39,7 @@ impl StatePaths {
         self.root.join("journal.jsonl")
     }
 
-    /// Per-run summaries, read by `status` and `apply --pending`.
+    /// Where a run's summary is filed, one file per run.
     #[must_use]
     pub fn runs(&self) -> PathBuf {
         self.root.join("runs")

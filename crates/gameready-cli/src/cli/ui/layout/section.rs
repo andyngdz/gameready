@@ -122,6 +122,20 @@ impl<'a, W: fmt::Write> Section<'a, W> {
         )
     }
 
+    /// A row whose short evidence sits inline after a dim separator.
+    ///
+    /// The doctor screen uses this rather than [`Section::row`]: its values are
+    /// short and a reflowing "name · note" reads better than a dotted leader
+    /// run out to the right edge.
+    pub(crate) fn noted(&mut self, mark: Mark, name: &str, note: &str) -> fmt::Result {
+        let text = format!(
+            "{} {}",
+            style(name).bold(),
+            style(format!("· {note}")).dim()
+        );
+        self.marked(mark, &text)
+    }
+
     /// A label in its own column, with the text wrapped and aligned under it.
     ///
     /// The label is written once and the following lines are blank in that

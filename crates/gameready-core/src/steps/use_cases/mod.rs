@@ -20,6 +20,9 @@ mod steam_launch_options;
 mod steam_proton;
 mod sysctl_max_map_count;
 
+pub(crate) use io_scheduler_devices::{disk_inventory, DiskInventory};
+pub(crate) use scx_state::read_sched_ext;
+
 pub use conflicts::Conflicts;
 pub use cpu_governor::CpuGovernor;
 pub use gaming_tools::GamingTools;

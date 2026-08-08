@@ -50,6 +50,10 @@ impl Improvement for Conflicts {
         "Check for daemons that compete with gamemode"
     }
 
+    fn short_name(&self) -> &str {
+        "Competing daemons"
+    }
+
     fn rationale(&self) -> &str {
         "ananicy-cpp, tuned, and power-profiles-daemon each set process \
          priorities or the CPU governor on their own schedule. With one of them \

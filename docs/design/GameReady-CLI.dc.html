@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/heroui-design-system-5465ca84-9aa3-4502-bc53-56e85b86a92a/colors_and_type.css">
+<script src="_ds/heroui-design-system-5465ca84-9aa3-4502-bc53-56e85b86a92a/_ds_bundle.js"></script>
+<style>
+body { margin:0; background:oklch(0.9702 0 0); }
+a { color:oklch(0.6204 0.195 253.83); text-decoration:none; }
+a:hover { color:oklch(0.52 0.19 253.83); text-decoration:underline; }
+@keyframes blink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+@keyframes spin { to { transform:rotate(360deg) } }
+</style>
+</helmet>
+
+<div style="font-family:Inter,system-ui,sans-serif; color:oklch(0.2178 0 0); padding:56px 40px 120px; max-width:1160px; margin:0 auto">
+
+  <header style="display:flex; flex-direction:column; gap:18px; margin-bottom:56px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font:600 12px Inter; letter-spacing:.14em; text-transform:uppercase; color:oklch(0.556 0 0)">Design spec</span>
+      <span style="height:1px; flex:1; background:oklch(0.87 0 0)"></span>
+      <span style="font:500 12px Menlo,Consolas,monospace; color:oklch(0.556 0 0)">gameready 0.2.0 · Linux</span>
+    </div>
+    <h1 style="margin:0; font:700 46px/1.05 Inter; letter-spacing:-0.03em; max-width:20ch; text-wrap:pretty">A terminal that explains itself.</h1>
+    <p style="margin:0; max-width:64ch; font:400 17px/1.6 Inter; color:oklch(0.371 0 0); text-wrap:pretty">Redesign of the <code style="font:500 15px Menlo,Consolas,monospace; background:oklch(0.922 0 0); padding:2px 6px; border-radius:6px">gameready</code> CLI: one guided pass that asks everything up front, applies in a single re-probing sweep, and hands back an undo command it means. Every screen below is real output at the width it ships at.</p>
+    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px">
+      <span style="font:500 12px Inter; padding:6px 12px; border-radius:9999px; background:oklch(1 0 0); color:oklch(0.371 0 0); box-shadow:0 1px 2px rgba(0,0,0,.06)">Reflows to real width</span>
+      <span style="font:500 12px Inter; padding:6px 12px; border-radius:9999px; background:oklch(1 0 0); color:oklch(0.371 0 0); box-shadow:0 1px 2px rgba(0,0,0,.06)">Re-probes after every apply</span>
+      <span style="font:500 12px Inter; padding:6px 12px; border-radius:9999px; background:oklch(1 0 0); color:oklch(0.371 0 0); box-shadow:0 1px 2px rgba(0,0,0,.06)">Nothing asked after the password</span>
+      <span style="font:500 12px Inter; padding:6px 12px; border-radius:9999px; background:oklch(1 0 0); color:oklch(0.371 0 0); box-shadow:0 1px 2px rgba(0,0,0,.06)">Warmer, second-person copy</span>
+    </div>
+  </header>
+
+  <section style="margin-bottom:72px">
+    <div style="display:flex; align-items:baseline; gap:14px; margin-bottom:20px">
+      <span style="font:600 12px Inter; letter-spacing:.14em; color:oklch(0.6204 0.195 253.83)">01</span>
+      <h2 style="margin:0; font:600 26px Inter; letter-spacing:-0.02em">Foundations</h2>
+      <span style="height:1px; flex:1; background:oklch(0.87 0 0)"></span>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:20px">
+      <div style="background:oklch(1 0 0); border-radius:14px; padding:24px; box-shadow:0 1px 3px rgba(0,0,0,.06), 0 8px 24px -16px rgba(0,0,0,.2)">
+        <h3 style="margin:0 0 4px; font:600 15px Inter">Marks</h3>
+        <p style="margin:0 0 16px; font:400 13px/1.5 Inter; color:oklch(0.556 0 0)">One glyph in a two-column gutter. Colour is confirmation, never the only signal.</p>
+        <div style="display:flex; flex-direction:column; gap:10px; font:13px/1.4 Menlo,Consolas,monospace">
+          <div style="display:flex; gap:12px"><span style="color:#3fb950; width:2ch">✔</span><span style="width:11ch; color:oklch(0.2178 0 0)">applied</span><span style="color:oklch(0.556 0 0)">changed and verified</span></div>
+          <div style="display:flex; gap:12px"><span style="color:#3fb950; opacity:.55; width:2ch">•</span><span style="width:11ch; color:oklch(0.2178 0 0)">already set</span><span style="color:oklch(0.556 0 0)">found correct, untouched</span></div>
+          <div style="display:flex; gap:12px"><span style="color:#f85149; width:2ch">✘</span><span style="width:11ch; color:oklch(0.2178 0 0)">failed</span><span style="color:oklch(0.556 0 0)">with what was undone</span></div>
+          <div style="display:flex; gap:12px"><span style="color:oklch(0.556 0 0); width:2ch">–</span><span style="width:11ch; color:oklch(0.2178 0 0)">skipped</span><span style="color:oklch(0.556 0 0)">declined, or can't run here</span></div>
+          <div style="display:flex; gap:12px"><span style="color:#d29922; width:2ch">!</span><span style="width:11ch; color:oklch(0.2178 0 0)">warning</span><span style="color:oklch(0.556 0 0)">worth reading, not fatal</span></div>
+          <div style="display:flex; gap:12px"><span style="color:#58a6ff; width:2ch">↻</span><span style="width:11ch; color:oklch(0.2178 0 0)">re-checked</span><span style="color:oklch(0.556 0 0)">the plan grew mid-run</span></div>
+          <div style="display:flex; gap:12px"><span style="color:#58a6ff; width:2ch">⠹</span><span style="width:11ch; color:oklch(0.2178 0 0)">running</span><span style="color:oklch(0.556 0 0)">live region, one at a time</span></div>
+        </div>
+      </div>
+
+      <div style="background:oklch(1 0 0); border-radius:14px; padding:24px; box-shadow:0 1px 3px rgba(0,0,0,.06), 0 8px 24px -16px rgba(0,0,0,.2)">
+        <h3 style="margin:0 0 4px; font:600 15px Inter">Line anatomy</h3>
+        <p style="margin:0 0 16px; font:400 13px/1.5 Inter; color:oklch(0.556 0 0)">Name left, evidence right, dot leader between. It reflows, so nothing is authored to 80 columns any more.</p>
+        <div style="background:#0d1117; border-radius:10px; padding:16px">
+          <div style="display:flex; align-items:baseline; gap:8px; font:13px/1.9 Menlo,Consolas,monospace">
+            <span style="color:#3fb950; width:2ch">✔</span>
+            <span style="color:#e6edf3">Raise vm.max_map_count</span>
+            <span style="flex:1; border-bottom:1px dotted #30363d; transform:translateY(-4px)"></span>
+            <span style="color:#8b949e">65530 → 2147483642</span>
+          </div>
+          <div style="display:flex; gap:8px; font:13px/1.7 Menlo,Consolas,monospace; padding-left:calc(2ch + 8px)">
+            <span style="color:#6e7681">verified, 2 of 2 checks passed</span>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px; margin-top:16px; font:400 13px/1.5 Inter; color:oklch(0.371 0 0)">
+          <div><b style="font-weight:600">Gutter</b> — mark, 2 cols, always present</div>
+          <div><b style="font-weight:600">Body</b> — plain-language step name, wraps freely</div>
+          <div><b style="font-weight:600">Evidence</b> — the value that proves it, dimmed</div>
+          <div><b style="font-weight:600">Sub-line</b> — the verification, only when it adds something</div>
+        </div>
+      </div>
+
+      <div style="background:oklch(1 0 0); border-radius:14px; padding:24px; box-shadow:0 1px 3px rgba(0,0,0,.06), 0 8px 24px -16px rgba(0,0,0,.2)">
+        <h3 style="margin:0 0 4px; font:600 15px Inter">Palette</h3>
+        <p style="margin:0 0 16px; font:400 13px/1.5 Inter; color:oklch(0.556 0 0)">Six ANSI slots. Everything else is the terminal's own foreground at three weights.</p>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+          <div style="background:#0d1117; border-radius:10px; padding:12px 14px"><div style="width:18px; height:18px; border-radius:5px; background:#3fb950; margin-bottom:8px"></div><div style="font:12px Menlo,monospace; color:#e6edf3">green</div><div style="font:11px Inter; color:#8b949e">applied · verdict</div></div>
+          <div style="background:#0d1117; border-radius:10px; padding:12px 14px"><div style="width:18px; height:18px; border-radius:5px; background:#f85149; margin-bottom:8px"></div><div style="font:12px Menlo,monospace; color:#e6edf3">red</div><div style="font:11px Inter; color:#8b949e">failed only</div></div>
+          <div style="background:#0d1117; border-radius:10px; padding:12px 14px"><div style="width:18px; height:18px; border-radius:5px; background:#d29922; margin-bottom:8px"></div><div style="font:12px Menlo,monospace; color:#e6edf3">amber</div><div style="font:11px Inter; color:#8b949e">warnings · size</div></div>
+          <div style="background:#0d1117; border-radius:10px; padding:12px 14px"><div style="width:18px; height:18px; border-radius:5px; background:#58a6ff; margin-bottom:8px"></div><div style="font:12px Menlo,monospace; color:#e6edf3">blue</div><div style="font:11px Inter; color:#8b949e">live · cursor · links</div></div>
+          <div style="background:#0d1117; border-radius:10px; padding:12px 14px"><div style="width:18px; height:18px; border-radius:5px; background:#e6edf3; margin-bottom:8px"></div><div style="font:12px Menlo,monospace; color:#e6edf3">bright</div><div style="font:11px Inter; color:#8b949e">names · headings</div></div>
+          <div style="background:#0d1117; border-radius:10px; padding:12px 14px"><div style="width:18px; height:18px; border-radius:5px; background:#6e7681; margin-bottom:8px"></div><div style="font:12px Menlo,monospace; color:#e6edf3">dim</div><div style="font:11px Inter; color:#8b949e">evidence · help</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="margin-bottom:72px">
+    <div style="display:flex; align-items:baseline; gap:14px; margin-bottom:8px">
+      <span style="font:600 12px Inter; letter-spacing:.14em; color:oklch(0.6204 0.195 253.83)">02</span>
+      <h2 style="margin:0; font:600 26px Inter; letter-spacing:-0.02em">The run — <code style="font:500 22px Menlo,Consolas,monospace">gameready init</code></h2>
+      <span style="height:1px; flex:1; background:oklch(0.87 0 0)"></span>
+    </div>
+    <p style="margin:0 0 28px; max-width:70ch; font:400 15px/1.6 Inter; color:oklch(0.371 0 0)">Four questions, one password, one sweep. The sweep re-probes after every step it applies, so a tuning unlocked by an install earlier in the same run just runs — no “try again next time”.</p>
+
+    <div style="display:flex; flex-direction:column; gap:22px">
+
+      <div style="background:#0d1117; border-radius:14px; box-shadow:0 20px 40px -24px rgba(0,0,0,.5)">
+        <div style="display:flex; align-items:center; gap:8px; padding:12px 16px; border-bottom:1px solid #1c2128">
+          <span style="width:10px; height:10px; border-radius:50%; background:#f85149; opacity:.7"></span>
+          <span style="width:10px; height:10px; border-radius:50%; background:#d29922; opacity:.7"></span>
+          <span style="width:10px; height:10px; border-radius:50%; background:#3fb950; opacity:.7"></span>
+          <span style="margin-left:8px; font:12px Menlo,Consolas,monospace; color:#6e7681">1 — checking, changes nothing</span>
+        </div>
+        <div style="padding:20px 24px 24px">
+          <pre style="margin:0; font:13px/1.8 Menlo,Consolas,monospace; color:#c9d1d9; white-space:pre-wrap"><span style="color:#3fb950">❯</span> gameready init
+
+  <span style="color:#e6edf3">Looking at your machine.</span> <span style="color:#6e7681">Nothing changes until you say so.
+
+  </span><span style="color:#3fb950">✔</span> Arch Linux <span style="color:#6e7681">· kernel 6.14.6 · pacman
+  </span><span style="color:#3fb950">✔</span> Steam found <span style="color:#6e7681">· 3 game profiles
+  </span><span style="color:#58a6ff">⠹</span> Checking 9 tunings <span style="color:#6e7681">· 7 of 9</span></pre>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(420px,1fr)); gap:22px">
+
+        <div style="background:#0d1117; border-radius:14px; box-shadow:0 20px 40px -24px rgba(0,0,0,.5); padding:22px 24px">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px">
+            <span style="font:600 11px Inter; letter-spacing:.1em; color:#58a6ff">STEP 1 OF 4</span>
+            <span style="height:1px; flex:1; background:#1c2128"></span>
+          </div>
+          <pre style="margin:0; font:13px/1.8 Menlo,Consolas,monospace; color:#c9d1d9; white-space:pre-wrap"><span style="color:#e6edf3">Which games should I set up?
+</span><span style="color:#6e7681">Only the ones you pick are touched. You can rerun this later.
+
+  </span><span style="color:#58a6ff">▸</span> <span style="color:#3fb950">[✔]</span> <span style="color:#e6edf3">Elden Ring</span>          <span style="color:#6e7681">tuned profile
+    </span><span style="color:#6e7681">[ ]</span> Cyberpunk 2077      <span style="color:#6e7681">gamemode
+    </span><span style="color:#3fb950">[✔]</span> <span style="color:#e6edf3">Hades II</span>            <span style="color:#6e7681">gamemode
+
+  </span><span style="color:#6e7681">space toggle · a all · enter continue · esc none</span></pre>
+        </div>
+
+        <div style="background:#0d1117; border-radius:14px; box-shadow:0 20px 40px -24px rgba(0,0,0,.5); padding:22px 24px">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px">
+            <span style="font:600 11px Inter; letter-spacing:.1em; color:#58a6ff">STEP 2 OF 4</span>
+            <span style="height:1px; flex:1; background:#1c2128"></span>
+          </div>
+          <pre style="margin:0; font:13px/1.8 Menlo,Consolas,monospace; color:#c9d1d9; white-space:pre-wrap"><span style="color:#e6edf3">Want a frame-rate overlay while you play?
+</span><span style="color:#6e7681">MangoHud draws FPS and temperatures over the game. It is how
+you check whether any of this helped. Toggle it later any time.
+
+  </span><span style="color:#58a6ff">▸</span> <span style="color:#3fb950">(●)</span> <span style="color:#e6edf3">No, keep my screen clean
+    </span><span style="color:#6e7681">( )</span> Yes, show FPS and temperatures
+
+  <span style="color:#6e7681">↑↓ move · enter confirm · esc keeps the default</span></pre>
+        </div>
+
+        <div style="background:#0d1117; border-radius:14px; box-shadow:0 20px 40px -24px rgba(0,0,0,.5); padding:22px 24px">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px">
+            <span style="font:600 11px Inter; letter-spacing:.1em; color:#58a6ff">STEP 3 OF 4</span>
+            <span style="height:1px; flex:1; background:#1c2128"></span>
+          </div>
+          <pre style="margin:0; font:13px/1.8 Menlo,Consolas,monospace; color:#c9d1d9; white-space:pre-wrap"><span style="color:#e6edf3">Steam settings for 2 games — set them for you?
+</span><span style="color:#6e7681">Launch options for 2 games, and the Proton build for 1. Steam
+rewrites its config when it quits, so it has to close first.
+
+  </span><span style="color:#58a6ff">▸</span> <span style="color:#3fb950">(●)</span> <span style="color:#e6edf3">Just show me — I'll set them myself
+    </span><span style="color:#6e7681">( )</span> Close Steam and set them for me
+
+  <span style="color:#6e7681">Either way, rollback puts your old config back exactly.</span></pre>
+        </div>
+
+        <div style="background:#0d1117; border-radius:14px; box-shadow:0 20px 40px -24px rgba(0,0,0,.5); padding:22px 24px">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px">
+            <span style="font:600 11px Inter; letter-spacing:.1em; color:#d29922">STEP 4 OF 4 · THE ONE THING ROLLBACK CAN'T UNDO</span>
+            <span style="height:1px; flex:1; background:#1c2128"></span>
+          </div>
+          <pre style="margin:0; font:13px/1.8 Menlo,Consolas,monospace; color:#c9d1d9; white-space:pre-wrap"><span style="color:#e6edf3">Two packages to install</span> <span style="color:#d29922">· 6.5 MB
+
+  </span><span style="color:#3fb950">┃</span> <span style="color:#e6edf3">gamemode</span> <span style="color:#6e7681">· 1.1 MB
+  </span><span style="color:#3fb950">┃</span> <span style="color:#6e7681">Raises the CPU governor and priority while a game runs,
+  ┃ and puts them back after. Every launch option I write
+  ┃ starts with it.
+
+  </span><span style="color:#3fb950">┃</span> <span style="color:#e6edf3">mangohud</span> <span style="color:#6e7681">· 5.4 MB
+  </span><span style="color:#3fb950">┃</span> <span style="color:#6e7681">Draws frame rate and temperatures over the game, so you
+  ┃ can see whether the rest of this was worth it.
+
+  </span><span style="color:#6e7681">Already here: scx-scheds
+
+  </span><span style="color:#d29922">!</span> <span style="color:#6e7681">Rollback restores your config, but leaves packages
+    installed. Removing them is your call, not mine.
+
+  </span><span style="color:#58a6ff">▸</span> <span style="color:#3fb950">(●)</span> <span style="color:#e6edf3">Not now — skip the steps that need them
+    </span><span style="color:#6e7681">( )</span> Install both</pre>
+        </div>
+      </div>
+
+      <div style="background:#0d1117; border-radius:14px; box-shadow:0 20px 40px -24px rgba(0,0,0,.5); padding:22px 24px">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px">
+          <span style="font:600 11px Inter; letter-spacing:.1em; color:#6e7681">THE AGREED PLAN · LAST STOP BEFORE ANYTHING CHANGES</span>
+          <span style="height:1px; flex:1; background:#1c2128"></span>
+        </div>
+        <pre style="margin:0; font:13px/1.8 Menlo,Consolas,monospace; color:#c9d1d9; white-space:pre-wrap"><span style="color:#e6edf3">Here's what I'll do
+
+  </span><span style="color:#6e7681">Games      </span> <span style="color:#e6edf3">Elden Ring</span>, <span style="color:#e6edf3">Hades II
+  </span><span style="color:#6e7681">Install    </span> gamemode, mangohud <span style="color:#6e7681">· 6.5 MB
+  </span><span style="color:#6e7681">System     </span> 5 tunings <span style="color:#6e7681">· memory, disks, CPU scheduler
+  </span><span style="color:#6e7681">Per game   </span> launch options ×2, Proton pin ×1
+  <span style="color:#6e7681">Overlay    </span> off
+  <span style="color:#6e7681">Undo       </span> <span style="color:#e6edf3">gameready rollback</span> <span style="color:#6e7681">— any time, no reboot
+
+  </span><span style="color:#6e7681">I need your password once, for the changes outside your home
+  folder. After that I won't ask you anything else.</span>
+
+  [sudo] password for andy: <span style="color:#58a6ff">████</span></pre>
+      </div>
+
+      <div style="background:#0d1117; border-radius:14px; box-shadow:0 20px 40px -24px rgba(0,0,0,.5); padding:22px 24px">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px">
+          <span style="font:600 11px Inter; letter-spacing:.1em; color:#58a6ff">LIVE REGION · RE-PROBES AS IT GOES</span>
+          <span style="height:1px; flex:1; background:#1c2128"></span>
+        </div>
+        <div style="font:13px/1.9 Menlo,Consolas,monospace; color:#c9d1d9">
+          <div style="color:#e6edf3; margin-bottom:12px">Applying <span style="color:#6e7681">· 6 of 9</span></div>
+          <div style="display:flex; align-items:baseline; gap:8px"><span style="color:#3fb950; width:2ch">✔</span><span style="color:#e6edf3">Installed gamemode, mangohud</span><span style="flex:1; border-bottom:1px dotted #21262d; transform:translateY(-4px)"></span><span style="color:#6e7681">6.5 MB</span></div>
+          <div style="display:flex; align-items:baseline; gap:8px; color:#58a6ff"><span style="width:2ch">↻</span><span style="color:#8b949e">Re-checked 9 tunings — gamemode is here now, so “leave the governor to gamemode” can run in this pass.</span></div>
+          <div style="display:flex; align-items:baseline; gap:8px"><span style="color:#3fb950; width:2ch">✔</span><span style="color:#e6edf3">Competing daemons</span><span style="flex:1; border-bottom:1px dotted #21262d; transform:translateY(-4px)"></span><span style="color:#6e7681">none running</span></div>
+          <div style="display:flex; align-items:baseline; gap:8px"><span style="color:#3fb950; width:2ch">✔</span><span style="color:#e6edf3">Raise vm.max_map_count</span><span style="flex:1; border-bottom:1px dotted #21262d; transform:translateY(-4px)"></span><span style="color:#6e7681">65530 → 2147483642</span></div>
+          <div style="display:flex; align-items:baseline; gap:8px"><span style="color:#3fb950; width:2ch">✔</span><span style="color:#e6edf3">I/O scheduler · nvme0n1</span><span style="flex:1; border-bottom:1px dotted #21262d; transform:translateY(-4px)"></span><span style="color:#6e7681">mq-deadline → none</span></div>
+          <div style="display:flex; align-items:baseline; gap:8px"><span style="color:#3fb950; opacity:.55; width:2ch">•</span><span style="color:#8b949e">Swappiness for zram</span><span style="flex:1; border-bottom:1px dotted #21262d; transform:translateY(-4px)"></span><span style="color:#6e7681">already 180</span></div>
+          <div style="display:flex; align-items:baseline; gap:8px"><span style="color:#58a6ff; width:2ch">⠹</span><span style="color:#e6edf3">CPU scheduler scx_lavd</span><span style="flex:1; border-bottom:1px dotted #21262d; transform:translateY(-4px)"></span><span style="color:#6e7681">downloading · 178 MB</span></div>
+          <div style="display:flex; align-items:center; gap:10px; padding-left:calc(2ch + 8px); margin-top:4px">
+            <span style="flex:1; height:4px; border-radius:9999px; background:#21262d; overflow:hidden; display:block"><span style="display:block; width:62%; height:100%; background:#58a6ff"></span></span>
+            <span style="color:#6e7681; font-size:12px">62%</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#0d1117; border-radius:14px; box-shadow:0 20px 40px -24px rgba(0,0,0,.5); padding:22px 24px">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px">
+          <span style="font:600 11px Inter; letter-spacing:.1em; color:#6e7681">SUMMARY · STDOUT, THE ONLY SCREEN WORTH SCROLLING BACK TO</span>
+          <span style="height:1px; flex:1; background:#1c2128"></span>
+        </div>
+        <div style="font:13px/1.9 Menlo,Consolas,monospace; color:#c9d1d9">
+          <div style="margin-bottom:12px"><span style="color:#3fb950; font-weight:600">Your machine is set up.</span> <span style="color:#6e7681">7 applied · 1 already set · 1 skipped</span></div>
+          <div style="display:flex; align-items:baseline; gap:8px"><span style="color:#3fb950; width:2ch">✔</span><span style="color:#e6edf3">Competing daemons</span><span style="flex:1; border-bottom:1px dotted #21262d; transform:translateY(-4px)"></span><span style="color:#6e7681">none running</span></div>
+          <div style="display:flex; align-items:baseline; gap:8px"><span style="color:#3fb950; width:2ch">✔</span><span style="color:#e6edf3">Raise vm.max_map_count</span><span style="flex:1; border-bottom:1px dotted #21262d; transform:translateY(-4px)"></span><span style="color:#6e7681">65530 → 2147483642</span></div>
+          <div style="display:flex; align-items:baseline; gap:8px"><span style="color:#3fb950; width:2ch">✔</span><span style="color:#e6edf3">I/O scheduler · nvme0n1</span><span style="flex:1; border-bottom:1px dotted #21262d; transform:translateY(-4px)"></span><span style="color:#6e7681">mq-deadline → none</span></div>
+          <div style="display:flex; align-items:baseline; gap:8px"><span style="color:#3fb950; opacity:.55; width:2ch">•</span><span style="color:#8b949e">Swappiness for zram</span><span style="flex:1; border-bottom:1px dotted #21262d; transform:translateY(-4px)"></span><span style="color:#6e7681">already 180</span></div>
+          <div style="display:flex; align-items:baseline; gap:8px"><span style="color:#3fb950; width:2ch">✔</span><span style="color:#e6edf3">gamemode + mangohud installed</span><span style="flex:1; border-bottom:1px dotted #21262d; transform:translateY(-4px)"></span><span style="color:#6e7681">6.5 MB</span></div>
+          <div style="display:flex; align-items:baseline; gap:8px"><span style="color:#3fb950; width:2ch">✔</span><span style="color:#e6edf3">CPU scheduler scx_lavd</span><span style="flex:1; border-bottom:1px dotted #21262d; transform:translateY(-4px)"></span><span style="color:#6e7681">loaded</span></div>
+          <div style="padding-left:calc(2ch + 8px); color:#6e7681">verified, 3 of 3 checks passed</div>
+          <div style="display:flex; align-items:baseline; gap:8px"><span style="color:#3fb950; width:2ch">✔</span><span style="color:#e6edf3">CPU governor left to gamemode</span><span style="flex:1; border-bottom:1px dotted #21262d; transform:translateY(-4px)"></span><span style="color:#6e7681">ran after the re-check</span></div>
+          <div style="display:flex; align-items:baseline; gap:8px"><span style="color:#3fb950; width:2ch">✔</span><span style="color:#e6edf3">Launch options · 2 games</span><span style="flex:1; border-bottom:1px dotted #21262d; transform:translateY(-4px)"></span><span style="color:#6e7681">Steam restarting</span></div>
+          <div style="display:flex; align-items:baseline; gap:8px"><span style="color:#6e7681; width:2ch">–</span><span style="color:#8b949e">Proton pin · Hades II</span><span style="flex:1; border-bottom:1px dotted #21262d; transform:translateY(-4px)"></span><span style="color:#6e7681">no build pinned in its profile</span></div>
+          <div style="margin-top:16px; padding:14px 16px; border-radius:10px; background:#161b22">
+            <div style="color:#8b949e; margin-bottom:4px">Changed your mind? This puts everything back.</div>
+            <div><span style="color:#3fb950">❯</span> <span style="color:#e6edf3">gameready rollback --run 2026-08-08T14-22</span></div>
+            <div style="color:#6e7681; font-size:12px; margin-top:6px">journal · ~/.local/state/gameready/runs/2026-08-08T14-22.json</div>
+          </div>
+          <div style="margin-top:12px; color:#6e7681">Play something. Run <span style="color:#8b949e">gameready doctor</span> if it feels off.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="margin-bottom:72px">
+    <div style="display:flex; align-items:baseline; gap:14px; margin-bottom:8px">
+      <span style="font:600 12px Inter; letter-spacing:.14em; color:oklch(0.6204 0.195 253.83)">03</span>
+      <h2 style="margin:0; font:600 26px Inter; letter-spacing:-0.02em">Try it</h2>
+      <span style="height:1px; flex:1; background:oklch(0.87 0 0)"></span>
+    </div>
+    <p style="margin:0 0 24px; max-width:70ch; font:400 15px/1.6 Inter; color:oklch(0.371 0 0)">A working walk-through of the same flow. Click the rows the way you'd press keys.</p>
+
+    <div style="background:#0d1117; border-radius:14px; box-shadow:0 24px 48px -28px rgba(0,0,0,.6); overflow:hidden">
+      <div style="display:flex; align-items:center; gap:8px; padding:12px 16px; border-bottom:1px solid #1c2128">
+        <span style="width:10px; height:10px; border-radius:50%; background:#f85149; opacity:.7"></span>
+        <span style="width:10px; height:10px; border-radius:50%; background:#d29922; opacity:.7"></span>
+        <span style="width:10px; height:10px; border-radius:50%; background:#3fb950; opacity:.7"></span>
+        <span style="margin-left:8px; font:12px Menlo,Consolas,monospace; color:#6e7681">andy@arch — gameready — prototype</span>
+        <span style="flex:1"></span>
+        <span onClick="{{ reset }}" style="font:12px Menlo,Consolas,monospace; color:#8b949e; cursor:pointer; padding:4px 10px; border-radius:6px; background:#161b22" style-hover="color:#e6edf3">restart</span>
+      </div>
+      <div style="padding:22px 24px 28px; min-height:420px; font:13px/1.9 Menlo,Consolas,monospace; color:#c9d1d9">
+        <div><span style="color:#3fb950">❯</span> gameready init</div>
+
+        <sc-if value="{{ showProbe }}" hint-placeholder-val="{{ true }}">
+          <div style="margin-top:12px; color:#e6edf3">Looking at your machine. <span style="color:#6e7681">Nothing changes until you say so.</span></div>
+          <div style="margin-top:6px"><span style="color:#58a6ff">⠹</span> Checking 9 tunings…</div>
+        </sc-if>
+
+        <sc-if value="{{ isGames }}">
+          <div style="margin-top:16px; color:#e6edf3">Which games should I set up?</div>
+          <div style="color:#6e7681">Only the ones you pick are touched.</div>
+          <div style="margin-top:10px; display:flex; flex-direction:column">
+            <sc-for list="{{ games }}" as="g" hint-placeholder-count="3">
+              <div onClick="{{ g.toggle }}" style="display:flex; align-items:baseline; gap:8px; cursor:pointer; padding:2px 6px; border-radius:6px" style-hover="background:#161b22">
+                <span style="color: {{ g.markColor }}; width:3ch">{{ g.box }}</span>
+                <span style="color: {{ g.nameColor }}">{{ g.name }}</span>
+                <span style="flex:1; border-bottom:1px dotted #21262d; transform:translateY(-4px)"></span>
+                <span style="color:#6e7681">{{ g.kind }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div onClick="{{ confirmGames }}" style="margin-top:12px; color:#58a6ff; cursor:pointer">↵ continue <span style="color:#6e7681">· click a game to toggle it</span></div>
+        </sc-if>
+
+        <sc-if value="{{ afterGames }}">
+          <div style="margin-top:14px; color:#6e7681">✔ Games · {{ gamesSummary }}</div>
+        </sc-if>
+
+        <sc-if value="{{ isOverlay }}">
+          <div style="margin-top:16px; color:#e6edf3">Want a frame-rate overlay while you play?</div>
+          <div style="color:#6e7681">MangoHud draws FPS and temperatures over the game.</div>
+          <div style="margin-top:10px; display:flex; flex-direction:column">
+            <div onClick="{{ overlayNo }}" style="cursor:pointer; padding:2px 6px; border-radius:6px" style-hover="background:#161b22"><span style="color:#3fb950">(●)</span> <span style="color:#e6edf3">No, keep my screen clean</span></div>
+            <div onClick="{{ overlayYes }}" style="cursor:pointer; padding:2px 6px; border-radius:6px" style-hover="background:#161b22"><span style="color:#6e7681">( )</span> <span style="color:#8b949e">Yes, show FPS and temperatures</span></div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ afterOverlay }}">
+          <div style="margin-top:8px; color:#6e7681">✔ Overlay · {{ overlaySummary }}</div>
+        </sc-if>
+
+        <sc-if value="{{ isInstall }}">
+          <div style="margin-top:16px; color:#e6edf3">Two packages to install <span style="color:#d29922">· 6.5 MB</span></div>
+          <div style="margin-top:8px"><span style="color:#3fb950">┃</span> <span style="color:#e6edf3">gamemode</span> <span style="color:#6e7681">· raises the governor while a game runs</span></div>
+          <div><span style="color:#3fb950">┃</span> <span style="color:#e6edf3">mangohud</span> <span style="color:#6e7681">· shows whether it helped</span></div>
+          <div style="margin-top:8px; color:#6e7681">! Rollback restores config, but leaves packages installed.</div>
+          <div style="margin-top:10px; display:flex; flex-direction:column">
+            <div onClick="{{ installNo }}" style="cursor:pointer; padding:2px 6px; border-radius:6px" style-hover="background:#161b22"><span style="color:#3fb950">(●)</span> <span style="color:#e6edf3">Not now — skip the steps that need them</span></div>
+            <div onClick="{{ installYes }}" style="cursor:pointer; padding:2px 6px; border-radius:6px" style-hover="background:#161b22"><span style="color:#6e7681">( )</span> <span style="color:#8b949e">Install both</span></div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isPlan }}">
+          <div style="margin-top:16px; color:#e6edf3">Here's what I'll do</div>
+          <div style="margin-top:6px"><span style="color:#6e7681">Games    </span> {{ gamesSummary }}</div>
+          <div><span style="color:#6e7681">Install  </span> {{ installSummary }}</div>
+          <div><span style="color:#6e7681">System   </span> 5 tunings</div>
+          <div><span style="color:#6e7681">Undo     </span> <span style="color:#e6edf3">gameready rollback</span></div>
+          <div style="margin-top:10px; color:#6e7681">I need your password once. Nothing after it asks you anything.</div>
+          <div onClick="{{ startApply }}" style="margin-top:6px; cursor:pointer">[sudo] password for andy: <span style="color:#58a6ff">████</span> <span style="color:#58a6ff">↵</span></div>
+        </sc-if>
+
+        <sc-if value="{{ isApplying }}">
+          <div style="margin-top:16px; color:#e6edf3">Applying</div>
+          <div style="margin-top:6px; display:flex; flex-direction:column">
+            <sc-for list="{{ lines }}" as="l" hint-placeholder-count="4">
+              <div style="display:flex; align-items:baseline; gap:8px">
+                <span style="color: {{ l.color }}; width:2ch">{{ l.mark }}</span>
+                <span style="color: {{ l.textColor }}">{{ l.text }}</span>
+                <span style="flex:1; border-bottom:1px dotted #21262d; transform:translateY(-4px)"></span>
+                <span style="color:#6e7681">{{ l.detail }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isDone }}">
+          <div style="margin-top:16px; padding:14px 16px; border-radius:10px; background:#161b22">
+            <div style="color:#3fb950; font-weight:600">{{ verdict }}</div>
+            <div style="color:#8b949e; margin-top:6px">Changed your mind? This puts everything back.</div>
+            <div><span style="color:#3fb950">❯</span> <span style="color:#e6edf3">gameready rollback --run 2026-08-08T14-22</span></div>
+          </div>
+          <div onClick="{{ reset }}" style="margin-top:12px; color:#58a6ff; cursor:pointer">run it again</div>
+        </sc-if>
+      </div>
+    </div>
+  </section>
+
+  <section style="margin-bottom:72px">
+    <div style="display:flex; align-items:baseline; gap:14px; margin-bottom:8px">
+      <span style="font:600 12px Inter; letter-spacing:.14em; color:oklch(0.6204 0.195 253.83)">04</span>
+      <h2 style="margin:0; font:600 26px Inter; letter-spacing:-0.02em">The reading commands</h2>
+      <span style="height:1px; flex:1; background:oklch(0.87 0 0)"></span>
+    </div>
+    <p style="margin:0 0 24px; max-width:70ch; font:400 15px/1.6 Inter; color:oklch(0.371 0 0)">Nothing here changes your machine. They share one shape: a title, a labelled column, and a next thing to type.</p>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(430px,1fr)); gap:22px">
+
+      <div style="background:#0d1117; border-radius:14px; box-shadow:0 20px 40px -24px rgba(0,0,0,.5); padding:22px 24px">
+        <pre style="margin:0; font:13px/1.8 Menlo,Consolas,monospace; color:#c9d1d9; white-space:pre-wrap"><span style="color:#3fb950">❯</span> gameready doctor
+
+<span style="color:#e6edf3">Your machine
+  </span><span style="color:#6e7681">distro   </span> Arch Linux
+  <span style="color:#6e7681">family   </span> Arch <span style="color:#6e7681">· pacman
+  </span><span style="color:#6e7681">kernel   </span> 6.14.6-arch1-1 <span style="color:#6e7681">· sched_ext ready
+  </span><span style="color:#6e7681">swap     </span> zram, 16 GB
+  <span style="color:#6e7681">disks    </span> nvme0n1 <span style="color:#6e7681">· mq-deadline
+
+</span><span style="color:#e6edf3">What each tuning would do here
+  </span><span style="color:#3fb950">✔</span> Competing daemons <span style="color:#6e7681">· would apply
+  </span><span style="color:#3fb950">✔</span> vm.max_map_count <span style="color:#6e7681">· would apply, 65530 → 2147483642
+  </span><span style="color:#3fb950">✔</span> I/O schedulers <span style="color:#6e7681">· would apply, nvme0n1 → none
+  </span><span style="color:#3fb950; opacity:.55">•</span> <span style="color:#8b949e">Swappiness</span> <span style="color:#6e7681">· already 180
+  </span><span style="color:#6e7681">–</span> <span style="color:#8b949e">scx repository</span> <span style="color:#6e7681">· not applicable, Arch ships scx
+
+</span><span style="color:#d29922">Worth knowing
+  </span><span style="color:#d29922">!</span> power-profiles-daemon is running
+    <span style="color:#6e7681">It resets the CPU governor on its own schedule, so gamemode's
+    changes get overwritten seconds later.
+    </span><span style="color:#6e7681">Fix</span> systemctl disable --now power-profiles-daemon
+
+  <span style="color:#6e7681">Nothing above has been changed. Run</span> gameready init <span style="color:#6e7681">to apply.</span></pre>
+      </div>
+
+      <div style="background:#0d1117; border-radius:14px; box-shadow:0 20px 40px -24px rgba(0,0,0,.5); padding:22px 24px">
+        <pre style="margin:0; font:13px/1.8 Menlo,Consolas,monospace; color:#c9d1d9; white-space:pre-wrap"><span style="color:#3fb950">❯</span> gameready explain core.sched.scx-lavd
+
+<span style="color:#e6edf3">Switch the CPU scheduler to scx_lavd</span> <span style="color:#6e7681">core.sched.scx-lavd
+
+</span><span style="color:#6e7681">Why  </span> A frame is a chain of threads waking each other, and the
+       kernel's scheduler doesn't know the chain exists — so the
+       thread everything is waiting on takes its ordinary turn.
+       scx_lavd measures which threads get waited on and runs
+       those first.
+
+<span style="color:#6e7681">Gets </span> Steadier frame times when something else wants the CPU:
+       a browser, voice chat, a build. On an idle machine, expect
+       nothing. On games that lean on one or two cores it has
+       measured <span style="color:#e6edf3">slower</span> than the default.
+
+<span style="color:#6e7681">Needs</span> Your password. It changes something outside your home.
+<span style="color:#6e7681">Costs</span> ~180 MB downloaded, once.
+<span style="color:#6e7681">Here </span> Would apply. Kernel 6.14.6 supports sched_ext, and no
+       sched_ext scheduler is loaded right now.
+
+<span style="color:#e6edf3">Would do</span>
+  install scx-scheds, scx-tools <span style="color:#6e7681">· 178 MB</span>
+  enable and start scx_loader.service
+  run scxctl start --sched lavd
+
+<span style="color:#6e7681">Undo    </span> gameready rollback <span style="color:#6e7681">— hands the CPU straight back,
+         no reboot.</span></pre>
+      </div>
+
+      <div style="background:#0d1117; border-radius:14px; box-shadow:0 20px 40px -24px rgba(0,0,0,.5); padding:22px 24px">
+        <pre style="margin:0; font:13px/1.8 Menlo,Consolas,monospace; color:#c9d1d9; white-space:pre-wrap"><span style="color:#3fb950">❯</span> gameready explain
+
+<span style="color:#e6edf3">Nine tunings, in the order a run works through them
+
+</span><span style="color:#6e7681">System
+  </span><span style="color:#e6edf3">core.conflicts          </span> Daemons that fight gamemode
+  <span style="color:#e6edf3">core.sysctl.max-map-count</span> Memory maps for Proton titles
+  <span style="color:#e6edf3">core.io.scheduler       </span> An I/O scheduler per disk
+  <span style="color:#e6edf3">core.memory.swappiness  </span> Swappiness for zram
+  <span style="color:#e6edf3">core.pkg.tools          </span> gamemode and mangohud
+  <span style="color:#e6edf3">core.proton.ge          </span> Latest Proton-GE
+  <span style="color:#e6edf3">core.repo.scx-ppa       </span> The scx repository <span style="color:#6e7681">(Debian only)
+  </span><span style="color:#e6edf3">core.sched.scx-lavd     </span> The scx_lavd CPU scheduler
+  <span style="color:#e6edf3">core.cpu.governor       </span> Leave the governor to gamemode
+
+<span style="color:#6e7681">Per game
+  </span><span style="color:#e6edf3">game.steam.launch-options</span> Steam launch options
+  <span style="color:#e6edf3">game.steam.proton       </span> A pinned Proton build
+
+  <span style="color:#6e7681">Ask about any one:</span> gameready explain core.io.scheduler</pre>
+      </div>
+
+      <div style="background:#0d1117; border-radius:14px; box-shadow:0 20px 40px -24px rgba(0,0,0,.5); padding:22px 24px">
+        <pre style="margin:0; font:13px/1.8 Menlo,Consolas,monospace; color:#c9d1d9; white-space:pre-wrap"><span style="color:#3fb950">❯</span> gameready list-games
+
+<span style="color:#e6edf3">Three game profiles
+
+  </span><span style="color:#e6edf3">Elden Ring        </span> <span style="color:#6e7681">1245620 · built in
+    </span><span style="color:#6e7681">launch through</span> gamemoderun, mangohud
+    <span style="color:#6e7681">run under      </span> GE-Proton9-20
+
+  <span style="color:#e6edf3">Cyberpunk 2077    </span> <span style="color:#6e7681">1091500 · yours
+    </span><span style="color:#6e7681">launch through</span> gamemoderun
+    <span style="color:#6e7681">run under      </span> the newest GE-Proton installed
+
+  <span style="color:#e6edf3">Hades II          </span> <span style="color:#6e7681">1145350 · system
+    </span><span style="color:#6e7681">launch through</span> gamemoderun
+    <span style="color:#6e7681">run under      </span> Proton Experimental
+
+<span style="color:#d29922">Couldn't read one file
+  </span><span style="color:#d29922">!</span> ~/.config/gameready/games/vampire.toml
+    <span style="color:#6e7681">line 4: expected a string, found a number
+
+  </span><span style="color:#6e7681">Profiles you write live in ~/.config/gameready/games and win
+  over the built-in ones.</span></pre>
+      </div>
+
+      <div style="background:#0d1117; border-radius:14px; box-shadow:0 20px 40px -24px rgba(0,0,0,.5); padding:22px 24px">
+        <pre style="margin:0; font:13px/1.8 Menlo,Consolas,monospace; color:#c9d1d9; white-space:pre-wrap"><span style="color:#3fb950">❯</span> gameready rollback
+
+<span style="color:#e6edf3">Putting back the run from 8 Aug, 14:22
+
+  </span><span style="color:#3fb950">✔</span> vm.max_map_count <span style="color:#6e7681">· back to 65530
+  </span><span style="color:#3fb950">✔</span> I/O scheduler nvme0n1 <span style="color:#6e7681">· back to mq-deadline
+  </span><span style="color:#3fb950">✔</span> CPU scheduler <span style="color:#6e7681">· sched_ext unloaded, kernel scheduler back
+  </span><span style="color:#3fb950">✔</span> Steam config <span style="color:#6e7681">· restored from the copy taken first
+  </span><span style="color:#f85149">✘</span> scx_loader.service <span style="color:#6e7681">· could not stop: unit not found
+
+</span><span style="color:#e6edf3">4 reverted, 1 failed
+
+  </span><span style="color:#d29922">!</span> <span style="color:#6e7681">gamemode, mangohud and scx-scheds are still installed.
+    Remove them yourself, or rerun with</span> --purge-packages<span style="color:#6e7681">.
+
+  </span><span style="color:#6e7681">journal · ~/.local/state/gameready/runs/2026-08-08T14-22.json</span></pre>
+      </div>
+
+      <div style="background:#0d1117; border-radius:14px; box-shadow:0 20px 40px -24px rgba(0,0,0,.5); padding:22px 24px">
+        <pre style="margin:0; font:13px/1.8 Menlo,Consolas,monospace; color:#c9d1d9; white-space:pre-wrap"><span style="color:#3fb950">❯</span> gameready selftest
+
+<span style="color:#e6edf3">Applying each tuning, then undoing it, to prove both halves work
+
+  </span><span style="color:#3fb950">✔</span> vm.max_map_count <span style="color:#6e7681">· applied, verified, reverted
+  </span><span style="color:#3fb950">✔</span> I/O scheduler <span style="color:#6e7681">· applied, verified, reverted
+  </span><span style="color:#6e7681">–</span> <span style="color:#8b949e">scx repository</span> <span style="color:#6e7681">· skipped, Debian only
+  </span><span style="color:#f85149">✘</span> Swappiness <span style="color:#6e7681">· revert failed: wrote 60, read back 180
+  </span><span style="color:#f85149">✘</span> Proton-GE <span style="color:#6e7681">· probe failed: github.com unreachable
+
+</span><span style="color:#f85149">2 of 5 failed.</span> <span style="color:#6e7681">Your machine is as it was — selftest undoes
+its own work even when the test itself fails.</span></pre>
+      </div>
+
+      <div style="background:#0d1117; border-radius:14px; box-shadow:0 20px 40px -24px rgba(0,0,0,.5); padding:22px 24px; grid-column:1/-1">
+        <pre style="margin:0; font:13px/1.8 Menlo,Consolas,monospace; color:#c9d1d9; white-space:pre-wrap"><span style="color:#3fb950">❯</span> gameready --help
+
+<span style="color:#e6edf3">gameready</span> <span style="color:#6e7681">0.2.0 — tune a Linux desktop for gaming, and undo it.
+
+</span><span style="color:#6e7681">Start here
+  </span><span style="color:#e6edf3">init      </span> Find your games, ask what you want, apply it.
+  <span style="color:#e6edf3">rollback  </span> Put everything back. Any run, any time.
+
+<span style="color:#6e7681">Look before you leap
+  </span><span style="color:#e6edf3">doctor    </span> What your machine is, and what each tuning would do.
+  <span style="color:#e6edf3">explain   </span> One tuning: why it exists, and what it'd change here.
+  <span style="color:#e6edf3">list-games</span> The game profiles I can see, and where each came from.
+
+<span style="color:#6e7681">For scripts and repeat runs
+  </span><span style="color:#e6edf3">apply     </span> Apply, optionally one tuning: --step &lt;id&gt;
+  <span style="color:#e6edf3">selftest  </span> Apply, verify, revert, verify. Proves a tuning works.
+
+<span style="color:#6e7681">Anywhere
+  </span><span style="color:#e6edf3">--dry-run </span> Work out the plan, change nothing.
+  <span style="color:#e6edf3">--yes     </span> Take every default, install without asking.
+  <span style="color:#e6edf3">--json    </span> The run report as JSON instead of this.
+
+  <span style="color:#6e7681">Everything gameready changes is reversible, except installing
+  a package. It says so before it installs one.</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div style="display:flex; align-items:baseline; gap:14px; margin-bottom:8px">
+      <span style="font:600 12px Inter; letter-spacing:.14em; color:oklch(0.6204 0.195 253.83)">05</span>
+      <h2 style="margin:0; font:600 26px Inter; letter-spacing:-0.02em">When it goes wrong</h2>
+      <span style="height:1px; flex:1; background:oklch(0.87 0 0)"></span>
+    </div>
+    <p style="margin:0 0 24px; max-width:70ch; font:400 15px/1.6 Inter; color:oklch(0.371 0 0)">Every failure states three things: what broke, what state your machine is in now, and the one command that fixes it.</p>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(360px,1fr)); gap:18px">
+      <div style="background:#0d1117; border-radius:14px; padding:20px 22px; box-shadow:0 20px 40px -24px rgba(0,0,0,.5)">
+        <div style="font:600 11px Inter; letter-spacing:.1em; color:#f85149; margin-bottom:12px">STEP FAILED, PARTIAL CHANGE UNDONE</div>
+        <pre style="margin:0; font:13px/1.8 Menlo,Consolas,monospace; color:#c9d1d9; white-space:pre-wrap"><span style="color:#f85149">✘</span> <span style="color:#e6edf3">CPU scheduler scx_lavd
+    </span><span style="color:#6e7681">scxctl exited 1: no BPF-capable kernel headers.
+    The partial change was undone; your CPU is on the
+    kernel's own scheduler, exactly as before.
+    </span><span style="color:#6e7681">Everything else in this run applied.</span></pre>
+      </div>
+
+      <div style="background:#0d1117; border-radius:14px; padding:20px 22px; box-shadow:0 20px 40px -24px rgba(0,0,0,.5)">
+        <div style="font:600 11px Inter; letter-spacing:.1em; color:#f85149; margin-bottom:12px">THE UNDO ALSO FAILED</div>
+        <pre style="margin:0; font:13px/1.8 Menlo,Consolas,monospace; color:#c9d1d9; white-space:pre-wrap"><span style="color:#f85149">✘</span> <span style="color:#e6edf3">I/O scheduler · sdb
+    </span><span style="color:#6e7681">write failed: read-only sysfs. Undoing it failed too,
+    so sdb may still be on bfq.
+    </span><span style="color:#e6edf3">gameready rollback --run 2026-08-08T14-22
+    </span><span style="color:#6e7681">will retry it.</span></pre>
+      </div>
+
+      <div style="background:#0d1117; border-radius:14px; padding:20px 22px; box-shadow:0 20px 40px -24px rgba(0,0,0,.5)">
+        <div style="font:600 11px Inter; letter-spacing:.1em; color:#d29922; margin-bottom:12px">SOMETHING ELSE OWNS THE FILE</div>
+        <pre style="margin:0; font:13px/1.8 Menlo,Consolas,monospace; color:#c9d1d9; white-space:pre-wrap"><span style="color:#6e7681">–</span> <span style="color:#8b949e">Launch options · 2 games
+    </span><span style="color:#6e7681">Steam is open and rewrites this config when it quits,
+    so anything I write now is lost.
+    </span><span style="color:#6e7681">Quit Steam, then:</span> <span style="color:#e6edf3">gameready apply --pending</span></pre>
+      </div>
+
+      <div style="background:#0d1117; border-radius:14px; padding:20px 22px; box-shadow:0 20px 40px -24px rgba(0,0,0,.5)">
+        <div style="font:600 11px Inter; letter-spacing:.1em; color:#d29922; margin-bottom:12px">A CONFLICT, NOT A FAILURE</div>
+        <pre style="margin:0; font:13px/1.8 Menlo,Consolas,monospace; color:#c9d1d9; white-space:pre-wrap"><span style="color:#6e7681">–</span> <span style="color:#8b949e">CPU governor
+    </span><span style="color:#6e7681">tuned.service is running and sets the governor on its
+    own schedule. Whatever I set, it overrides.
+    </span><span style="color:#6e7681">Your call:</span> <span style="color:#e6edf3">systemctl disable --now tuned
+    </span><span style="color:#6e7681">then rerun. I won't disable it behind your back.</span></pre>
+      </div>
+
+      <div style="background:#0d1117; border-radius:14px; padding:20px 22px; box-shadow:0 20px 40px -24px rgba(0,0,0,.5)">
+        <div style="font:600 11px Inter; letter-spacing:.1em; color:#6e7681">COULDN'T TELL — NEVER A REASON TO APPLY</div>
+        <pre style="margin:0; font:13px/1.8 Menlo,Consolas,monospace; color:#c9d1d9; white-space:pre-wrap"><span style="color:#6e7681">–</span> <span style="color:#8b949e">Proton-GE
+    </span><span style="color:#6e7681">Couldn't check the latest release: github.com timed out.
+    I skip rather than guess. Nothing was downloaded.</span></pre>
+      </div>
+
+      <div style="background:#0d1117; border-radius:14px; padding:20px 22px; box-shadow:0 20px 40px -24px rgba(0,0,0,.5)">
+        <div style="font:600 11px Inter; letter-spacing:.1em; color:#58a6ff; margin-bottom:12px">DRY RUN</div>
+        <pre style="margin:0; font:13px/1.8 Menlo,Consolas,monospace; color:#c9d1d9; white-space:pre-wrap"><span style="color:#e6edf3">Dry run — nothing was touched.
+  </span><span style="color:#6e7681">7 would apply · 1 already set · 1 not applicable
+  2 packages would be installed, 6.5 MB
+
+  </span><span style="color:#6e7681">Drop</span> --dry-run <span style="color:#6e7681">when you're happy with the plan.</span></pre>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1240,&quot;height&quot;:1400}}">
+class Component extends DCLogic {
+  state = {
+    phase: 'probe',
+    sel: [true, false, true],
+    overlay: null,
+    install: null,
+    lines: []
+  };
+
+  GAMES = [
+    { name: 'Elden Ring', kind: 'tuned profile' },
+    { name: 'Cyberpunk 2077', kind: 'gamemode' },
+    { name: 'Hades II', kind: 'gamemode' }
+  ];
+
+  componentDidMount() { this.probeTimer = setTimeout(() => this.setState({ phase: 'games' }), 1400); }
+  componentWillUnmount() { clearTimeout(this.probeTimer); this.seq && this.seq.forEach(clearTimeout); }
+
+  seqRun() {
+    const yes = this.state.install === 'yes';
+    const steps = [
+      yes
+        ? { mark: '✔', color: '#3fb950', text: 'Installed gamemode, mangohud', detail: '6.5 MB' }
+        : { mark: '–', color: '#6e7681', text: 'gamemode, mangohud', detail: 'you said not now' },
+      yes
+        ? { mark: '↻', color: '#58a6ff', text: 'Re-checked 9 tunings — gamemode is here now, so one more can run', detail: '' }
+        : { mark: '↻', color: '#58a6ff', text: 'Re-checked 9 tunings — no change', detail: '' },
+      { mark: '✔', color: '#3fb950', text: 'Competing daemons', detail: 'none running' },
+      { mark: '✔', color: '#3fb950', text: 'Raise vm.max_map_count', detail: '65530 → 2147483642' },
+      { mark: '✔', color: '#3fb950', text: 'I/O scheduler · nvme0n1', detail: 'mq-deadline → none' },
+      { mark: '•', color: '#2e7d43', text: 'Swappiness for zram', detail: 'already 180' },
+      { mark: '✔', color: '#3fb950', text: 'CPU scheduler scx_lavd', detail: 'loaded' },
+      yes
+        ? { mark: '✔', color: '#3fb950', text: 'CPU governor left to gamemode', detail: 'ran after the re-check' }
+        : { mark: '–', color: '#6e7681', text: 'CPU governor', detail: 'needs gamemode' },
+      { mark: '✔', color: '#3fb950', text: 'Launch options', detail: this.picked().length + ' games' }
+    ];
+    this.seq = steps.map((s, i) => setTimeout(() => {
+      this.setState(st => ({ lines: st.lines.concat([s]) }));
+      if (i === steps.length - 1) this.seq.push(setTimeout(() => this.setState({ phase: 'done' }), 700));
+    }, 550 * (i + 1)));
+  }
+
+  picked() { return this.GAMES.filter((g, i) => this.state.sel[i]); }
+
+  renderVals() {
+    const p = this.state.phase;
+    const picked = this.picked();
+    const applied = this.state.lines.filter(l => l.mark === '✔').length;
+    return {
+      showProbe: p === 'probe',
+      isGames: p === 'games',
+      afterGames: ['overlay', 'install', 'plan', 'applying', 'done'].indexOf(p) >= 0,
+      isOverlay: p === 'overlay',
+      afterOverlay: ['install', 'plan', 'applying', 'done'].indexOf(p) >= 0,
+      isInstall: p === 'install',
+      isPlan: p === 'plan',
+      isApplying: p === 'applying' || p === 'done',
+      isDone: p === 'done',
+      lines: this.state.lines,
+      games: this.GAMES.map((g, i) => ({
+        name: g.name,
+        kind: g.kind,
+        box: this.state.sel[i] ? '[✔]' : '[ ]',
+        markColor: this.state.sel[i] ? '#3fb950' : '#6e7681',
+        nameColor: this.state.sel[i] ? '#e6edf3' : '#8b949e',
+        toggle: () => this.setState(st => {
+          const sel = st.sel.slice(); sel[i] = !sel[i]; return { sel };
+        })
+      })),
+      gamesSummary: picked.length ? picked.map(g => g.name).join(', ') : 'none',
+      overlaySummary: this.state.overlay === 'yes' ? 'FPS and temperatures on' : 'off',
+      installSummary: this.state.install === 'yes' ? 'gamemode, mangohud · 6.5 MB' : 'nothing',
+      verdict: applied + ' applied. Your machine is set up.',
+      confirmGames: () => this.setState({ phase: picked.length ? 'overlay' : 'install' }),
+      overlayNo: () => this.setState({ phase: 'install', overlay: 'no' }),
+      overlayYes: () => this.setState({ phase: 'install', overlay: 'yes' }),
+      installNo: () => this.setState({ phase: 'plan', install: 'no' }),
+      installYes: () => this.setState({ phase: 'plan', install: 'yes' }),
+      startApply: () => { this.setState({ phase: 'applying', lines: [] }); this.seqRun(); },
+      reset: () => {
+        this.seq && this.seq.forEach(clearTimeout);
+        this.setState({ phase: 'probe', sel: [true, false, true], overlay: null, install: null, lines: [] });
+        this.probeTimer = setTimeout(() => this.setState({ phase: 'games' }), 1200);
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>
+

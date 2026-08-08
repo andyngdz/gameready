@@ -13,13 +13,27 @@ pub enum SwapBacking {
     Disk,
 }
 
-/// One active swap area: what backs it and the priority the kernel gives it.
+impl SwapBacking {
+    /// The word the doctor screen prints for this backing.
+    #[must_use]
+    pub const fn describe(self) -> &'static str {
+        match self {
+            Self::Zram => "zram",
+            Self::Disk => "disk",
+        }
+    }
+}
+
+/// One active swap area: what backs it, its size, and the priority the kernel
+/// gives it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SwapArea {
     /// What storage the area lives on.
     pub backing: SwapBacking,
     /// The kernel swaps to the highest priority first.
     pub priority: i32,
+    /// Size in kibibytes, the unit `/proc/swaps` reports.
+    pub size_kib: u64,
 }
 
 /// Parses `/proc/swaps` into its active areas.
@@ -44,7 +58,7 @@ pub fn parse_proc_swaps(contents: &str) -> Vec<SwapArea> {
 /// present, and any extra trailing column is ignored.
 fn parse_swap_line(line: &str) -> Option<SwapArea> {
     let columns: Vec<&str> = line.split_whitespace().collect();
-    let [filename, _type, _size, _used, priority, ..] = columns.as_slice() else {
+    let [filename, _type, size, _used, priority, ..] = columns.as_slice() else {
         return None;
     };
     let backing = if filename.starts_with("/dev/zram") {
@@ -55,6 +69,34 @@ fn parse_swap_line(line: &str) -> Option<SwapArea> {
     Some(SwapArea {
         backing,
         priority: priority.parse().ok()?,
+        size_kib: size.parse().ok()?,
+    })
+}
+
+/// The swap the kernel fills first, and the total size across every area.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ActiveSwap {
+    /// The backing of the primary area, the one tuning is decided by.
+    pub backing: SwapBacking,
+    /// Total size of every active area, in kibibytes.
+    pub total_kib: u64,
+}
+
+/// Summarises the active swap for the doctor screen: the primary area's
+/// backing and the total size, or `None` when the machine has no swap.
+#[must_use]
+pub fn active_swap(areas: &[SwapArea]) -> Option<ActiveSwap> {
+    if areas.is_empty() {
+        return None;
+    }
+    let backing = if primary_is_zram(areas) {
+        SwapBacking::Zram
+    } else {
+        SwapBacking::Disk
+    };
+    Some(ActiveSwap {
+        backing,
+        total_kib: areas.iter().map(|area| area.size_kib).sum(),
     })
 }
 

@@ -1,7 +1,7 @@
 //! The one place a gutter mark is chosen.
 
 use console::style;
-use gameready_core::improvement::OutcomeKind;
+use gameready_core::improvement::{OutcomeKind, Probe};
 
 /// Every mark the CLI draws in the two-column gutter.
 ///
@@ -49,6 +49,19 @@ impl Mark {
             OutcomeKind::AlreadySet => Self::AlreadySet,
             OutcomeKind::Failed => Self::Failed,
             OutcomeKind::Skipped | OutcomeKind::NotApplicable => Self::Skipped,
+        }
+    }
+
+    /// The mark the doctor screen draws for what a probe found. `doctor` never
+    /// changes anything, so an applicable step reads as a tick meaning "would
+    /// apply", not "applied".
+    #[must_use]
+    pub(crate) fn for_probe(probe: &Probe) -> Self {
+        match probe {
+            Probe::Applicable => Self::Applied,
+            Probe::AlreadyApplied { .. } => Self::AlreadySet,
+            Probe::Conflict { .. } => Self::Warning,
+            Probe::NotApplicable { .. } | Probe::Unknown { .. } => Self::Skipped,
         }
     }
 
