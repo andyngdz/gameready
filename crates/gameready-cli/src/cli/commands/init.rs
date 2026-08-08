@@ -87,10 +87,21 @@ impl InitRequest<'_> {
 /// Read before the first question, because a profile asking for the newest
 /// GE-Proton can only resolve against the builds that are there now. A machine
 /// with no Steam has none, which is not a failure worth reporting here.
-fn compat_tools() -> Vec<String> {
-    locate_steam_dir()
-        .map(|steam| installed_compat_tools(&steam))
-        .unwrap_or_default()
+fn compat_tools(steam: Option<&Path>) -> Vec<String> {
+    steam.map(installed_compat_tools).unwrap_or_default()
+}
+
+/// What the games line on the opening screen reports.
+///
+/// The count comes from the paired setups rather than from the Steam directory
+/// itself: a run can only tune a game it found installed, so that is the number
+/// the user is about to be asked about.
+fn games_found(steam: Option<&Path>, setups: usize) -> ui::SteamGames {
+    if steam.is_some() {
+        ui::SteamGames::Found(setups)
+    } else {
+        ui::SteamGames::Missing
+    }
 }
 
 /// Asks everything, then does everything.
@@ -110,13 +121,17 @@ pub fn run(
 
     // Probing and resolving only read, so the whole picture is available while
     // every answer the user could give is still available too.
+    let steam = locate_steam_dir().ok();
     let setups = discover_setups(request.games_dir);
+    ui::LookingAtMachine::show(&facts, games_found(steam.as_deref(), setups.len()));
+
     let mut progress = ui::ProgressView::new();
     let run_plan = plan_run(core_steps(), &cx, &mut |event| progress.on_event(event));
     drop(progress);
 
     let family = facts.distro.package_manager();
-    let (answers, mut out) = request.ask(&setups, &run_plan, family, &compat_tools())?;
+    let tools = compat_tools(steam.as_deref());
+    let (answers, mut out) = request.ask(&setups, &run_plan, family, &tools)?;
 
     // Nothing above this line changed anything. Nothing below it asks.
     escalation.ask()?;

@@ -30,12 +30,17 @@ pub(super) fn probe_all(
     cx: &CoreCx<'_>,
     on_event: &mut dyn FnMut(RunEvent),
 ) -> Probed {
-    let mut settled = Vec::with_capacity(steps.len());
+    let total = steps.len();
+    let mut settled = Vec::with_capacity(total);
     let mut pending = Vec::new();
     let mut candidates = Vec::new();
 
-    for step in steps {
-        on_event(RunEvent::Probing { step: step.id() });
+    for (index, step) in steps.into_iter().enumerate() {
+        on_event(RunEvent::Probing {
+            step: step.id(),
+            done: index + 1,
+            total,
+        });
         match probe_outcome(step.as_ref(), cx) {
             Settled::Apply => pending.push(step),
             Settled::Now(outcome) if may_reopen(step.as_ref(), &outcome) => {

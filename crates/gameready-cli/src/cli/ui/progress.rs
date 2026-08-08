@@ -5,7 +5,7 @@
 //! itself.
 
 use gameready_core::run::RunEvent;
-use indicatif::ProgressBar;
+use indicatif::{ProgressBar, ProgressStyle};
 
 use crate::cli::ui::layout::Mark;
 
@@ -27,9 +27,15 @@ impl ProgressView {
     /// Handles one event from the executor.
     pub fn on_event(&mut self, event: RunEvent) {
         match event {
-            RunEvent::Probing { .. } => {
-                if self.spinner.is_none() {
-                    self.start("Checking system...".to_owned());
+            RunEvent::Probing { done, total, .. } => {
+                let counted = Self::checking(done, total);
+                // The one line that updates in place rather than being
+                // replaced: every probe is the same activity, and a spinner
+                // restarted per step would read as nine separate waits.
+                if let Some(bar) = &self.spinner {
+                    bar.set_message(counted);
+                } else {
+                    self.start(counted);
                 }
             }
 
@@ -72,9 +78,21 @@ impl ProgressView {
         }
     }
 
+    /// How far the probing sweep has got, in the words the summary will use.
+    fn checking(done: usize, total: usize) -> String {
+        let noun = if total == 1 { "tuning" } else { "tunings" };
+        format!("Checking {total} {noun} · {done} of {total}")
+    }
+
     fn start(&mut self, message: String) {
         self.clear();
         let bar = ProgressBar::new_spinner();
+        // Indented to the column the settled lines land in, so the line the
+        // user is waiting on does not sit further left than the ones it turns
+        // into a moment later.
+        if let Ok(style) = ProgressStyle::with_template("  {spinner:.blue} {msg}") {
+            bar.set_style(style);
+        }
         bar.enable_steady_tick(std::time::Duration::from_millis(80));
         bar.set_message(message);
         self.spinner = Some(bar);

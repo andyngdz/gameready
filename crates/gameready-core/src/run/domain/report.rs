@@ -149,7 +149,15 @@ impl RunStatus {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RunEvent {
     /// Probing has started for one step.
-    Probing { step: ImprovementId },
+    ///
+    /// Carries its place in the sweep, because probing is the one phase with
+    /// nothing to show for itself while it runs: no step has an outcome yet,
+    /// so the count is all the progress there is to report.
+    Probing {
+        step: ImprovementId,
+        done: usize,
+        total: usize,
+    },
 
     /// A step the probe ruled out is being held open, because a step it names
     /// in `requires()` is going to run and may change the answer.
