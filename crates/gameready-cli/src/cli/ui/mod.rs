@@ -12,6 +12,7 @@ pub(crate) const STEPS: &str = "Steps";
 
 mod explain;
 mod games;
+mod governor;
 mod init;
 mod install;
 mod launch_choice;
@@ -28,6 +29,7 @@ mod summary;
 
 pub use explain::{StepExplanation, StepIndex};
 pub use games::GameList;
+pub use governor::choose_governor_persistence;
 pub use init::LaunchInstructions;
 pub use install::{consent_to_install, InstallList};
 pub use launch_choice::{choose_how_to_apply, LaunchChoice, SteamWork};

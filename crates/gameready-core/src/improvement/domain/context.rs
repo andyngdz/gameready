@@ -30,6 +30,15 @@ pub struct CoreCx<'a> {
     /// a context without ever installing anything. A step that needs one and
     /// finds `None` reports that it cannot tell rather than assuming.
     pub packages: Option<&'a dyn PackageManager>,
+
+    /// Whether the CPU governor step should make its change survive a reboot.
+    ///
+    /// The default is `false`: the governor is written live and lasts until the
+    /// next boot. The user answers a fifth question to turn this on, and only
+    /// when the run would actually pin the governor. Set on the context rather
+    /// than passed to `apply` so the run machinery stays the same for every
+    /// step.
+    pub governor_pinned: bool,
 }
 
 impl<'a> CoreCx<'a> {
@@ -42,6 +51,7 @@ impl<'a> CoreCx<'a> {
             facts,
             runner,
             packages: None,
+            governor_pinned: false,
         }
     }
 
@@ -49,6 +59,13 @@ impl<'a> CoreCx<'a> {
     #[must_use]
     pub const fn with_packages(mut self, packages: &'a dyn PackageManager) -> Self {
         self.packages = Some(packages);
+        self
+    }
+
+    /// Sets whether the CPU governor change should persist across reboots.
+    #[must_use]
+    pub const fn with_governor_pinned(mut self, pinned: bool) -> Self {
+        self.governor_pinned = pinned;
         self
     }
 }

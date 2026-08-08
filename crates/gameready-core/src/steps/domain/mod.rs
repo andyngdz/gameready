@@ -14,9 +14,9 @@ pub use block_device::{
     ROTATIONAL_SCHEDULER, SSD_SCHEDULER,
 };
 pub use compat::{apply_compat_targets, CompatEdited, CompatTarget};
-pub use daemons::{CompetingDaemon, COMPETING_DAEMONS};
+pub use daemons::{CompetingDaemon, COMPETING_DAEMONS, GOVERNOR_DAEMONS};
 pub use launch::{apply_targets, Edited, LaunchTarget};
 pub use proton_ge::{newest_ge_proton, parse_checksum, parse_release, tarball_name, ProtonRelease};
 pub use sched_ext::{load_scheduler, restore_scheduler, SchedExt, SCX_SCHEDS, SCX_TOOLS};
 pub use swap::{parse_proc_swaps, primary_is_zram, SwapArea, SwapBacking};
-pub use tools::{GamingTool, GAMING_TOOLS};
+pub use tools::{GamingTool, GAMEMODE, GAMING_TOOLS};

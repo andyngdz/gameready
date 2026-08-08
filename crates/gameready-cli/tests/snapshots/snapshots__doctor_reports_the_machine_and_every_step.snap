@@ -26,7 +26,6 @@ Steps
      not applicable (scx is not in this system's repositories yet (Ubuntu 26.04 LTS); the
      "core.repo.scx-ppa" step in this run adds the PPA that carries it, and this step is looked at
      again once it has)
-    core.cpu.governor
-     not applicable (the governor is `schedutil`, gamemode handles this per-game)
+    core.cpu.governor .................................................................. would apply
 
 ----- stderr -----

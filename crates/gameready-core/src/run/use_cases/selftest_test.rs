@@ -12,15 +12,15 @@ fn journal(dir: &TempDir) -> Journal {
 
 #[test]
 fn a_step_that_never_applies_is_skipped_rather_than_failed() {
-    // core.cpu.governor declines on every machine by design. Reporting it as a
-    // broken step would train the reader to ignore the selftest.
+    // core.conflicts only ever reports; it applies on no machine. Reporting it
+    // as a broken step would train the reader to ignore the selftest.
     let dir = TempDir::new().expect("temp dir");
     let runner = MockRunner::new();
     let facts = SystemFacts::fixture(Family::Arch);
     let cx = CoreCx::new(&facts, &runner);
     let mut journal = journal(&dir);
 
-    let results = selftest(vec![Box::new(CpuGovernor)], &cx, &runner, &mut journal);
+    let results = selftest(vec![Box::new(Conflicts)], &cx, &runner, &mut journal);
 
     assert!(matches!(
         results.as_slice(),
@@ -96,6 +96,42 @@ fn a_full_cycle_passes_and_leaves_nothing_behind() {
     );
     assert!(
         runner.file("/etc/sysctl.d/99-gameready.conf").is_none(),
+        "the selftest applied a change and did not take it back"
+    );
+}
+
+#[test]
+fn the_governor_survives_a_full_apply_verify_revert_cycle() {
+    // The privileged path with no sudo anywhere: MockRunner::write_sysfs lands
+    // the value in the fake file, so apply, verify, revert, and the final check
+    // that the change is gone all run against it.
+    let dir = TempDir::new().expect("temp dir");
+    let runner = MockRunner::new()
+        .with_file(
+            "/sys/devices/system/cpu/cpufreq/policy0/scaling_governor",
+            "powersave\n",
+        )
+        .with_file(
+            "/sys/devices/system/cpu/cpufreq/policy0/scaling_available_governors",
+            "performance powersave\n",
+        );
+    let facts = SystemFacts::fixture(Family::Arch);
+    let cx = CoreCx::new(&facts, &runner);
+    let mut journal = journal(&dir);
+
+    let results = selftest(vec![Box::new(CpuGovernor)], &cx, &runner, &mut journal);
+
+    assert_eq!(
+        results[0].result,
+        SelftestResult::Passed {
+            reverted: RevertCheck::Confirmed
+        }
+    );
+    assert_eq!(
+        runner
+            .file("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor")
+            .as_deref(),
+        Some("powersave"),
         "the selftest applied a change and did not take it back"
     );
 }

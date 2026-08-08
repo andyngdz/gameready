@@ -2,6 +2,7 @@
 
 mod conflicts;
 mod cpu_governor;
+mod cpu_governor_policies;
 mod gaming_tools;
 mod gaming_tools_survey;
 mod io_scheduler;

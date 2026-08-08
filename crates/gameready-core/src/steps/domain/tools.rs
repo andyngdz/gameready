@@ -52,18 +52,25 @@ const MANGOHUD_BYTES: u64 = 5_400_000;
 /// Both names are the same on pacman, apt, and dnf. They still go through
 /// [`PackageSpec`] rather than a bare string, because a package that does not
 /// exist on a family has to be reportable and that machinery has to exist.
-pub const GAMING_TOOLS: [GamingTool; 2] = [
-    GamingTool {
-        // The package is `gamemode`; the daemon it installs is `gamemoded`.
-        binary: "gamemoded",
-        spec: PackageSpec::uniform("gamemode", GAMEMODE_BYTES),
-        what: "raises the CPU governor and priority while a game runs",
-        why: "every launch option gameready writes starts with gamemoderun",
-    },
-    GamingTool {
-        binary: "mangohud",
-        spec: PackageSpec::uniform("mangohud", MANGOHUD_BYTES),
-        what: "draws frame rate, frame times and temperatures over the game",
-        why: "so you can check whether any of this actually helped",
-    },
-];
+/// gamemode: the daemon that actually tunes anything while a game runs.
+///
+/// Named on its own so the CPU governor step can probe for the same binary this
+/// step installs. Both asking `which gamemoded` is what stops the two from
+/// disagreeing about whether something already raises the governor per game.
+pub const GAMEMODE: GamingTool = GamingTool {
+    // The package is `gamemode`; the daemon it installs is `gamemoded`.
+    binary: "gamemoded",
+    spec: PackageSpec::uniform("gamemode", GAMEMODE_BYTES),
+    what: "raises the CPU governor and priority while a game runs",
+    why: "every launch option gameready writes starts with gamemoderun",
+};
+
+/// mangohud: the overlay that lets the user check whether any of this helped.
+pub const MANGOHUD: GamingTool = GamingTool {
+    binary: "mangohud",
+    spec: PackageSpec::uniform("mangohud", MANGOHUD_BYTES),
+    what: "draws frame rate, frame times and temperatures over the game",
+    why: "so you can check whether any of this actually helped",
+};
+
+pub const GAMING_TOOLS: [GamingTool; 2] = [GAMEMODE, MANGOHUD];

@@ -10,6 +10,20 @@ pub struct CompetingDaemon {
     pub contention: &'static str,
 }
 
+/// tuned's unit. Names the CPU governor among the things it manages.
+pub const TUNED_UNIT: &str = "tuned.service";
+
+/// power-profiles-daemon's unit, the GNOME and KDE default power tool.
+pub const POWER_PROFILES_DAEMON_UNIT: &str = "power-profiles-daemon.service";
+
+/// The daemons that own the CPU governor, so gameready's own pin would be
+/// overwritten seconds later if one is live.
+///
+/// The CPU governor step reads this to decide whether pinning is even worth
+/// offering: with one of these running, the pin loses, so the step reports the
+/// conflict instead of fighting it.
+pub const GOVERNOR_DAEMONS: [&str; 2] = [TUNED_UNIT, POWER_PROFILES_DAEMON_UNIT];
+
 /// The three daemons that reliably undo what gamemode does.
 ///
 /// All three are legitimate software a user or their distro installed on
@@ -22,11 +36,11 @@ pub const COMPETING_DAEMONS: [CompetingDaemon; 3] = [
         contention: "overrides process priority",
     },
     CompetingDaemon {
-        unit: "tuned.service",
+        unit: TUNED_UNIT,
         contention: "overrides CPU governor",
     },
     CompetingDaemon {
-        unit: "power-profiles-daemon.service",
+        unit: POWER_PROFILES_DAEMON_UNIT,
         contention: "overrides CPU governor",
     },
 ];

@@ -14,7 +14,7 @@ Steps
     core.proton.ge ........................................................ Install latest Proton-GE
     core.repo.scx-ppa ............................................... Add the scx package repository
     core.sched.scx-lavd ....................................... Switch the CPU scheduler to scx_lavd
-    core.cpu.governor ........................................... Leave the CPU governor to gamemode
+    core.cpu.governor .......................................... Pin the CPU governor to performance
 
   Run `gameready explain <id>` for what one of them would do here.
 ----------------------------------------------------------------------------------------------------

@@ -4,10 +4,11 @@ use anyhow::Result;
 use gameready_core::facts::PackageManagerKind;
 use gameready_core::run::{compat_targets_for, targets_for, InstallConsent, Mode, RunPlan};
 use gameready_core::steam::{with_overlay, GameSetup, Overlay};
-use gameready_core::steps::{CompatTarget, LaunchTarget};
+use gameready_core::steps::{CompatTarget, CpuGovernor, GamingTools, LaunchTarget};
 
 use crate::cli::ui::{
-    choose_games, choose_how_to_apply, choose_overlay, consent_to_install, LaunchChoice, SteamWork,
+    choose_games, choose_governor_persistence, choose_how_to_apply, choose_overlay,
+    consent_to_install, LaunchChoice, SteamWork,
 };
 
 /// Whether there is a person at the terminal to answer.
@@ -47,6 +48,32 @@ impl Questions<'_> {
     fn consent(&self) -> Result<InstallConsent> {
         consent_to_install(self.plan, self.packages, self.picker, self.mode)
     }
+
+    /// Whether to put the governor-persistence question to the user.
+    ///
+    /// Only when the run would actually pin the governor: the step is pending,
+    /// and gamemode is not arriving to make it stand down. Asking otherwise
+    /// offers a choice with no effect, since the pending-side re-probe would
+    /// drop the step the moment gamemode lands.
+    fn asks_about_governor(&self, consent: &InstallConsent) -> bool {
+        let is_pending = |id| self.plan.pending.iter().any(|step| step.id() == id);
+        let gamemode_arriving =
+            matches!(consent, InstallConsent::Granted) && is_pending(GamingTools::id_const());
+        is_pending(CpuGovernor::id_const()) && !gamemode_arriving
+    }
+
+    /// The governor-persistence answer, asked only when it would take effect.
+    ///
+    /// A run that cannot ask, or one that will not pin the governor, keeps the
+    /// safe default: the change lasts this boot only.
+    fn governor_choice(&self, consent: &InstallConsent) -> Result<bool> {
+        match self.picker {
+            Picker::Ask if self.mode.mutates() && self.asks_about_governor(consent) => {
+                choose_governor_persistence()
+            }
+            Picker::Ask | Picker::TakeAll => Ok(false),
+        }
+    }
 }
 
 /// What the user decided, before a single change was made.
@@ -61,6 +88,8 @@ pub struct Answers {
     pub launch: LaunchChoice,
     /// Whether the run may install the packages its steps need.
     pub consent: InstallConsent,
+    /// Whether the CPU governor, if pinned this run, should survive a reboot.
+    pub governor_pinned: bool,
 }
 
 /// Asks every question the run has, in one pass.
@@ -101,12 +130,16 @@ pub fn ask_everything(questions: &Questions<'_>) -> Result<Answers> {
         }
     };
 
+    let consent = questions.consent()?;
+    let governor_pinned = questions.governor_choice(&consent)?;
+
     Ok(Answers {
         selected,
         targets,
         proton,
         launch,
-        consent: questions.consent()?,
+        consent,
+        governor_pinned,
     })
 }
 

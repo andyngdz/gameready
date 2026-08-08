@@ -121,6 +121,11 @@ pub fn run(
     // Nothing above this line changed anything. Nothing below it asks.
     escalation.ask()?;
 
+    // The governor answer is known only now, so the context the run applies
+    // with is rebuilt to carry it. Copy, so this shadows without disturbing the
+    // borrows above.
+    let cx = cx.with_governor_pinned(answers.governor_pinned);
+
     let mut journal =
         Journal::open(paths.clone(), RunId::generate()).context(CANNOT_OPEN_JOURNAL)?;
     let mut progress = ui::ProgressView::new();

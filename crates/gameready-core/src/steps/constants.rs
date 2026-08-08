@@ -156,13 +156,6 @@ pub const QUEUE_ROTATIONAL: &str = "queue/rotational";
 /// leaves a change that is identifiable and removable.
 pub const IO_SCHEDULER_RULE: &str = "/etc/udev/rules.d/60-gameready-ioscheduler.rules";
 
-/// Where the kernel reports the first core's frequency-scaling governor.
-///
-/// Core zero stands in for the machine: the governor is per-policy, and a
-/// system with different governors on different cores was configured that way
-/// by hand and is not one gameready should be second-guessing.
-pub const SCALING_GOVERNOR: &str = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor";
-
 /// Where Steam keeps per-game settings inside `localconfig.vdf`.
 pub const STEAM_APPS_PATH: [&str; 5] =
     ["UserLocalConfigStore", "Software", "Valve", "Steam", "apps"];
