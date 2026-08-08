@@ -85,3 +85,31 @@ fn a_wrapped_line_hangs_clear_of_the_gutter() {
         assert!(line.starts_with("    word"), "{line}");
     }
 }
+
+#[test]
+fn a_banner_runs_its_rule_out_to_the_layout_width() {
+    let mut buf = String::new();
+    Section::with_width(&mut buf, ROOMY)
+        .banner("STEP 1 OF 4")
+        .unwrap();
+
+    assert!(plain(&buf).starts_with("STEP 1 OF 4 -"), "{buf}");
+    assert_eq!(console::measure_text_width(plain(&buf).trim_end()), ROOMY);
+}
+
+#[test]
+fn a_quoted_block_carries_its_bar_down_every_wrapped_line() {
+    // A description that wraps is still one description, and a second line
+    // starting at the margin would read as a second package.
+    let mut buf = String::new();
+    let long = "the sched_ext CPU schedulers, scx_lavd among them, and every other one that ships \
+                in the same package";
+    Section::with_width(&mut buf, CRAMPED).quoted(long).unwrap();
+    let rendered = plain(&buf);
+
+    assert!(rendered.lines().count() > 1, "{rendered}");
+    assert!(
+        rendered.lines().all(|line| line.starts_with("  ┃ ")),
+        "{rendered}"
+    );
+}

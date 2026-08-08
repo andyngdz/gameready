@@ -1,42 +1,34 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use gameready_core::games::{default_wrappers, AppId, GameProfile, ProtonChoice, Source, Wrapper};
+use gameready_core::games::{default_wrappers, AppId, GameProfile, Source};
 use gameready_core::run::PreflightReport;
 use gameready_core::steam::InstalledGame;
+use gameready_core::steps::CpuGovernor;
 
 use super::*;
 
-fn setup(name: &str, app_id: u32, wrappers: Option<Vec<Wrapper>>) -> GameSetup {
-    with_proton(name, app_id, wrappers, None)
-}
-
-fn with_proton(
-    name: &str,
-    app_id: u32,
-    wrappers: Option<Vec<Wrapper>>,
-    proton: Option<ProtonChoice>,
-) -> GameSetup {
+fn setup(name: &str) -> GameSetup {
+    let app_id = AppId(1_422_450);
     GameSetup {
-        game: InstalledGame::new(AppId(app_id), name.to_owned(), PathBuf::from("/games")),
-        source: wrappers.as_ref().map(|_| Source::Builtin),
+        game: InstalledGame::new(app_id, name.to_owned(), PathBuf::from("/games")),
+        source: Some(Source::Builtin),
         profile: GameProfile {
             name: name.to_owned(),
-            app_id: AppId(app_id),
-            wrappers: wrappers.unwrap_or_else(default_wrappers),
+            app_id,
+            wrappers: default_wrappers(),
             env: BTreeMap::new(),
-            proton,
+            proton: None,
             override_module: None,
         },
     }
 }
 
-/// A plan with nothing to do, so these tests exercise the questions rather than
-/// the run behind them.
-fn empty_plan() -> RunPlan {
+/// A plan with nothing pending, so a test can add only what it is about.
+fn plan(pending: Vec<Box<dyn gameready_core::improvement::CoreImprovement>>) -> RunPlan {
     RunPlan {
         settled: Vec::new(),
-        pending: Vec::new(),
+        pending,
         deferred: Vec::new(),
         preflight: PreflightReport {
             dependencies: Vec::new(),
@@ -48,119 +40,70 @@ fn empty_plan() -> RunPlan {
     }
 }
 
-/// Asks with a scripted picker, which answers without prompting.
-fn scripted(setups: &[GameSetup], overlay: Option<Overlay>, mode: Mode) -> Answers {
-    scripted_with_tools(setups, overlay, mode, &[])
-}
-
-fn scripted_with_tools(
-    setups: &[GameSetup],
-    overlay: Option<Overlay>,
-    mode: Mode,
-    compat_tools: &[String],
-) -> Answers {
-    let plan = empty_plan();
-    ask_everything(&Questions {
+fn asking<'a>(setups: &'a [GameSetup], plan: &'a RunPlan, mode: Mode) -> Questions<'a> {
+    Questions {
         setups,
-        plan: &plan,
+        plan,
         packages: PackageManagerKind::Apt,
-        picker: Picker::TakeAll,
-        overlay,
+        picker: Picker::Ask,
+        overlay: None,
         mode,
-        compat_tools,
-    })
-    .expect("answered")
+        compat_tools: &[],
+    }
 }
 
 #[test]
-fn a_scripted_run_answers_everything_without_prompting() {
-    let setups = [setup("Deadlock", 1_422_450, Some(vec![Wrapper::GameMode]))];
-    let answers = scripted(&setups, None, Mode::Apply);
+fn a_normal_run_with_games_has_the_three_questions_the_games_bring() {
+    // Games, overlay, and what to do about Steam. Nothing to install and no
+    // governor step, so those two do not count.
+    let games = [setup("Deadlock")];
+    let empty = plan(Vec::new());
 
-    assert_eq!(answers.selected.len(), 1);
-    assert_eq!(answers.targets.len(), 1);
-    assert_eq!(answers.launch, LaunchChoice::ShowForCopying);
+    assert_eq!(asking(&games, &empty, Mode::Apply).count(), 3);
 }
 
 #[test]
-fn a_scripted_run_never_closes_steam() {
-    let setups = [setup("Deadlock", 1_422_450, Some(vec![Wrapper::GameMode]))];
-    let answers = scripted(&setups, None, Mode::Apply);
+fn a_machine_with_no_games_is_asked_nothing_about_them() {
+    let empty = plan(Vec::new());
 
-    assert_eq!(answers.launch, LaunchChoice::ShowForCopying);
+    assert_eq!(asking(&[], &empty, Mode::Apply).count(), 0);
 }
 
 #[test]
-fn the_overlay_flag_is_honoured_without_a_prompt() {
-    let setups = [setup("Deadlock", 1_422_450, Some(vec![Wrapper::GameMode]))];
-    let answers = scripted(&setups, Some(Overlay::Show), Mode::Apply);
+fn a_dry_run_only_asks_what_it_can_still_honour() {
+    // Which games and whether to show the overlay both shape the plan it
+    // prints. Closing Steam and installing packages are changes, so a dry run
+    // has no business asking about either.
+    let games = [setup("Deadlock")];
+    let empty = plan(Vec::new());
 
-    assert_eq!(answers.targets[0].options, "gamemoderun mangohud %command%");
+    assert_eq!(asking(&games, &empty, Mode::DryRun).count(), 2);
 }
 
 #[test]
-fn a_game_with_no_profile_still_produces_a_launch_target() {
-    let setups = [setup("Hollow Knight", 367_520, None)];
-    let answers = scripted(&setups, None, Mode::Apply);
+fn the_overlay_flag_takes_its_question_off_the_count() {
+    let games = [setup("Deadlock")];
+    let empty = plan(Vec::new());
+    let mut questions = asking(&games, &empty, Mode::Apply);
+    questions.overlay = Some(Overlay::Show);
 
-    assert_eq!(answers.targets.len(), 1);
-    assert_eq!(answers.targets[0].options, "gamemoderun %command%");
+    assert_eq!(questions.count(), 2);
 }
 
 #[test]
-fn a_profile_that_turns_everything_off_produces_no_launch_target() {
-    let setups = [setup("Hollow Knight", 367_520, Some(Vec::new()))];
-    let answers = scripted(&setups, None, Mode::Apply);
+fn a_run_that_could_pin_the_governor_counts_that_question_too() {
+    let games = [setup("Deadlock")];
+    let governor = plan(vec![Box::new(CpuGovernor)]);
 
-    assert!(answers.targets.is_empty());
-    assert_eq!(answers.launch, LaunchChoice::ShowForCopying);
+    assert_eq!(asking(&games, &governor, Mode::Apply).count(), 4);
 }
 
 #[test]
-fn a_dry_run_asks_nothing_that_would_change_the_machine() {
-    let setups = [setup("Deadlock", 1_422_450, Some(vec![Wrapper::GameMode]))];
-    let answers = scripted(&setups, None, Mode::DryRun);
+fn a_run_that_cannot_ask_counts_nothing() {
+    let games = [setup("Deadlock")];
+    let empty = plan(Vec::new());
+    let mut questions = asking(&games, &empty, Mode::Apply);
+    questions.picker = Picker::TakeAll;
 
-    assert_eq!(answers.launch, LaunchChoice::ShowForCopying);
-    assert_eq!(answers.launch, LaunchChoice::ShowForCopying);
-}
-
-#[test]
-fn nothing_to_apply_means_nothing_to_ask_about_applying_it() {
-    let answers = scripted(&[], None, Mode::Apply);
-
-    assert!(answers.selected.is_empty());
-    assert!(answers.targets.is_empty());
-    assert!(answers.proton.is_empty());
-}
-
-#[test]
-fn a_profile_asking_for_ge_proton_becomes_a_pin_when_a_build_is_installed() {
-    let setups = [with_proton(
-        "Deadlock",
-        1_422_450,
-        Some(vec![Wrapper::GameMode]),
-        Some(ProtonChoice::NewestGeProton),
-    )];
-    let installed = ["GE-Proton11-3".to_owned()];
-    let answers = scripted_with_tools(&setups, None, Mode::Apply, &installed);
-
-    assert_eq!(answers.proton.len(), 1);
-    assert_eq!(answers.proton[0].tool, "GE-Proton11-3");
-}
-
-#[test]
-fn the_same_profile_pins_nothing_on_a_machine_with_no_build_installed() {
-    let setups = [with_proton(
-        "Deadlock",
-        1_422_450,
-        Some(vec![Wrapper::GameMode]),
-        Some(ProtonChoice::NewestGeProton),
-    )];
-    let answers = scripted(&setups, None, Mode::Apply);
-
-    assert!(answers.proton.is_empty());
-    // The launch options still go through: one setting failing to resolve does
-    // not take the other with it.
-    assert_eq!(answers.targets.len(), 1);
+    assert_eq!(questions.count(), 0);
 }

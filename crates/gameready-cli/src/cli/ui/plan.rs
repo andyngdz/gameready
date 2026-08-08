@@ -7,7 +7,7 @@ use gameready_core::run::Mode;
 use gameready_core::steam::GameSetup;
 
 use crate::cli::ui::layout::{Mark, Section};
-use crate::cli::ui::questions::Answers;
+use crate::cli::ui::Answers;
 
 /// The agreed plan, printed before the first change.
 pub struct InitPlan<'a> {

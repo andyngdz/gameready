@@ -17,6 +17,9 @@ const LABEL: usize = 10;
 /// The indent every line inside a section carries.
 const INDENT: usize = 2;
 
+/// The bar down the left of a quoted block.
+const QUOTE: &str = "┃";
+
 /// Writes structured output sections with consistent spacing and separators.
 ///
 /// Every section opens with a title and a blank line, carries indented content,
@@ -80,6 +83,31 @@ impl<'a, W: fmt::Write> Section<'a, W> {
     pub(crate) fn entry(&mut self, name: &str, note: &str, column: usize) -> fmt::Result {
         let padded = format!("{name:<column$}");
         writeln!(self.w, "  {} {}", style(padded).bold(), style(note).dim())
+    }
+
+    /// A label, then a rule running out to the right edge.
+    ///
+    /// Heads a question with where it sits in the run. The rule is what makes
+    /// it read as a divider rather than as another line of the screen above it,
+    /// which matters when four questions arrive one after another.
+    pub(crate) fn banner(&mut self, label: &str) -> fmt::Result {
+        let used = console::measure_text_width(label);
+        let rule = "-".repeat(self.width.saturating_sub(used + 1));
+        writeln!(self.w, "{label} {}", style(rule).dim())
+    }
+
+    /// A block with a bar down its left edge.
+    ///
+    /// For words that are about something other than gameready: a package's own
+    /// description, quoted while the user decides whether to take it. The bar
+    /// carries on down the wrapped lines, so a three-line description reads as
+    /// one block rather than as three loose sentences.
+    pub(crate) fn quoted(&mut self, text: &str) -> fmt::Result {
+        let bar = style(QUOTE).green();
+        for line in Self::wrap(text, self.width.saturating_sub(INDENT + 2)) {
+            writeln!(self.w, "  {bar} {line}")?;
+        }
+        Ok(())
     }
 
     /// A 5-space-indented sub-line under a marked line.

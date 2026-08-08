@@ -1,8 +1,26 @@
 //! Asking the user which games to set up.
 
 use anyhow::Result;
+use console::style;
 use gameready_core::steam::GameSetup;
 use inquire::MultiSelect;
+
+use crate::cli::ui::theme;
+
+/// The question itself, and the reassurance under it.
+const QUESTION: &str = "Which games should I set up?";
+
+/// Why picking nothing is safe, and why picking wrong is not permanent.
+const SCOPE: &str = "Only the ones you pick are touched. You can rerun this later.";
+
+/// The keys, in the order a user reaches for them.
+const KEYS: &str = "space toggle · → all · ← none · enter continue · esc skip";
+
+/// What a game gets when a profile of its own matched.
+const TUNED: &str = "tuned profile";
+
+/// What a game gets with no profile: the wrapper every game gets.
+const PLAIN: &str = "gamemode";
 
 /// One row in the picker.
 ///
@@ -11,6 +29,24 @@ use inquire::MultiSelect;
 struct Choice {
     index: usize,
     label: String,
+}
+
+impl Choice {
+    /// How one game reads in the picker.
+    ///
+    /// Names what the game gets, not whether a file matched: that is
+    /// gameready's business, not the user's. Padded to a shared column so the
+    /// eye runs down the names and finds what each one gets in the same place
+    /// every time.
+    fn label(setup: &GameSetup, column: usize) -> String {
+        let gets = if setup.has_profile() { TUNED } else { PLAIN };
+        format!(
+            "{:<column$}  {}",
+            setup.game.name,
+            style(gets).dim(),
+            column = column
+        )
+    }
 }
 
 impl std::fmt::Display for Choice {
@@ -27,17 +63,23 @@ pub fn choose_games(setups: &[GameSetup]) -> Result<Vec<GameSetup>> {
         return Ok(Vec::new());
     }
 
+    let column = setups
+        .iter()
+        .map(|setup| console::measure_text_width(&setup.game.name))
+        .max()
+        .unwrap_or(0);
     let choices: Vec<Choice> = setups
         .iter()
         .enumerate()
         .map(|(index, setup)| Choice {
             index,
-            label: label(setup),
+            label: Choice::label(setup, column),
         })
         .collect();
 
-    let picked = MultiSelect::new("Which games should gameready set up?", choices)
-        .with_help_message("space toggles, enter confirms, esc picks none")
+    let picked = MultiSelect::new(&theme::asked(QUESTION, SCOPE), choices)
+        .with_render_config(theme::questions())
+        .with_help_message(KEYS)
         .prompt_skippable()?
         .unwrap_or_default();
 
@@ -45,18 +87,6 @@ pub fn choose_games(setups: &[GameSetup]) -> Result<Vec<GameSetup>> {
         .into_iter()
         .filter_map(|choice| setups.get(choice.index).cloned())
         .collect())
-}
-
-/// How one game reads in the picker.
-///
-/// Names what the game gets, not whether a file matched: that is gameready's
-/// business, not the user's.
-pub(super) fn label(setup: &GameSetup) -> String {
-    if setup.has_profile() {
-        format!("{}  (tuned profile)", setup.game.name)
-    } else {
-        format!("{}  (gamemode)", setup.game.name)
-    }
 }
 
 #[cfg(test)]

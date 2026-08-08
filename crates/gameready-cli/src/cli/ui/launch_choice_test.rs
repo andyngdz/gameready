@@ -25,27 +25,60 @@ fn the_two_choices_read_differently() {
 }
 
 #[test]
-fn the_question_names_the_proton_version_rather_than_hiding_it_in_settings() {
-    // It is the setting a user is most likely to have chosen themselves, so it
-    // should not arrive as a surprise inside a word like "settings".
+fn the_question_counts_the_games_it_is_about() {
     let question = SteamWork {
         launch: 3,
         proton: 2,
     }
     .question();
 
-    assert!(question.contains("launch options for 3"), "{question}");
-    assert!(question.contains("Proton version for 2"), "{question}");
+    assert!(question.contains("3 games"), "{question}");
 }
 
 #[test]
-fn a_run_with_no_pins_does_not_mention_proton_at_all() {
+fn one_game_is_not_asked_about_as_one_games() {
     let question = SteamWork {
-        launch: 3,
+        launch: 1,
         proton: 0,
     }
     .question();
 
-    assert!(question.contains("launch options for 3"), "{question}");
-    assert!(!question.contains("Proton"), "{question}");
+    assert!(question.contains("1 game:"), "{question}");
+}
+
+#[test]
+fn the_detail_names_the_proton_build_rather_than_hiding_it_in_settings() {
+    // It is the setting a user is most likely to have chosen themselves, so it
+    // should not arrive as a surprise inside a word like "settings".
+    let detail = SteamWork {
+        launch: 3,
+        proton: 2,
+    }
+    .detail();
+
+    assert!(detail.contains("Launch options for 3"), "{detail}");
+    assert!(detail.contains("Proton build for 2"), "{detail}");
+}
+
+#[test]
+fn a_run_with_no_pins_does_not_mention_proton_at_all() {
+    let detail = SteamWork {
+        launch: 3,
+        proton: 0,
+    }
+    .detail();
+
+    assert!(detail.contains("Launch options for 3"), "{detail}");
+    assert!(!detail.contains("Proton"), "{detail}");
+}
+
+#[test]
+fn the_detail_says_why_steam_has_to_close() {
+    let detail = SteamWork {
+        launch: 2,
+        proton: 0,
+    }
+    .detail();
+
+    assert!(detail.contains("has to close first"), "{detail}");
 }

@@ -11,7 +11,7 @@ use gameready_core::infra::steam::{
 use gameready_core::journal::Journal;
 use inquire::Select;
 
-use crate::cli::ui::{questions::Answers, LaunchInstructions, LaunchReport};
+use crate::cli::ui::{theme, Answers, LaunchInstructions, LaunchReport};
 
 /// What the user wants done about the per-game settings Steam holds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -65,10 +65,14 @@ impl fmt::Display for LaunchChoice {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
             Self::CloseSteamAndWrite => "Close Steam and set them for me",
-            Self::ShowForCopying => "Just show me what to set, I will do it myself",
+            Self::ShowForCopying => "Just show me, I'll set them myself",
         })
     }
 }
+
+/// The promise under the question: whichever way the settings get written, they
+/// are written down first and put back exactly on a rollback.
+const EITHER_WAY: &str = "Either way, rollback puts your old config back exactly.";
 
 /// What a run has to set inside Steam, for the question that asks about it.
 pub struct SteamWork {
@@ -79,17 +83,29 @@ pub struct SteamWork {
 }
 
 impl SteamWork {
-    /// The question, naming each thing that will change.
+    /// The question, counting the games it is about.
+    fn question(&self) -> String {
+        let games = if self.launch == 1 { "game" } else { "games" };
+        format!(
+            "Steam settings for {} {games}: set them for you?",
+            self.launch
+        )
+    }
+
+    /// What will change, and why Steam has to close for it.
     ///
     /// Both counts are said out loud rather than rolled into one number: the
     /// Proton version is the setting a user is most likely to have chosen
     /// themselves, and it should not arrive as a surprise inside "settings".
-    fn question(&self) -> String {
-        let mut parts = vec![format!("launch options for {} game(s)", self.launch)];
+    fn detail(&self) -> String {
+        let mut parts = vec![format!("Launch options for {} of them", self.launch)];
         if self.proton > 0 {
-            parts.push(format!("the Proton version for {} game(s)", self.proton));
+            parts.push(format!("the Proton build for {}", self.proton));
         }
-        format!("gameready can set {}. How?", parts.join(" and "))
+        format!(
+            "{}. Steam rewrites its config when it quits, so it has to close first.",
+            parts.join(", and ")
+        )
     }
 }
 
@@ -100,13 +116,14 @@ impl SteamWork {
 /// land on.
 pub fn choose_how_to_apply(work: &SteamWork) -> Result<LaunchChoice> {
     let answer = Select::new(
-        &work.question(),
+        &theme::asked(&work.question(), &work.detail()),
         vec![
-            LaunchChoice::CloseSteamAndWrite,
             LaunchChoice::ShowForCopying,
+            LaunchChoice::CloseSteamAndWrite,
         ],
     )
-    .with_help_message("Steam has to be closed to set them; it overwrites its config when it quits")
+    .with_render_config(theme::questions())
+    .with_help_message(EITHER_WAY)
     .prompt_skippable()?;
 
     Ok(answer.unwrap_or(LaunchChoice::ShowForCopying))

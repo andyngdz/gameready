@@ -6,7 +6,7 @@ use console::style;
 use gameready_core::games::AppId;
 
 use crate::cli::ui::layout::{Mark, Section};
-use crate::cli::ui::questions::Answers;
+use crate::cli::ui::Answers;
 
 /// The per-game settings for the user to enter into Steam themselves.
 ///

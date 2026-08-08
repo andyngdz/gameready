@@ -4,6 +4,7 @@
 /// The label that introduces the command that puts things back.
 pub(crate) const UNDO: &str = "Undo";
 
+mod answers;
 mod doctor;
 mod explain;
 mod games;
@@ -22,8 +23,11 @@ mod prompt;
 pub(crate) mod questions;
 mod rollback;
 mod selftest;
+mod steps;
 mod summary;
+mod theme;
 
+pub use answers::{ask_everything, Answers};
 pub use doctor::{DoctorReport, StepFinding};
 pub use explain::{StepExplanation, StepIndex};
 pub use games::GameList;
@@ -38,7 +42,8 @@ pub use overlay::choose_overlay;
 pub use plan::InitPlan;
 pub use progress::ProgressView;
 pub use prompt::choose_games;
-pub use questions::{ask_everything, Answers, Picker, Questions};
+pub use questions::{Picker, Questions};
 pub use rollback::RollbackSummary;
 pub use selftest::SelftestSummary;
+pub use steps::Steps;
 pub use summary::Summary;

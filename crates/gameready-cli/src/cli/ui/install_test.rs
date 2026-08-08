@@ -112,7 +112,7 @@ fn a_step_that_installs_its_own_packages_reaches_the_screen() {
     let text = rendered(&plan);
 
     assert!(
-        body(&plan).starts_with("2 to install, about 6 MB"),
+        body(&plan).starts_with("2 packages to install · 6 MB"),
         "{text}"
     );
     assert!(text.contains("what gamemode is"), "{text}");
@@ -131,7 +131,7 @@ fn a_tool_the_machine_already_has_is_named_even_when_no_dependency_declared_it()
     );
     let text = rendered(&plan);
 
-    assert!(body(&plan).starts_with("1 to install"), "{text}");
+    assert!(body(&plan).starts_with("1 package to install"), "{text}");
     assert!(text.contains("Already here: gamemode"), "{text}");
 }
 
@@ -140,7 +140,7 @@ fn a_run_with_no_size_estimate_does_not_claim_zero_megabytes() {
     let plan = plan_with(Vec::new(), 0, vec![self_install("gamemode", 0)]);
     let text = rendered(&plan);
 
-    assert!(body(&plan).starts_with("1 to install\n"), "{text}");
+    assert!(body(&plan).starts_with("1 package to install\n"), "{text}");
     assert!(!text.contains("0 MB"), "{text}");
 }
 
@@ -179,7 +179,7 @@ fn what_is_already_installed_is_listed_but_not_counted() {
     let text = rendered(&plan);
 
     assert!(
-        body(&plan).starts_with("1 to install, about 5 MB"),
+        body(&plan).starts_with("1 package to install · 5 MB"),
         "{text}"
     );
     assert!(text.contains("Already here: gamemode"), "{text}");
@@ -206,8 +206,8 @@ fn nothing_to_install_renders_nothing() {
 #[test]
 fn a_size_under_a_megabyte_does_not_round_to_zero() {
     assert_eq!(approx_size(400_000), "under 1 MB");
-    assert_eq!(approx_size(5_000_000), "about 5 MB");
-    assert_eq!(approx_size(900_000_000), "about 900 MB");
+    assert_eq!(approx_size(5_000_000), "5 MB");
+    assert_eq!(approx_size(900_000_000), "900 MB");
 }
 
 #[test]

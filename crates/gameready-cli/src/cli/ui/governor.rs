@@ -5,6 +5,19 @@ use std::fmt;
 use anyhow::Result;
 use inquire::Select;
 
+use crate::cli::ui::theme;
+
+/// The question.
+const QUESTION: &str = "Keep the CPU on performance after you reboot?";
+
+/// Why this run is the one that gets asked, and what it costs to say yes.
+const WHY_ASKED: &str =
+    "Nothing else on this machine raises the clocks, so I can pin performance. \
+                         A pinned governor runs hot and drains a laptop until you undo it.";
+
+/// The reassurance under both answers.
+const EITHER_WAY: &str = "Either way: gameready rollback undoes it now.";
+
 /// The two answers to the governor-persistence question.
 #[derive(Clone, Copy)]
 enum Persistence {
@@ -32,13 +45,11 @@ impl fmt::Display for Persistence {
 /// way.
 pub fn choose_governor_persistence() -> Result<bool> {
     let answer = Select::new(
-        "Keep the CPU on performance after you reboot?",
+        &theme::asked(QUESTION, WHY_ASKED),
         vec![Persistence::ThisBoot, Persistence::KeepIt],
     )
-    .with_help_message(
-        "nothing else here raises the clocks, so I can pin it; it runs hot on a laptop, and \
-         `gameready rollback` undoes it now either way",
-    )
+    .with_render_config(theme::questions())
+    .with_help_message(EITHER_WAY)
     .prompt_skippable()?;
 
     Ok(matches!(answer, Some(Persistence::KeepIt)))

@@ -4,7 +4,13 @@ use std::path::PathBuf;
 use gameready_core::games::{default_wrappers, AppId, GameProfile, Source, Wrapper};
 use gameready_core::steam::{GameSetup, InstalledGame};
 
-use super::{choose_games, label};
+use super::{choose_games, Choice};
+
+/// The label as a terminal would show it, at a column wide enough for the name.
+fn label(setup: &GameSetup) -> String {
+    let column = console::measure_text_width(&setup.game.name);
+    console::strip_ansi_codes(&Choice::label(setup, column)).into_owned()
+}
 
 fn setup(name: &str, has_profile: bool) -> GameSetup {
     let app_id = AppId(1);
