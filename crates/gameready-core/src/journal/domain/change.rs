@@ -117,7 +117,15 @@ pub enum Change {
     },
 
     /// A directory gameready created.
-    DirCreated { path: PathBuf },
+    ///
+    /// Carries the privilege it was made with, like every other path record: a
+    /// directory in the user's own home must be removed as the user, and a run
+    /// that only made one must not ask for a password to undo itself.
+    DirCreated {
+        path: PathBuf,
+        #[serde(default = "assumed_root")]
+        privilege: Privilege,
+    },
 
     /// A directory tree gameready installed, such as a Proton build extracted
     /// from a tarball. Unlike [`DirCreated`](Self::DirCreated), the undo is a
@@ -209,7 +217,10 @@ impl Change {
                 previous: previous.clone(),
             },
 
-            Self::DirCreated { path } => Undo::RemoveDirIfEmpty { path: path.clone() },
+            Self::DirCreated { path, privilege } => Undo::RemoveDirIfEmpty {
+                path: path.clone(),
+                privilege: *privilege,
+            },
 
             Self::DirTreeInstalled { path, privilege } => Undo::RemoveDirTree {
                 path: path.clone(),

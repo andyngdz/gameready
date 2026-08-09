@@ -6,7 +6,7 @@ use crate::exec::{Cmd, CommandRunner};
 use crate::improvement::Privilege;
 use crate::journal::digest;
 use crate::rollback::domain::UndoOutcome;
-use crate::steps::MANAGED_HEADER;
+use crate::steps::{MANAGED_HEADER, RMDIR_BIN};
 
 /// Deletes a file gameready created, unless its contents no longer match.
 ///
@@ -134,9 +134,28 @@ pub(super) fn remove_dir_tree(
 }
 
 /// Removes a directory gameready created, unless something else uses it.
-pub(super) fn remove_dir(runner: &dyn CommandRunner, path: &Path) -> UndoOutcome {
-    match runner.remove_file(path, Privilege::Root) {
-        Ok(()) => UndoOutcome::Reverted {
+///
+/// `rmdir` rather than [`CommandRunner::remove_file`], which is `fs::remove_file`
+/// for a user path and `rm -f` for a root one: neither can remove a directory at
+/// all, so this reported "was not empty" for every directory including the empty
+/// ones it was supposed to take away. `rmdir` refusing a non-empty directory is
+/// exactly the behaviour this wants, so the failure branch keeps its meaning.
+pub(super) fn remove_dir(
+    runner: &dyn CommandRunner,
+    path: &Path,
+    privilege: Privilege,
+) -> UndoOutcome {
+    if !runner.path_exists(path) {
+        return UndoOutcome::AlreadyGone;
+    }
+    let cmd = match privilege {
+        Privilege::Root => Cmd::root(RMDIR_BIN),
+        Privilege::User => Cmd::user(RMDIR_BIN),
+    }
+    .arg(path.to_string_lossy().into_owned());
+
+    match runner.run(&cmd) {
+        Ok(_) => UndoOutcome::Reverted {
             detail: format!("removed {}", path.display()),
         },
         Err(_) => UndoOutcome::Left {

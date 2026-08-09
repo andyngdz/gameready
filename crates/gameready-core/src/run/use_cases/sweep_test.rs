@@ -103,6 +103,7 @@ impl CoreImprovement for Fake {
         cx.mutate(
             Change::DirCreated {
                 path: "/tmp/fake".into(),
+                privilege: Privilege::User,
             },
             |runner| {
                 runner
@@ -335,7 +336,16 @@ fn the_recheck_names_the_step_that_made_it_worth_looking_again() {
         .iter()
         .find_map(|event| match event {
             RunEvent::Reprobing { step, after } => Some((step.clone(), after.clone())),
-            _ => None,
+            RunEvent::Probing { .. }
+            | RunEvent::Deferred { .. }
+            | RunEvent::Planned { .. }
+            | RunEvent::DependenciesResolved { .. }
+            | RunEvent::InstallingDependencies { .. }
+            | RunEvent::DependenciesInstalled { .. }
+            | RunEvent::Applying { .. }
+            | RunEvent::StepProgress { .. }
+            | RunEvent::StepBytes { .. }
+            | RunEvent::Finished { .. } => None,
         })
         .expect("one re-check");
     assert_eq!(recheck.0.as_str(), "test.sched");

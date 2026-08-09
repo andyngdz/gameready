@@ -72,6 +72,36 @@ fn one_system_change_in_the_run_is_enough_to_need_a_password() {
 }
 
 #[test]
+fn a_directory_made_in_the_users_own_home_needs_no_password_either() {
+    // Regression: RemoveDirIfEmpty carried no privilege and was hardcoded to
+    // root, so the first step to create a directory under $HOME made a
+    // user-only run demand a password to undo itself.
+    let plan = plan_of(vec![
+        Undo::RemoveDirIfEmpty {
+            path: "/home/someone/.config/environment.d".into(),
+            privilege: Privilege::User,
+        },
+        Undo::DeleteFile {
+            path: "/home/someone/.config/environment.d/99-gameready-shader-cache.conf".into(),
+            expect_sha256: "0".repeat(64),
+            privilege: Privilege::User,
+        },
+    ]);
+
+    assert!(!plan.needs_root());
+}
+
+#[test]
+fn a_directory_made_outside_the_home_still_needs_a_password() {
+    let plan = plan_of(vec![Undo::RemoveDirIfEmpty {
+        path: "/etc/gameready".into(),
+        privilege: Privilege::Root,
+    }]);
+
+    assert!(plan.needs_root());
+}
+
+#[test]
 fn reporting_packages_is_not_a_system_change() {
     // It performs nothing. Whether the caller then removes them is a policy the
     // command applies, not something this record says.

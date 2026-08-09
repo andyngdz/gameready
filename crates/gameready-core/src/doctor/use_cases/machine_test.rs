@@ -38,6 +38,7 @@ fn a_disk_reports_its_active_scheduler() {
         .with_file("/sys/block/nvme0n1/queue/scheduler", "[none] mq-deadline\n");
     let disks = machine_report(&runner).disks;
     assert_eq!(disks.len(), 1);
-    assert_eq!(disks[0].name, "nvme0n1");
-    assert_eq!(disks[0].scheduler, "none");
+    let disk = &disks[0];
+    assert_eq!(disk.name, "nvme0n1");
+    assert_eq!(disk.scheduler, "none");
 }

@@ -1,4 +1,4 @@
-//! Raise `vm.max_map_count` so memory-hungry Proton titles can start.
+//! Stop the kernel punishing a game that takes a split lock.
 
 use std::path::{Path, PathBuf};
 
@@ -8,75 +8,84 @@ use crate::improvement::{
     Probe, StepError, StepPlan, Tag, Verification,
 };
 use crate::journal::{digest, Change, RunId};
-use crate::steps::constants::{PROC_SYS_VM, SYSCTL_BIN, SYSCTL_DROPIN, VM_MAX_MAP_COUNT};
+use crate::steps::constants::{
+    KERNEL_SPLIT_LOCK_MITIGATE, PROC_SYS_KERNEL, SPLIT_LOCK_DROPIN, SYSCTL_BIN, UNDO_NO_REBOOT,
+};
+use crate::steps::domain::GAMEMODE;
 use crate::steps::use_cases::sysctl_dropin::{read_value, single_key_dropin};
 
-/// The value SteamOS ships, `INT_MAX - 5`.
+/// Warn about a split lock, but do not punish the thread that took one.
 ///
-/// Some Proton titles map an enormous number of regions and simply fail to
-/// start below this: DayZ, Hogwarts Legacy, and CS2 are the usual reports. Arch
-/// raised its default to 1048576 in April 2024 and Fedora and Ubuntu sit there
-/// too, which closes most of the gap but not all of it.
-///
-/// The cost of raising it is close to nothing. The parameter caps how many
-/// mappings a process may hold, not how much memory it may use; a process that
-/// does not map that many is unaffected.
-const TARGET: u64 = 2_147_483_642;
+/// The kernel's other setting, 1, is what upstream calls misery mode: the
+/// offending thread is held so nothing else on the machine pays for its
+/// unaligned access. That is the right trade on a shared server and the wrong
+/// one on a desktop, where the offending thread is the game.
+const TARGET: u64 = 0;
 
-/// Raises `vm.max_map_count` and makes the change survive a reboot.
+/// Turns off the split-lock penalty and makes the change survive a reboot.
 #[derive(Debug, Default, Clone, Copy)]
-pub struct MaxMapCount;
+pub struct SplitLock;
 
-impl MaxMapCount {
+impl SplitLock {
     /// The step's stable id.
     #[must_use]
     pub const fn id_const() -> ImprovementId {
-        ImprovementId::from_static("core.sysctl.max-map-count")
+        ImprovementId::from_static("core.sysctl.split-lock")
     }
 
     /// Where the kernel exposes the live value.
     #[must_use]
     pub fn runtime_path() -> PathBuf {
-        Path::new(PROC_SYS_VM).join("max_map_count")
+        Path::new(PROC_SYS_KERNEL).join("split_lock_mitigate")
     }
 
     /// Reads the value the kernel currently reports.
     fn read_current(&self, runner: &dyn crate::exec::CommandRunner) -> Result<u64, StepError> {
-        read_value(runner, &Self::runtime_path(), VM_MAX_MAP_COUNT)
+        read_value(runner, &Self::runtime_path(), KERNEL_SPLIT_LOCK_MITIGATE)
     }
 
     /// The drop-in file's contents, carrying the marker `doctor` looks for.
     fn dropin_contents(run: RunId) -> String {
-        single_key_dropin(Self::id_const(), run, VM_MAX_MAP_COUNT, TARGET)
+        single_key_dropin(Self::id_const(), run, KERNEL_SPLIT_LOCK_MITIGATE, TARGET)
     }
 }
 
-impl Improvement for MaxMapCount {
+impl Improvement for SplitLock {
     fn id(&self) -> ImprovementId {
         Self::id_const()
     }
 
     fn name(&self) -> &str {
-        "Raise vm.max_map_count for Proton titles"
+        "Stop the split-lock penalty stalling games"
     }
 
+    /// Short on purpose: the label column is sized from the widest name in the
+    /// catalog, so a long one here wraps the evidence for every other step too.
     fn short_name(&self) -> &str {
-        "vm.max_map_count"
+        "split lock"
     }
 
     fn blurb(&self) -> &str {
-        "Memory maps for Proton titles"
+        "Split-lock penalty for games"
     }
 
     fn gains(&self) -> Option<&str> {
-        Some("Proton games that need many memory regions start, instead of refusing to.")
+        Some("Games that take split locks run at full speed instead of being throttled.")
+    }
+
+    fn undo_note(&self) -> Option<&str> {
+        Some(UNDO_NO_REBOOT)
     }
 
     fn rationale(&self) -> &str {
-        "Some Proton games map far more memory regions than the kernel default \
-         allows and refuse to start. Raising the cap to the value SteamOS uses \
-         costs nothing: it limits how many mappings a process may hold, not how \
-         much memory it may use."
+        "A handful of games take split locks, an unaligned atomic access the \
+         CPU handles slowly. Since kernel 5.19 the default is to hold the \
+         offending thread so the rest of the machine does not pay for it, which \
+         on a desktop throttles the game to a crawl. Turning the penalty off \
+         keeps the kernel log warning and drops the stall. gamemode already \
+         does this for anything launched through gamemoderun, so this step \
+         stands down when gamemode is installed and exists for the games that \
+         are not started that way."
     }
 
     fn privilege(&self) -> Privilege {
@@ -84,16 +93,34 @@ impl Improvement for MaxMapCount {
     }
 
     fn tags(&self) -> &[Tag] {
-        &[Tag::Memory, Tag::Wine]
+        &[Tag::Cpu]
     }
 }
 
-impl CoreImprovement for MaxMapCount {
+impl CoreImprovement for SplitLock {
     fn probe(&self, cx: &CoreCx<'_>) -> Result<Probe, StepError> {
+        // Only x86 has a split-lock detector, and only some kernels build it.
+        // Either way the file is absent and there is nothing to turn off.
+        if !cx.runner.path_exists(&Self::runtime_path()) {
+            return Ok(Probe::NotApplicable {
+                reason: "this kernel has no split-lock detector".to_owned(),
+            });
+        }
+
         let current = self.read_current(cx.runner)?;
-        if current >= TARGET {
+        if current == TARGET {
             return Ok(Probe::AlreadyApplied {
-                evidence: format!("{VM_MAX_MAP_COUNT} is already {current}"),
+                evidence: format!("{KERNEL_SPLIT_LOCK_MITIGATE} is already {current}"),
+            });
+        }
+        // gamemode ships disable_splitlock=1, so it already clears this while a
+        // client runs and puts it back afterwards. Every launch option
+        // gameready writes starts with gamemoderun, so on a machine that has
+        // gamemode the games this tool configures are covered. Standing down
+        // here matches what core.cpu.governor does for the same reason.
+        if cx.runner.which(GAMEMODE.binary).is_some() {
+            return Ok(Probe::AlreadyApplied {
+                evidence: "gamemode is here and clears it while a game runs".to_owned(),
             });
         }
         Ok(Probe::Applicable)
@@ -103,14 +130,14 @@ impl CoreImprovement for MaxMapCount {
         let current = self.read_current(cx.runner)?;
         Ok(StepPlan::new(
             self.id(),
-            format!("{VM_MAX_MAP_COUNT} {current} -> {TARGET}"),
+            format!("{KERNEL_SPLIT_LOCK_MITIGATE} {current} -> {TARGET}"),
         )
         .action(PlannedAction::CreateFile {
-            path: SYSCTL_DROPIN.to_owned(),
-            contents: format!("{VM_MAX_MAP_COUNT} = {TARGET}"),
+            path: SPLIT_LOCK_DROPIN.to_owned(),
+            contents: format!("{KERNEL_SPLIT_LOCK_MITIGATE} = {TARGET}"),
         })
         .action(PlannedAction::SetSysctl {
-            key: VM_MAX_MAP_COUNT.to_owned(),
+            key: KERNEL_SPLIT_LOCK_MITIGATE.to_owned(),
             from: current.to_string(),
             to: TARGET.to_string(),
         }))
@@ -118,12 +145,12 @@ impl CoreImprovement for MaxMapCount {
 
     fn apply(&self, cx: &mut ApplyCx<'_, CoreCx<'_>>) -> Result<(), StepError> {
         let previous = self.read_current(cx.reader())?;
-        let dropin = PathBuf::from(SYSCTL_DROPIN);
+        let dropin = PathBuf::from(SPLIT_LOCK_DROPIN);
         let contents = Self::dropin_contents(cx.run());
 
-        // Persistence first. If the run dies between the two mutations the
-        // system is left correct on the next boot rather than correct now and
-        // wrong later, which is the harder failure to notice.
+        // Persistence first, for the reason given on the max_map_count step: a
+        // run that dies between the two leaves the machine correct on the next
+        // boot rather than correct now and wrong later.
         let sha256_after = digest(&contents);
         cx.mutate(
             Change::FileWritten {
@@ -143,13 +170,13 @@ impl CoreImprovement for MaxMapCount {
 
         cx.mutate(
             Change::SysctlRuntime {
-                key: VM_MAX_MAP_COUNT.to_owned(),
+                key: KERNEL_SPLIT_LOCK_MITIGATE.to_owned(),
                 previous: previous.to_string(),
             },
             |runner| {
                 let set = Cmd::root(SYSCTL_BIN)
                     .arg("-w")
-                    .arg(format!("{VM_MAX_MAP_COUNT}={TARGET}"));
+                    .arg(format!("{KERNEL_SPLIT_LOCK_MITIGATE}={TARGET}"));
                 runner.run(&set).map(|_| ()).map_err(StepError::Exec)
             },
         )
@@ -157,16 +184,16 @@ impl CoreImprovement for MaxMapCount {
 
     fn verify(&self, cx: &CoreCx<'_>) -> Result<Verification, StepError> {
         let current = self.read_current(cx.runner)?;
-        let persisted = cx.runner.path_exists(Path::new(SYSCTL_DROPIN));
+        let persisted = cx.runner.path_exists(Path::new(SPLIT_LOCK_DROPIN));
 
         Ok(Verification::new()
             .check(Check::equals(
-                format!("runtime {VM_MAX_MAP_COUNT}"),
+                format!("runtime {KERNEL_SPLIT_LOCK_MITIGATE}"),
                 TARGET.to_string(),
                 current.to_string(),
             ))
             .check(Check::equals(
-                format!("{SYSCTL_DROPIN} exists"),
+                format!("{SPLIT_LOCK_DROPIN} exists"),
                 "yes",
                 if persisted { "yes" } else { "no" },
             )))
@@ -207,5 +234,5 @@ impl CoreImprovement for MaxMapCount {
 }
 
 #[cfg(test)]
-#[path = "sysctl_max_map_count_test.rs"]
-mod sysctl_max_map_count_test;
+#[path = "sysctl_split_lock_test.rs"]
+mod sysctl_split_lock_test;

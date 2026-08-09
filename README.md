@@ -13,7 +13,9 @@ gameready applies changes in these categories:
 - kernel parameters via `/etc/sysctl.d`
 - block device I/O schedulers via a udev rule
 - sched_ext schedulers, loaded at runtime
-- packages: gamemode, mangohud, gamescope
+- packages: gamemode and mangohud
+- gamemode's own configuration, in `~/.config/gamemode.ini`
+- the GPU shader cache size, via `~/.config/environment.d`
 - Proton-GE into `compatibilitytools.d`
 - per-game Steam launch options, environment variables, and Proton version
 
@@ -148,6 +150,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 - **M4** Steam scanning, per-game profiles, launch options (done)
 - **M5** sched_ext, I/O scheduler, swappiness policy, Proton-GE (done)
 - **M6** full `init` flow, docs, packaging (done)
+- **M7** split-lock and memory latency parameters, shader cache, gamemode config (done)
 
 ## License
 

@@ -88,7 +88,10 @@ fn a_governor_daemon_is_a_conflict() {
     let runner = tuned_running(laptop_on_powersave());
     match probe(&runner) {
         Probe::Conflict { with, .. } => assert_eq!(with, "tuned.service"),
-        other => panic!("expected a conflict, got {other:?}"),
+        other @ (Probe::Applicable
+        | Probe::AlreadyApplied { .. }
+        | Probe::NotApplicable { .. }
+        | Probe::Unknown { .. }) => panic!("expected a conflict, got {other:?}"),
     }
 }
 
@@ -126,7 +129,10 @@ fn power_profiles_daemon_without_gamemode_is_a_conflict() {
     let runner = ppd_running(laptop_on_powersave());
     match probe(&runner) {
         Probe::Conflict { with, .. } => assert_eq!(with, "power-profiles-daemon.service"),
-        other => panic!("expected a conflict, got {other:?}"),
+        other @ (Probe::Applicable
+        | Probe::AlreadyApplied { .. }
+        | Probe::NotApplicable { .. }
+        | Probe::Unknown { .. }) => panic!("expected a conflict, got {other:?}"),
     }
 }
 

@@ -47,7 +47,7 @@ pub(super) fn perform(
 
         Undo::RestoreScxScheduler { previous } => restore_scheduler(runner, previous.as_deref()),
 
-        Undo::RemoveDirIfEmpty { path } => remove_dir(runner, path),
+        Undo::RemoveDirIfEmpty { path, privilege } => remove_dir(runner, path, *privilege),
 
         Undo::RemoveDirTree { path, privilege } => remove_dir_tree(runner, path, *privilege),
     }

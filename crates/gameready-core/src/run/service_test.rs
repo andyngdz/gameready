@@ -83,6 +83,7 @@ impl CoreImprovement for Fake {
         cx.mutate(
             Change::DirCreated {
                 path: "/tmp/fake".into(),
+                privilege: Privilege::User,
             },
             |runner| {
                 runner

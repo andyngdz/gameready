@@ -84,8 +84,8 @@ fn a_directory_tree_that_is_already_gone_needs_no_undo() {
 fn a_removed_directory_is_named_in_what_the_undo_reports() {
     // The reason a directory undo says which path it took is that the summary
     // is the only place a user sees it; nothing else prints the path.
-    let runner = MockRunner::new();
-    let outcome = remove_dir(&runner, Path::new("/etc/scx_loader"));
+    let runner = MockRunner::new().with_file("/etc/scx_loader", String::new());
+    let outcome = remove_dir(&runner, Path::new("/etc/scx_loader"), Privilege::Root);
 
     match outcome {
         UndoOutcome::Reverted { detail } => assert!(detail.contains("/etc/scx_loader"), "{detail}"),
@@ -93,5 +93,69 @@ fn a_removed_directory_is_named_in_what_the_undo_reports() {
         | UndoOutcome::Left { .. }
         | UndoOutcome::Refused { .. }
         | UndoOutcome::Failed { .. }) => panic!("expected a removal, got {other:?}"),
+    }
+}
+
+#[test]
+fn removing_a_directory_uses_rmdir_not_a_file_delete() {
+    // Regression: this called remove_file, which is fs::remove_file for a user
+    // path and `rm -f` for a root one. Neither can remove a directory at all,
+    // so every directory undo reported "was not empty" and left it behind.
+    let runner = MockRunner::new().with_file("/home/someone/.config/environment.d", String::new());
+    let outcome = remove_dir(
+        &runner,
+        Path::new("/home/someone/.config/environment.d"),
+        Privilege::User,
+    );
+
+    assert!(
+        matches!(outcome, UndoOutcome::Reverted { .. }),
+        "{outcome:?}"
+    );
+    assert!(
+        runner
+            .commands()
+            .iter()
+            .any(|cmd| cmd == "rmdir /home/someone/.config/environment.d"),
+        "{:?}",
+        runner.commands()
+    );
+}
+
+#[test]
+fn a_users_own_directory_is_removed_without_sudo() {
+    // Asking for a password to take away a directory in their own home teaches
+    // them to type it without reading what asked.
+    let runner = MockRunner::new().with_file("/home/someone/.config/environment.d", String::new());
+    let _ = remove_dir(
+        &runner,
+        Path::new("/home/someone/.config/environment.d"),
+        Privilege::User,
+    );
+
+    assert!(
+        !runner.commands().iter().any(|cmd| cmd.starts_with("sudo")),
+        "{:?}",
+        runner.commands()
+    );
+}
+
+#[test]
+fn a_directory_something_else_still_uses_is_left_alone() {
+    let runner = MockRunner::new()
+        .with_file("/home/someone/.config/environment.d", String::new())
+        .failing("rmdir /home/someone/.config/environment.d");
+    let outcome = remove_dir(
+        &runner,
+        Path::new("/home/someone/.config/environment.d"),
+        Privilege::User,
+    );
+
+    match outcome {
+        UndoOutcome::Left { reason } => assert!(reason.contains("was not empty"), "{reason}"),
+        other @ (UndoOutcome::Reverted { .. }
+        | UndoOutcome::AlreadyGone
+        | UndoOutcome::Refused { .. }
+        | UndoOutcome::Failed { .. }) => panic!("expected it to be left, got {other:?}"),
     }
 }

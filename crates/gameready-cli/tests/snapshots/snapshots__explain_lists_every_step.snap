@@ -4,14 +4,18 @@ expression: "run_with(&[\"explain\"], Reads :: Fixture, | _, _ | {})"
 ---
 exit code: 0
 ----- stdout -----
-9 tunings, in the order a run works through them
+13 tunings, in the order a run works through them
 
 System
   core.conflicts            Daemons that fight gamemode
   core.sysctl.max-map-count Memory maps for Proton titles
+  core.sysctl.split-lock    Split-lock penalty for games
+  core.sysctl.vm-latency    Memory manager latency
   core.io.scheduler         An I/O scheduler per disk
   core.memory.swappiness    Swappiness for zram
   core.pkg.tools            gamemode and mangohud
+  core.gamemode.config      gamemode priority
+  core.gpu.shader-cache     Shader cache size
   core.proton.ge            Latest Proton-GE
   core.repo.scx-ppa         The scx repository, Debian only
   core.sched.scx-lavd       The scx_lavd CPU scheduler

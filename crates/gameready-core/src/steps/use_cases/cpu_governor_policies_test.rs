@@ -55,8 +55,9 @@ fn hardware_that_does_not_offer_performance_never_moves() {
             "powersave\n",
         );
     let policies = read_policies(&runner);
-    assert!(!policies[0].offers_performance());
-    assert!(!policies[0].needs_change());
+    let policy = &policies[0];
+    assert!(!policy.offers_performance());
+    assert!(!policy.needs_change());
 }
 
 #[test]

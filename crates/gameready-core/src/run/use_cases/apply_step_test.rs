@@ -39,6 +39,7 @@ impl CoreImprovement for FakeStep {
         cx.mutate(
             Change::DirCreated {
                 path: "/tmp/fake-apply".into(),
+                privilege: Privilege::User,
             },
             |runner| {
                 runner

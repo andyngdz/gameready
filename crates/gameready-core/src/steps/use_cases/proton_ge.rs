@@ -11,8 +11,9 @@ use crate::improvement::{
     Probe, StepError, StepPlan, Tag, Verification,
 };
 use crate::journal::Change;
-use crate::steps::constants::{COMPAT_TOOLS_DIR, COMPAT_TOOL_VDF, CURL_BIN, TAR_BIN};
+use crate::steps::constants::{COMPAT_TOOLS_DIR, COMPAT_TOOL_VDF, CURL_BIN, MKDIR_BIN, TAR_BIN};
 use crate::steps::domain::tarball_name;
+use crate::steps::use_cases::user_home::user_home;
 
 use proton_ge_fetch::{download_verified, fetch_release};
 
@@ -33,11 +34,8 @@ impl ProtonGe {
     /// Discovers the compat dir from the user's Steam root.
     #[must_use]
     pub fn detect() -> Self {
-        let home = std::env::var("HOME").unwrap_or_else(|_| "/root".to_owned());
         Self {
-            compat_dir: PathBuf::from(home)
-                .join(".steam/root")
-                .join(COMPAT_TOOLS_DIR),
+            compat_dir: user_home().join(".steam/root").join(COMPAT_TOOLS_DIR),
         }
     }
 
@@ -150,7 +148,7 @@ impl CoreImprovement for ProtonGe {
             },
             |runner| {
                 if !runner.path_exists(&self.compat_dir) {
-                    let mkdir = Cmd::user("mkdir")
+                    let mkdir = Cmd::user(MKDIR_BIN)
                         .arg("-p")
                         .arg(self.compat_dir.to_string_lossy().into_owned());
                     runner.run(&mkdir).map_err(StepError::Exec)?;

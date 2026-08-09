@@ -4,8 +4,9 @@ use std::path::PathBuf;
 
 use crate::improvement::{CoreImprovement, ImprovementId};
 use crate::steps::use_cases::{
-    Conflicts, CpuGovernor, GamingTools, IoScheduler, MaxMapCount, ProtonGe, ScxLavd, ScxPpa,
-    SteamLaunchOptions, SteamProton, Swappiness,
+    Conflicts, CpuGovernor, GamemodeConfig, GamingTools, IoScheduler, MaxMapCount, ProtonGe,
+    ScxLavd, ScxPpa, ShaderCache, SplitLock, SteamLaunchOptions, SteamProton, Swappiness,
+    VmLatency,
 };
 
 /// Every system-wide improvement gameready ships, in the order they apply.
@@ -22,9 +23,15 @@ pub fn core_steps() -> Vec<Box<dyn CoreImprovement>> {
         // install gamemode and defer to it.
         Box::new(Conflicts),
         Box::new(MaxMapCount),
+        Box::new(SplitLock),
+        Box::new(VmLatency),
         Box::new(IoScheduler),
         Box::new(Swappiness),
         Box::new(GamingTools),
+        // After the tools, so a machine that just got gamemode is re-probed
+        // through `requires()` rather than told to run gameready twice.
+        Box::new(GamemodeConfig::detect()),
+        Box::new(ShaderCache::detect()),
         Box::new(ProtonGe::detect()),
         // The repository before the step that installs from it, so a single
         // run can go from an Ubuntu box with no scx to a loaded scheduler.

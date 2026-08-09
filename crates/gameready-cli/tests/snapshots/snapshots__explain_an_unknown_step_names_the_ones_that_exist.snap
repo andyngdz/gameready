@@ -1,9 +1,9 @@
 ---
 source: crates/gameready-cli/tests/snapshots.rs
-expression: "gameready(&[\"explain\", \"core.sysctl.max-map-conut\"])"
+expression: "run_with(&[\"explain\", \"core.sysctl.max-map-conut\"], Reads :: Fixture,\n| _, _ | {})"
 ---
 exit code: 2
 ----- stdout -----
 
 ----- stderr -----
-gameready: no step named `core.sysctl.max-map-conut`. There is: core.conflicts, core.sysctl.max-map-count, core.io.scheduler, core.memory.swappiness, core.pkg.tools, core.proton.ge, core.repo.scx-ppa, core.sched.scx-lavd, core.cpu.governor
+gameready: no step named `core.sysctl.max-map-conut`. There is: core.conflicts, core.sysctl.max-map-count, core.sysctl.split-lock, core.sysctl.vm-latency, core.io.scheduler, core.memory.swappiness, core.pkg.tools, core.gamemode.config, core.gpu.shader-cache, core.proton.ge, core.repo.scx-ppa, core.sched.scx-lavd, core.cpu.governor

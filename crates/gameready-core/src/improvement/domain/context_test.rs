@@ -4,6 +4,7 @@ use tempfile::TempDir;
 
 use super::*;
 use crate::facts::SystemFacts;
+use crate::improvement::Privilege;
 use crate::infra::exec::MockRunner;
 use crate::journal::{Journal, RunId, StatePaths};
 
@@ -14,6 +15,7 @@ fn facts() -> SystemFacts {
 fn change() -> Change {
     Change::DirCreated {
         path: PathBuf::from("/tmp/gameready-test"),
+        privilege: Privilege::Root,
     }
 }
 

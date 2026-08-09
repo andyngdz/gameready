@@ -18,16 +18,20 @@ exit code: 0
   ! Rollback restores your config, but leaves packages installed. Removing them is your call, not
     mine.
 
-Dry run. 5 would apply · 2 already set · 2 not applicable
+Dry run. 6 would apply · 2 already set · 5 not applicable
 
   • Competing daemons         no competing daemons found
+  - split lock                this kernel has no split-lock detector
+  - vm latency                this kernel exposes none of these parameters
   • I/O schedulers            nvme0n1 on none
   - Swappiness                swap is on disk, not zram; the default swappiness is right
+  - shader cache              no NVIDIA, AMD, or Intel GPU found
   - Proton-GE                 Steam root not found
   - vm.max_map_count          dry run
   - gamemode + mangohud       dry run
   - scx repository            dry run
   - CPU speed                 dry run
+  - gamemode.ini              dry run
   - CPU scheduler scx_lavd    dry run
 
   Nothing was touched. Drop --dry-run to apply.

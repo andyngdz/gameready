@@ -170,6 +170,7 @@ fn every_change_round_trips_through_json() {
         },
         Change::DirCreated {
             path: PathBuf::from("/etc/gameready"),
+            privilege: Privilege::Root,
         },
         Change::DirTreeInstalled {
             path: PathBuf::from("/home/u/.steam/root/compatibilitytools.d/GE-Proton11-3"),

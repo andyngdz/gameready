@@ -72,7 +72,11 @@ pub enum Undo {
     RestoreScxScheduler { previous: Option<String> },
 
     /// Remove a directory, but only if nothing else put anything in it.
-    RemoveDirIfEmpty { path: PathBuf },
+    RemoveDirIfEmpty {
+        path: PathBuf,
+        #[serde(default = "assumed_root")]
+        privilege: Privilege,
+    },
 
     /// Recursively remove a directory tree gameready installed.
     ///
@@ -102,30 +106,30 @@ impl Undo {
             Self::ReportPackages { .. } => "packages".to_owned(),
             Self::RestoreFile { path, .. }
             | Self::DeleteFile { path, .. }
-            | Self::RemoveDirIfEmpty { path }
+            | Self::RemoveDirIfEmpty { path, .. }
             | Self::RemoveDirTree { path, .. } => file_name(path),
         }
     }
 
     /// What this operation has to be run as.
     ///
-    /// The file operations carry the privilege the write was made with, so
-    /// undoing a file in the user's own home is a user's job. Everything else
+    /// The path operations carry the privilege the change was made with, so
+    /// undoing something in the user's own home is a user's job and a run that
+    /// only touched their home never asks for a password. Everything else
     /// touches the system by definition: `/proc/sys`, `/sys`, a systemd unit,
-    /// an apt repository. `RemoveDirIfEmpty` has no privilege recorded and is
-    /// only ever written beside a root-owned tree, so it counts as root.
+    /// an apt repository.
     #[must_use]
     pub const fn privilege(&self) -> Privilege {
         match self {
             Self::RestoreFile { privilege, .. }
             | Self::DeleteFile { privilege, .. }
+            | Self::RemoveDirIfEmpty { privilege, .. }
             | Self::RemoveDirTree { privilege, .. } => *privilege,
             Self::SetSysctl { .. }
             | Self::WriteSysfs { .. }
             | Self::RestoreScxScheduler { .. }
             | Self::RestoreUnit { .. }
-            | Self::RemoveAptRepository { .. }
-            | Self::RemoveDirIfEmpty { .. } => Privilege::Root,
+            | Self::RemoveAptRepository { .. } => Privilege::Root,
             // Reporting packages changes nothing. Removing them does, and that
             // is the caller's policy rather than a property of this record.
             Self::ReportPackages { .. } => Privilege::User,

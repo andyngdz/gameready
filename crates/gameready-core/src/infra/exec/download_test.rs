@@ -14,7 +14,16 @@ fn a_transfer_that_never_connects_names_the_url_rather_than_a_path() {
 
     match error {
         ExecError::Download { url, .. } => assert_eq!(url, REFUSED),
-        other => panic!("expected a download failure, got {other:?}"),
+        other @ (ExecError::NonZeroExit { .. }
+        | ExecError::Spawn { .. }
+        | ExecError::Signalled { .. }
+        | ExecError::Read { .. }
+        | ExecError::Write { .. }
+        | ExecError::NoEscalator { .. }
+        | ExecError::EscalationNeedsPassword { .. }
+        | ExecError::DryRunMutation { .. }) => {
+            panic!("expected a download failure, got {other:?}")
+        }
     }
 }
 
