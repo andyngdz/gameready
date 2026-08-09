@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use itertools::Itertools as _;
 
 use crate::exec::CommandRunner;
+use crate::improvement::Probe;
 use crate::steps::domain::GOVERNOR_DAEMONS;
 use crate::systemd::{unit_state, UnitState};
 
@@ -113,21 +114,38 @@ pub(super) fn summary(policies: &[GovernorPolicy]) -> String {
         })
         .join(", ");
     if changing.is_empty() {
-        "CPU governor already on performance".to_owned()
+        "CPU already at full speed".to_owned()
     } else {
-        format!("CPU governor: {changing}")
+        format!("CPU speed: {changing}")
     }
 }
 
-/// The first governor-owning daemon that is live, if any.
+/// The conflict a live governor daemon makes, if one would defeat a static pin.
 ///
-/// A machine with no systemd cannot be running either of them, so a query that
-/// cannot be answered reads as "no conflict" rather than stopping the step.
-pub(super) fn conflicting_daemon(runner: &dyn CommandRunner) -> Option<&'static str> {
-    GOVERNOR_DAEMONS.into_iter().find(|unit| {
-        unit_state(runner, unit)
-            .map(UnitState::is_live)
-            .unwrap_or(false)
+/// With gamemode present, a daemon gamemode coordinates with is skipped: it is
+/// how gamemode raises the governor, not a rival to it. A machine with no
+/// systemd cannot be running either of them, so a query that cannot be answered
+/// reads as "no conflict" rather than stopping the step.
+pub(super) fn governor_conflict(
+    runner: &dyn CommandRunner,
+    gamemode_present: bool,
+) -> Option<Probe> {
+    let daemon = GOVERNOR_DAEMONS
+        .into_iter()
+        .filter(|daemon| !(gamemode_present && daemon.cooperates_with_gamemode))
+        .find(|daemon| {
+            unit_state(runner, daemon.unit)
+                .map(UnitState::is_live)
+                .unwrap_or(false)
+        })?
+        .unit;
+    Some(Probe::Conflict {
+        with: daemon.to_owned(),
+        detail: format!(
+            "{daemon} sets the CPU speed on its own schedule, so a change here would be \
+             overwritten seconds later"
+        ),
+        yours: Some(format!("systemctl disable --now {daemon}")),
     })
 }
 

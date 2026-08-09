@@ -1,4 +1,44 @@
-use super::{Prompts, GUTTER, NOT_PICKED, PICKED};
+use super::{Asked, Prompts, CHECKED, GUTTER, NOT_PICKED, PICKED};
+
+const QUESTION: &str = "Set them for you?";
+const DETAIL: &str = "Nothing is written until you say yes.";
+const KEYS: &str = "enter confirm · esc skip";
+
+fn asked() -> Asked {
+    Asked::new(QUESTION, DETAIL, KEYS)
+}
+
+#[test]
+fn a_one_of_list_arrives_with_its_keys_and_its_dial() {
+    // The point of going through Asked: neither the keys line nor the config
+    // can be left off, because the caller never wires either one itself.
+    let question = asked();
+    let prompt = question.one_of(vec!["yes", "no"]);
+
+    assert_eq!(prompt.help_message, Some(KEYS));
+    assert_eq!(
+        prompt.render_config.highlighted_option_prefix.content,
+        PICKED
+    );
+}
+
+#[test]
+fn a_many_list_arrives_with_its_keys_and_its_checkboxes() {
+    let question = asked();
+    let prompt = question.any_of(vec!["one", "two"]);
+
+    assert_eq!(prompt.help_message, Some(KEYS));
+    assert_eq!(prompt.render_config.selected_checkbox.content, CHECKED);
+}
+
+#[test]
+fn the_question_and_what_sits_under_it_both_reach_the_prompt() {
+    let question = asked();
+    let prompt = question.one_of(vec!["yes"]);
+
+    assert!(prompt.message.contains(QUESTION), "{}", prompt.message);
+    assert!(prompt.message.contains(DETAIL), "{}", prompt.message);
+}
 
 #[test]
 fn a_multi_select_marks_no_row_as_the_one_the_keyboard_is_on() {

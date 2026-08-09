@@ -36,6 +36,19 @@ fn tuned_running(runner: MockRunner) -> MockRunner {
         .answering("systemctl is-active tuned.service", "active")
 }
 
+fn ppd_running(runner: MockRunner) -> MockRunner {
+    runner
+        .with_binary("systemctl")
+        .answering(
+            "systemctl is-enabled power-profiles-daemon.service",
+            "enabled",
+        )
+        .answering(
+            "systemctl is-active power-profiles-daemon.service",
+            "active",
+        )
+}
+
 fn probe(runner: &MockRunner) -> Probe {
     let facts = facts();
     let cx = CoreCx::new(&facts, runner);
@@ -92,10 +105,29 @@ fn nothing_else_will_raise_it_so_it_applies() {
 
 #[test]
 fn a_conflicting_daemon_is_reported_ahead_of_gamemode() {
-    // With a governor daemon live, gamemode's own raise is overwritten too, so
-    // "gamemode has it" would be a lie. Row 4 must win over row 5.
+    // tuned defeats gamemode's own raise too, so "gamemode has it" would be a
+    // lie. A daemon gamemode cannot coordinate with wins over the gamemode row.
     let runner = tuned_running(laptop_on_powersave()).with_binary("gamemoded");
     assert!(matches!(probe(&runner), Probe::Conflict { .. }));
+}
+
+#[test]
+fn power_profiles_daemon_with_gamemode_present_is_handled_not_a_conflict() {
+    // gamemode holds PPD's performance profile while a game runs, so the two
+    // cooperate. Reporting a conflict here would push the user to disable PPD
+    // for no gain and lose their power management with it.
+    let runner = ppd_running(laptop_on_powersave()).with_binary("gamemoded");
+    assert!(matches!(probe(&runner), Probe::AlreadyApplied { .. }));
+}
+
+#[test]
+fn power_profiles_daemon_without_gamemode_is_a_conflict() {
+    // Nothing drives PPD to performance, so a static pin loses to it.
+    let runner = ppd_running(laptop_on_powersave());
+    match probe(&runner) {
+        Probe::Conflict { with, .. } => assert_eq!(with, "power-profiles-daemon.service"),
+        other => panic!("expected a conflict, got {other:?}"),
+    }
 }
 
 fn journal(dir: &TempDir) -> Journal {

@@ -4,6 +4,13 @@
 //! or its own column count is how the live region and the summary end up
 //! disagreeing about what the same run just did.
 
+/// The gap between the name column and the evidence beside it.
+///
+/// Shared by the two renderers that draw a result column, `Section::row` and
+/// `ResultTable`, so a screen rendered all at once and the live region printed
+/// row by row leave the same space between a name and its value.
+const GAP: usize = 4;
+
 mod marks;
 mod section;
 mod table;

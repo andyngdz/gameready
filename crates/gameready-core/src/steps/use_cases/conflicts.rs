@@ -59,9 +59,9 @@ impl Improvement for Conflicts {
     }
 
     fn rationale(&self) -> &str {
-        "ananicy-cpp, tuned, and power-profiles-daemon each set process \
-         priorities or the CPU governor on their own schedule. With one of them \
-         running, gamemode's changes get overwritten seconds later and the \
+        "ananicy-cpp and tuned each set process priorities or the CPU governor \
+         on their own schedule, without coordinating with gamemode. With one of \
+         them running, gamemode's changes get overwritten seconds later and the \
          result looks like gamemode is broken. gameready reports which one is \
          active and leaves the choice of what to do about it to you."
     }

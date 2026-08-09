@@ -3,17 +3,15 @@
 use std::fmt;
 
 use anyhow::Result;
-use inquire::Select;
 
 use crate::cli::ui::theme;
 
 /// The question.
-const QUESTION: &str = "Keep the CPU on performance after you reboot?";
+const QUESTION: &str = "Keep the CPU at full speed after you reboot?";
 
 /// Why this run is the one that gets asked, and what it costs to say yes.
-const WHY_ASKED: &str =
-    "Nothing else on this machine raises the clocks, so I can pin performance. \
-                         A pinned governor runs hot and drains a laptop until you undo it.";
+const WHY_ASKED: &str = "Nothing else on this machine raises the clocks, so I can hold them up. \
+                         Held up, the CPU runs hot and drains a laptop until you undo it.";
 
 /// The reassurance under both answers.
 const EITHER_WAY: &str = "Either way: gameready rollback undoes it now.";
@@ -44,13 +42,9 @@ impl fmt::Display for Persistence {
 /// a laptop until it is undone, and `gameready rollback` undoes it now either
 /// way.
 pub fn choose_governor_persistence() -> Result<bool> {
-    let answer = Select::new(
-        &theme::asked(QUESTION, WHY_ASKED),
-        vec![Persistence::ThisBoot, Persistence::KeepIt],
-    )
-    .with_render_config(theme::Prompts::choices())
-    .with_help_message(EITHER_WAY)
-    .prompt_skippable()?;
+    let answer = theme::Asked::new(QUESTION, WHY_ASKED, EITHER_WAY)
+        .one_of(vec![Persistence::ThisBoot, Persistence::KeepIt])
+        .prompt_skippable()?;
 
     Ok(matches!(answer, Some(Persistence::KeepIt)))
 }

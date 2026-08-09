@@ -9,7 +9,8 @@ use gameready_core::run::RunReport;
 use itertools::Itertools as _;
 
 use crate::cli::ui::layout::{Mark, Section};
-use crate::cli::ui::{name_column, short_names, WentWrong, PROMPT};
+use crate::cli::ui::rows::{copyable, undo, StepRow};
+use crate::cli::ui::{name_column, short_names};
 
 /// What the rollback block offers, in the words of someone reconsidering.
 const CHANGED_YOUR_MIND: &str = "Changed your mind? This puts everything back.";
@@ -115,12 +116,7 @@ impl<'a> Summary<'a> {
         self.report.applied() + self.report.failed() > 0
     }
 
-    /// One row per step, each with what it did after the leader.
-    ///
-    /// A step that went wrong breaks out of the row shape entirely. Its
-    /// evidence is three sentences rather than a value, and squeezing that
-    /// after a leader would leave the one line the reader needs looking like
-    /// every line they can skip.
+    /// One row per step, each turned into its own line by `StepRow`.
     fn steps<W: fmt::Write>(&self, s: &mut Section<'_, W>) -> fmt::Result {
         let names = short_names();
         let column = name_column(&names);
@@ -129,14 +125,14 @@ impl<'a> Summary<'a> {
                 .get(&step.step)
                 .cloned()
                 .unwrap_or_else(|| step.name.clone());
-            let mark = Mark::of(step.outcome.kind());
-            match (step.outcome.trouble(), step.outcome.detail()) {
-                (Some(trouble), _) => {
-                    WentWrong::new(mark, &name, &trouble, &self.report.run).write(s)?;
-                }
-                (None, Some(detail)) => s.row(mark, &name, &detail, column)?,
-                (None, None) => s.marked(mark, &name)?,
+            StepRow {
+                mark: Mark::of(step.outcome.kind()),
+                name: &name,
+                outcome: &step.outcome,
+                column,
+                run: &self.report.run,
             }
+            .write(s)?;
         }
         Ok(())
     }
@@ -144,11 +140,7 @@ impl<'a> Summary<'a> {
     /// The undo command and the record it reads back.
     fn rollback<W: fmt::Write>(&self, s: &mut Section<'_, W>) -> fmt::Result {
         s.indented(&style(CHANGED_YOUR_MIND).dim().to_string())?;
-        s.indented(&format!(
-            "{} {}",
-            style(PROMPT).green(),
-            style(format!("gameready rollback --run {}", self.report.run)).bold()
-        ))?;
+        s.indented(&copyable(&undo(&self.report.run)))?;
         s.indented(
             &style(format!("journal · {}", self.journal.display()))
                 .dim()

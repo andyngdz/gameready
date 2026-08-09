@@ -10,7 +10,7 @@ use crate::journal::{digest, Change, RunId};
 use crate::steps::constants::managed_header;
 use crate::steps::domain::GAMEMODE;
 use crate::steps::use_cases::cpu_governor_policies::{
-    conflicting_daemon, read_policies, summary, GovernorPolicy, CPU_GOVERNOR_RULE,
+    governor_conflict, read_policies, summary, GovernorPolicy, CPU_GOVERNOR_RULE,
     PERFORMANCE_GOVERNOR,
 };
 use crate::steps::use_cases::GamingTools;
@@ -52,24 +52,26 @@ impl Improvement for CpuGovernor {
     }
 
     fn name(&self) -> &str {
-        "Pin the CPU governor to performance"
+        "Keep the CPU at full speed while you play"
     }
 
     fn short_name(&self) -> &str {
-        "CPU governor"
+        "CPU speed"
     }
 
     fn blurb(&self) -> &str {
-        "The CPU governor, when nothing else raises it"
+        "Full CPU speed, when nothing else asks for it"
     }
 
     fn rationale(&self) -> &str {
-        "A frame is late when the CPU is still ramping its clocks as it arrives. \
-         The performance governor holds them up so it does not. gamemode does \
-         this per game and lowers them again afterwards, which is the better \
-         deal on a laptop, so this step stands aside wherever gamemode is \
-         present. It pins the governor itself only when nothing else will, and \
-         only for this boot unless you ask it to persist."
+        "Linux holds the CPU at a low clock until it sees load, and the ramp \
+         back up costs milliseconds a frame does not have. The kernel calls that \
+         policy the governor, and its performance setting keeps the clocks up so \
+         nothing waits on the ramp. gamemode does the same per game and lowers \
+         them again afterwards, which is the better deal on a laptop, so this \
+         step stands aside wherever gamemode is present. It holds the speed up \
+         itself only when nothing else will, and only for this boot unless you \
+         ask it to persist."
     }
 
     fn privilege(&self) -> Privilege {
@@ -91,33 +93,29 @@ impl CoreImprovement for CpuGovernor {
         let policies = read_policies(cx.runner);
         if policies.is_empty() {
             return Ok(Probe::NotApplicable {
-                reason: "this machine reports no CPU governor to set".to_owned(),
+                reason: "this machine reports no CPU speed setting to change".to_owned(),
             });
         }
         if policies.iter().all(GovernorPolicy::is_performance) {
             return Ok(Probe::AlreadyApplied {
-                evidence: "every CPU policy is already on performance".to_owned(),
+                evidence: "every CPU is already at full speed".to_owned(),
             });
         }
         if !policies.iter().all(GovernorPolicy::offers_performance) {
             return Ok(Probe::NotApplicable {
-                reason: "this hardware offers no performance governor".to_owned(),
+                reason: "this hardware has no full-speed setting to hold".to_owned(),
             });
         }
-        // Before the gamemode check: a live daemon overwrites gamemode too.
-        if let Some(daemon) = conflicting_daemon(cx.runner) {
-            return Ok(Probe::Conflict {
-                with: daemon.to_owned(),
-                detail: format!(
-                    "{daemon} sets the governor on its own schedule, so a pin here would be \
-                     overwritten seconds later"
-                ),
-                yours: Some(format!("systemctl disable --now {daemon}")),
-            });
+        // A daemon that defeats gamemode (tuned) is still a conflict with
+        // gamemode present; one gamemode drives (power-profiles-daemon) is not,
+        // so `governor_conflict` skips it here and the run reads as handled.
+        let gamemode_present = cx.runner.which(GAMEMODE.binary).is_some();
+        if let Some(conflict) = governor_conflict(cx.runner, gamemode_present) {
+            return Ok(conflict);
         }
-        if cx.runner.which(GAMEMODE.binary).is_some() {
+        if gamemode_present {
             return Ok(Probe::AlreadyApplied {
-                evidence: "gamemode is here and raises the governor while a game runs".to_owned(),
+                evidence: "gamemode is here and raises the CPU speed while a game runs".to_owned(),
             });
         }
         Ok(Probe::Applicable)
@@ -143,7 +141,7 @@ impl CoreImprovement for CpuGovernor {
     }
 
     fn apply(&self, cx: &mut ApplyCx<'_, CoreCx<'_>>) -> Result<(), StepError> {
-        cx.progress("Setting the CPU governor");
+        cx.progress("Setting the CPU speed");
         // Read at apply time, not from the probe: the value the undo has to put
         // back is the one that is there now.
         let changing: Vec<GovernorPolicy> = read_policies(cx.reader())

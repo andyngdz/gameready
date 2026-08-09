@@ -8,6 +8,7 @@ use console::style;
 
 use super::marks::Mark;
 use super::width::width;
+use super::GAP;
 
 /// The indent every table carries, matching the rest of the layout.
 const INDENT: &str = "  ";
@@ -67,9 +68,13 @@ impl ResultTable {
             }
         }
         if let Some(names) = table.column_mut(1) {
+            // The name column carries the gap to the evidence as its own right
+            // padding, so both renderers leave the same space after a name.
+            let gap = u16::try_from(GAP).unwrap_or(PADDING.1);
+            names.set_padding((PADDING.0, gap));
             let pinned = u16::try_from(self.column).unwrap_or(u16::MAX);
             names.set_constraint(ColumnConstraint::Absolute(Width::Fixed(
-                pinned.saturating_add(PADDING.1),
+                pinned.saturating_add(gap),
             )));
         }
         table

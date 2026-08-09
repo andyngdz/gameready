@@ -10,7 +10,6 @@ use gameready_core::infra::steam::{
 };
 use gameready_core::journal::Journal;
 use gameready_core::run::RunReport;
-use inquire::Select;
 
 use crate::cli::ui::{theme, Answers, LaunchInstructions};
 
@@ -131,16 +130,12 @@ impl SteamWork {
 /// reversible, nothing-happens answer is the one an interrupted prompt should
 /// land on.
 pub fn choose_how_to_apply(work: &SteamWork) -> Result<LaunchChoice> {
-    let answer = Select::new(
-        &theme::asked(&work.question(), &work.detail()),
-        vec![
+    let answer = theme::Asked::new(&work.question(), &work.detail(), EITHER_WAY)
+        .one_of(vec![
             LaunchChoice::ShowForCopying,
             LaunchChoice::CloseSteamAndWrite,
-        ],
-    )
-    .with_render_config(theme::Prompts::choices())
-    .with_help_message(EITHER_WAY)
-    .prompt_skippable()?;
+        ])
+        .prompt_skippable()?;
 
     Ok(answer.unwrap_or(LaunchChoice::ShowForCopying))
 }

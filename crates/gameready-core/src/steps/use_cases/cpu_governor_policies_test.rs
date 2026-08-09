@@ -65,11 +65,29 @@ fn a_live_governor_daemon_is_the_conflict() {
         .with_binary("systemctl")
         .answering("systemctl is-enabled tuned.service", "enabled")
         .answering("systemctl is-active tuned.service", "active");
-    assert_eq!(conflicting_daemon(&runner), Some("tuned.service"));
+    match governor_conflict(&runner, false) {
+        Some(Probe::Conflict { with, .. }) => assert_eq!(with, "tuned.service"),
+        other => panic!("expected a conflict, got {other:?}"),
+    }
+}
+
+#[test]
+fn a_daemon_gamemode_drives_is_no_conflict_when_gamemode_is_present() {
+    let runner = MockRunner::new()
+        .with_binary("systemctl")
+        .answering(
+            "systemctl is-enabled power-profiles-daemon.service",
+            "enabled",
+        )
+        .answering(
+            "systemctl is-active power-profiles-daemon.service",
+            "active",
+        );
+    assert!(governor_conflict(&runner, true).is_none());
 }
 
 #[test]
 fn no_systemd_means_no_conflict() {
     // A container has no systemctl, and cannot be running either daemon.
-    assert_eq!(conflicting_daemon(&MockRunner::new()), None);
+    assert!(governor_conflict(&MockRunner::new(), false).is_none());
 }

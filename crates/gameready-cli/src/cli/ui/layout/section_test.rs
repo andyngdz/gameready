@@ -162,7 +162,7 @@ fn a_name_wider_than_the_column_pushes_only_its_own_evidence() {
     let rendered = plain(&buf);
 
     assert!(
-        rendered.starts_with("  ✓ a step nobody gave a short name done"),
+        rendered.starts_with("  ✓ a step nobody gave a short name    done"),
         "{rendered}"
     );
 }

@@ -1,7 +1,10 @@
 //! How every question is drawn.
 
+use std::fmt::Display;
+
 use console::style;
 use inquire::ui::{Attributes, Color, RenderConfig, StyleSheet, Styled};
+use inquire::{MultiSelect, Select};
 
 use crate::cli::ui::layout::Section;
 
@@ -37,25 +40,60 @@ const PICKED: &str = "  (●)";
 /// Every other answer on a one-of list.
 const NOT_PICKED: &str = "  ( )";
 
-/// A question, with what it is really asking under it.
+/// Everything a question needs before it reaches the screen: what is being
+/// asked, what the reader has to know to answer it, and which keys answer it.
 ///
-/// Wrapped here rather than left to `inquire`, which breaks a long line at
-/// whatever column the terminal ends at, mid-word. Every other screen in the
-/// run wraps between words, and a question is the last place to start splitting
-/// words in half.
-#[must_use]
-pub fn asked(question: &str, detail: &str) -> String {
-    let mut message = String::new();
-    let mut section = Section::new(&mut message);
-    // Writing into a String cannot fail.
-    let _ = section
-        .heading(question)
-        .and_then(|()| section.paragraph(&style(detail).dim().to_string()));
-    message
+/// The three arrive together because a question missing any of them is one the
+/// reader cannot act on, and `inquire` will not catch that: its help line is an
+/// optional builder call, so a prompt written straight against it ships with no
+/// keys and still compiles. Building the prompt from here instead, the compiler
+/// asks for all three, and pairs each shape of list with the render config that
+/// belongs to it.
+pub struct Asked {
+    /// The question and its detail, already wrapped and styled.
+    message: String,
+
+    /// The keys line, in the order a user reaches for them.
+    keys: &'static str,
+}
+
+impl Asked {
+    /// A question and what sits under it, for the list that answers it.
+    ///
+    /// Wrapped here rather than left to `inquire`, which breaks a long line at
+    /// whatever column the terminal ends at, mid-word. Every other screen in
+    /// the run wraps between words, and a question is the last place to start
+    /// splitting words in half.
+    #[must_use]
+    pub fn new(question: &str, detail: &str, keys: &'static str) -> Self {
+        let mut message = String::new();
+        let mut section = Section::new(&mut message);
+        // Writing into a String cannot fail.
+        let _ = section
+            .heading(question)
+            .and_then(|()| section.under_question(&style(detail).dim().to_string()));
+        Self { message, keys }
+    }
+
+    /// The list where the answer is one row.
+    #[must_use]
+    pub fn one_of<T: Display>(&self, options: Vec<T>) -> Select<'_, T> {
+        Select::new(&self.message, options)
+            .with_render_config(Prompts::choices())
+            .with_help_message(self.keys)
+    }
+
+    /// The list where any number of rows can be on.
+    #[must_use]
+    pub fn any_of<T: Display>(&self, options: Vec<T>) -> MultiSelect<'_, T> {
+        MultiSelect::new(&self.message, options)
+            .with_render_config(Prompts::many())
+            .with_help_message(self.keys)
+    }
 }
 
 /// How each shape of question is drawn.
-pub struct Prompts;
+struct Prompts;
 
 impl Prompts {
     /// A list where the answer is one row.
@@ -66,7 +104,7 @@ impl Prompts {
     /// does have a prefix for the current row and a prefix for the rest, and
     /// using both is a dial.
     #[must_use]
-    pub fn choices<'a>() -> RenderConfig<'a> {
+    fn choices<'a>() -> RenderConfig<'a> {
         let mut config = Self::shared()
             .with_highlighted_option_prefix(Styled::new(PICKED).with_fg(Color::LightGreen));
         config.unhighlighted_option_prefix = Styled::new(NOT_PICKED).with_fg(Color::DarkGrey);
@@ -79,7 +117,7 @@ impl Prompts {
     /// row's own weight and colour, so the only mark on the line is the one
     /// that carries a fact the reader has to act on.
     #[must_use]
-    pub fn many<'a>() -> RenderConfig<'a> {
+    fn many<'a>() -> RenderConfig<'a> {
         let mut config = Self::shared()
             .with_highlighted_option_prefix(Styled::new(GUTTER))
             .with_selected_checkbox(Styled::new(CHECKED).with_fg(Color::LightGreen))

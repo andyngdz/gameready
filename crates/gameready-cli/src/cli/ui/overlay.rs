@@ -4,7 +4,6 @@ use std::fmt;
 
 use anyhow::Result;
 use gameready_core::steam::Overlay;
-use inquire::Select;
 
 use crate::cli::ui::theme;
 
@@ -37,13 +36,12 @@ impl fmt::Display for OverlayOption {
 /// corner of the screen with load, temperatures, and a frametime graph, so the
 /// safe answer is the one that changes nothing about what the user sees.
 pub fn choose_overlay() -> Result<Overlay> {
-    let answer = Select::new(
-        &theme::asked(QUESTION, WHAT_IT_IS),
-        vec![OverlayOption(Overlay::Hide), OverlayOption(Overlay::Show)],
-    )
-    .with_render_config(theme::Prompts::choices())
-    .with_help_message(KEYS)
-    .prompt_skippable()?;
+    let answer = theme::Asked::new(QUESTION, WHAT_IT_IS, KEYS)
+        .one_of(vec![
+            OverlayOption(Overlay::Hide),
+            OverlayOption(Overlay::Show),
+        ])
+        .prompt_skippable()?;
 
     Ok(answer.map_or(Overlay::Hide, |opt| opt.0))
 }

@@ -6,6 +6,7 @@ use console::style;
 
 use super::marks::Mark;
 use super::width::width;
+use super::GAP;
 
 /// How wide the label column in a labelled paragraph is.
 ///
@@ -74,6 +75,16 @@ impl<'a, W: fmt::Write> Section<'a, W> {
         self.flow("", text)
     }
 
+    /// A paragraph shifted one column right to sit under an inquire question.
+    ///
+    /// inquire writes a space between its prompt prefix and the message, so the
+    /// question lands one column in from the margin even with an empty prefix. A
+    /// plain paragraph under it would start at the margin instead, one column
+    /// left of the question it belongs to; this lines it up.
+    pub(crate) fn under_question(&mut self, text: &str) -> fmt::Result {
+        self.flow(" ", text)
+    }
+
     /// A catalog row: a name padded to a shared column, then a dim note. The
     /// eye runs down the column of names rather than following a leader out to a
     /// value, which is what a list read top to bottom wants.
@@ -99,8 +110,8 @@ impl<'a, W: fmt::Write> Section<'a, W> {
         evidence: &str,
         column: usize,
     ) -> fmt::Result {
-        let padding = column.saturating_sub(console::measure_text_width(name));
-        let prefix = format!("  {} {name}{} ", mark.glyph(), " ".repeat(padding));
+        let padding = column.saturating_sub(console::measure_text_width(name)) + GAP;
+        let prefix = format!("  {} {name}{}", mark.glyph(), " ".repeat(padding));
         self.flow(&prefix, &style(evidence).dim().to_string())
     }
 
@@ -129,9 +140,12 @@ impl<'a, W: fmt::Write> Section<'a, W> {
         Ok(())
     }
 
-    /// A 5-space-indented sub-line under a marked line.
+    /// A sub-line under a marked line, indented to sit under the name rather
+    /// than under the mark: a marked line spends two spaces and the one-column
+    /// glyph and a space before its name, so four spaces land the sub-line at
+    /// the same column the name above it starts.
     pub(crate) fn sub(&mut self, text: &str) -> fmt::Result {
-        self.flow("     ", text)
+        self.flow("    ", text)
     }
 
     /// A label/value pair nested under a catalog entry: the label dimmed in a

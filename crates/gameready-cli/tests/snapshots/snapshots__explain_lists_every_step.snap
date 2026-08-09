@@ -1,6 +1,6 @@
 ---
 source: crates/gameready-cli/tests/snapshots.rs
-expression: "gameready(&[\"explain\"])"
+expression: "run_with(&[\"explain\"], Reads :: Fixture, | _, _ | {})"
 ---
 exit code: 0
 ----- stdout -----
@@ -15,7 +15,7 @@ System
   core.proton.ge            Latest Proton-GE
   core.repo.scx-ppa         The scx repository, Debian only
   core.sched.scx-lavd       The scx_lavd CPU scheduler
-  core.cpu.governor         The CPU governor, when nothing else raises it
+  core.cpu.governor         Full CPU speed, when nothing else asks for it
 
 Per game
   game.steam.launch-options Steam launch options

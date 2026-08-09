@@ -108,9 +108,11 @@ fn a_row_puts_its_evidence_in_the_shared_column() {
 
     assert!(row.starts_with("  ✓ vm.max_map_count"), "{row}");
     // Measured in columns, not bytes: the mark is three bytes wide and one
-    // column wide, and it is the column the reader's eye runs down.
+    // column wide, and it is the column the reader's eye runs down. Four
+    // columns of indent, glyph, and space lead the name, then the shared name
+    // column, then the four-column gap to the evidence.
     let before = row.split("65530").next().expect("the evidence");
-    assert_eq!(console::measure_text_width(before), 4 + column + 1, "{row}");
+    assert_eq!(console::measure_text_width(before), 4 + column + 4, "{row}");
 }
 
 #[test]

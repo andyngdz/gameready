@@ -3,7 +3,6 @@
 use anyhow::Result;
 use console::style;
 use gameready_core::steam::GameSetup;
-use inquire::MultiSelect;
 
 use crate::cli::ui::theme;
 
@@ -82,9 +81,8 @@ pub fn choose_games(setups: &[GameSetup]) -> Result<Vec<GameSetup>> {
         })
         .collect();
 
-    let picked = MultiSelect::new(&theme::asked(QUESTION, SCOPE), choices)
-        .with_render_config(theme::Prompts::many())
-        .with_help_message(KEYS)
+    let picked = theme::Asked::new(QUESTION, SCOPE, KEYS)
+        .any_of(choices)
         .prompt_skippable()?
         .unwrap_or_default();
 

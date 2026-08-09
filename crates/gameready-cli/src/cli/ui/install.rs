@@ -6,7 +6,6 @@ use anyhow::Result;
 use console::style;
 use gameready_core::facts::PackageManagerKind;
 use gameready_core::run::{InstallConsent, Mode, PlannedInstall, RunPlan};
-use inquire::Select;
 
 use crate::cli::ui::layout::{Mark, Section};
 use crate::cli::ui::questions::Picker;
@@ -128,13 +127,9 @@ impl InstallList {
             eprint!("{screen}");
         }
 
-        let answer = Select::new(
-            &theme::asked(&self.question(), DECLINING),
-            vec![Take::NotNow, Take::Install],
-        )
-        .with_render_config(theme::Prompts::choices())
-        .with_help_message(KEYS)
-        .prompt_skippable()?;
+        let answer = theme::Asked::new(&self.question(), DECLINING, KEYS)
+            .one_of(vec![Take::NotNow, Take::Install])
+            .prompt_skippable()?;
 
         Ok(match answer {
             Some(Take::Install) => InstallConsent::Granted,

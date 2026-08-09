@@ -29,13 +29,13 @@ fn a_machine_with_none_of_them_installed_is_clean() {
 
 #[test]
 fn a_running_daemon_is_reported_as_a_conflict() {
-    let runner = box_where("power-profiles-daemon.service", "enabled", "active");
+    let runner = box_where("tuned.service", "enabled", "active");
     let facts = facts();
     let cx = CoreCx::new(&facts, &runner);
 
     match Conflicts.probe(&cx).expect("probed") {
         Probe::Conflict { with, .. } => {
-            assert!(with.starts_with("power-profiles-daemon.service"), "{with}")
+            assert!(with.starts_with("tuned.service"), "{with}")
         }
         other @ (Probe::Applicable
         | Probe::AlreadyApplied { .. }
