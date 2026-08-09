@@ -11,6 +11,10 @@ use crate::steps::constants::{CONFIG_BACKUP, NOT_SET};
 use crate::steps::domain::{apply_compat_targets, CompatEdited, CompatTarget};
 use crate::steps::use_cases::restore_backup::restore_from_backup;
 
+/// The label every row shows for this step. One constant because the
+/// terminal and the panel menu want the same words here.
+const SHORT_NAME: &str = "Proton pin";
+
 /// Writes Steam's compatibility tool mapping for the selected games.
 ///
 /// Built from the games the user picked rather than discovered at probe time,
@@ -59,6 +63,10 @@ impl Improvement for SteamProton {
     }
 
     fn short_name(&self) -> &str {
+        SHORT_NAME
+    }
+
+    fn bar_name(&self) -> &str {
         "Proton pin"
     }
 

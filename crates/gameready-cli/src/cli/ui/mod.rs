@@ -48,7 +48,7 @@ mod summary;
 mod theme;
 
 pub use answers::{ask_everything, Answers};
-pub use doctor::{DoctorReport, StepFinding};
+pub use doctor::DoctorReport;
 pub use explain::{StepExplanation, StepIndex};
 pub use games::GameList;
 pub use governor::choose_governor_persistence;

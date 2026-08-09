@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=gameready
+GenericName=Gaming tuning indicator
+Comment=Shows which gameready tunings are in place, and turns green while a configured game runs
+Exec=gameready-tray
+Icon=gameready
+Terminal=false
+Categories=Settings;HardwareSettings;
+Keywords=gaming;performance;gamemode;proton;steam;
+StartupNotify=false
+X-GNOME-Autostart-enabled=true

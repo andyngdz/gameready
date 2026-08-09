@@ -2,16 +2,19 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::exec::{Cmd, CommandRunner};
+use crate::exec::Cmd;
 use crate::improvement::{
-    ApplyCx, Check, CoreCx, CoreImprovement, Improvement, ImprovementId, ParseFailure,
-    PlannedAction, Privilege, Probe, StepError, StepPlan, Tag, Verification,
+    ApplyCx, Check, CoreCx, CoreImprovement, Improvement, ImprovementId, PlannedAction, Privilege,
+    Probe, StepError, StepPlan, Tag, Verification,
 };
 use crate::journal::{digest, Change, RunId};
-use crate::steps::constants::{
-    managed_header, PROC_SWAPS, PROC_SYS_VM, SWAPPINESS_DROPIN, SYSCTL_BIN, VM_SWAPPINESS,
-};
-use crate::steps::domain::{parse_proc_swaps, primary_is_zram, SwapArea};
+use crate::steps::constants::{managed_header, SWAPPINESS_DROPIN, SYSCTL_BIN, VM_SWAPPINESS};
+use crate::steps::domain::primary_is_zram;
+use crate::steps::use_cases::memory_swappiness_state::{read_current, read_swaps};
+
+/// The label every row shows for this step. One constant because the
+/// terminal and the panel menu want the same words here.
+const SHORT_NAME: &str = "Swappiness";
 
 /// The value zram guidance settles on. A swapped page costs a compress into RAM
 /// rather than a disk seek, so the kernel should reach for swap early. Kernel
@@ -32,36 +35,6 @@ impl Swappiness {
     #[must_use]
     pub const fn id_const() -> ImprovementId {
         ImprovementId::from_static("core.memory.swappiness")
-    }
-
-    /// Where the kernel exposes the live value.
-    #[must_use]
-    pub fn runtime_path() -> PathBuf {
-        Path::new(PROC_SYS_VM).join("swappiness")
-    }
-
-    /// The active swap areas, empty when `/proc/swaps` cannot be read: an
-    /// unknown swap layout means `NotApplicable`, not a guess at swappiness.
-    fn read_swaps(&self, runner: &dyn CommandRunner) -> Vec<SwapArea> {
-        runner
-            .read_to_string(Path::new(PROC_SWAPS))
-            .ok()
-            .map(|raw| parse_proc_swaps(&raw))
-            .unwrap_or_default()
-    }
-
-    /// Reads the value the kernel currently reports.
-    fn read_current(&self, runner: &dyn CommandRunner) -> Result<u16, StepError> {
-        let path = Self::runtime_path();
-        let raw = runner.read_to_string(&path).map_err(StepError::Exec)?;
-
-        raw.trim()
-            .parse::<u16>()
-            .map_err(|source| StepError::Parse {
-                what: VM_SWAPPINESS,
-                path,
-                source: ParseFailure::Integer(source),
-            })
     }
 
     /// The drop-in file's contents, carrying the marker `doctor` looks for.
@@ -85,6 +58,10 @@ impl Improvement for Swappiness {
     }
 
     fn short_name(&self) -> &str {
+        SHORT_NAME
+    }
+
+    fn bar_name(&self) -> &str {
         "Swappiness"
     }
 
@@ -114,12 +91,12 @@ impl Improvement for Swappiness {
 
 impl CoreImprovement for Swappiness {
     fn probe(&self, cx: &CoreCx<'_>) -> Result<Probe, StepError> {
-        if !primary_is_zram(&self.read_swaps(cx.runner)) {
+        if !primary_is_zram(&read_swaps(cx.runner)) {
             return Ok(Probe::NotApplicable {
                 reason: "swap is on disk, not zram; the default swappiness is right".to_owned(),
             });
         }
-        let current = self.read_current(cx.runner)?;
+        let current = read_current(cx.runner)?;
         if current >= TARGET {
             return Ok(Probe::AlreadyApplied {
                 evidence: format!("{VM_SWAPPINESS} is already {current}"),
@@ -129,7 +106,7 @@ impl CoreImprovement for Swappiness {
     }
 
     fn plan(&self, cx: &CoreCx<'_>) -> Result<StepPlan, StepError> {
-        let current = self.read_current(cx.runner)?;
+        let current = read_current(cx.runner)?;
         Ok(
             StepPlan::new(self.id(), format!("{VM_SWAPPINESS} {current} -> {TARGET}"))
                 .action(PlannedAction::CreateFile {
@@ -145,7 +122,7 @@ impl CoreImprovement for Swappiness {
     }
 
     fn apply(&self, cx: &mut ApplyCx<'_, CoreCx<'_>>) -> Result<(), StepError> {
-        let previous = self.read_current(cx.reader())?;
+        let previous = read_current(cx.reader())?;
         let dropin = PathBuf::from(SWAPPINESS_DROPIN);
         let contents = Self::dropin_contents(cx.run());
 
@@ -184,7 +161,7 @@ impl CoreImprovement for Swappiness {
     }
 
     fn verify(&self, cx: &CoreCx<'_>) -> Result<Verification, StepError> {
-        let current = self.read_current(cx.runner)?;
+        let current = read_current(cx.runner)?;
         let persisted = cx.runner.path_exists(Path::new(SWAPPINESS_DROPIN));
 
         Ok(Verification::new()

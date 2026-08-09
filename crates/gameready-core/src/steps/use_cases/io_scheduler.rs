@@ -12,6 +12,10 @@ use crate::journal::{digest, Change, RunId};
 use crate::steps::constants::{managed_header, IO_SCHEDULER_RULE};
 use crate::steps::use_cases::io_scheduler_devices::{scan_disks, summary, DiskScheduler};
 
+/// The label every row shows for this step. One constant because the
+/// terminal and the panel menu want the same words here.
+const SHORT_NAME: &str = "I/O schedulers";
+
 /// The udev rules, one per disk class, that re-apply the choice on every boot.
 ///
 /// NVMe by name; SATA and SAS disks by their rotational flag. Kept in step with
@@ -60,7 +64,11 @@ impl Improvement for IoScheduler {
     }
 
     fn short_name(&self) -> &str {
-        "I/O schedulers"
+        SHORT_NAME
+    }
+
+    fn bar_name(&self) -> &str {
+        "I/O scheduler"
     }
 
     fn blurb(&self) -> &str {

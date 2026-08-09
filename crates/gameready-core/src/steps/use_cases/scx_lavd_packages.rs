@@ -1,10 +1,12 @@
 //! What this system has of the scx packages, and what it would take to get them.
 
 use crate::facts::PackageManagerKind;
-use crate::improvement::{ApplyCx, CoreCx, PlannedPackage, StepError};
+use std::path::Path;
+
+use crate::improvement::{ApplyCx, CoreCx, PlannedPackage, Probe, StepError};
 use crate::journal::Change;
 use crate::pkg::{PackageManager, PackageState};
-use crate::steps::constants::LAVD_SCHEDULER;
+use crate::steps::constants::{LAVD_SCHEDULER, SCXCTL_BIN, SCX_UNIT_PATH};
 use crate::steps::domain::{SCX_SCHEDS, SCX_TOOLS};
 use crate::steps::use_cases::scx_ppa::ScxPpa;
 
@@ -27,6 +29,35 @@ struct Candidate {
 /// be installed, not how many there are.
 pub struct ScxPackages {
     candidates: Vec<Candidate>,
+}
+
+/// Whether the tooling is here or can be fetched.
+///
+/// Split from the step's `probe` so the kernel question and the packaging
+/// question stay separate: a kernel without sched_ext is a permanent no, and
+/// missing packages are a no only until they are installed. Lives here because
+/// every answer it gives comes from the package survey below.
+pub(super) fn probe_tooling(cx: &CoreCx<'_>) -> Result<Probe, StepError> {
+    // Either mechanism being present is enough. Ubuntu has the unit and no
+    // scxctl; Arch and Fedora have scxctl and no unit.
+    if cx.runner.which(SCXCTL_BIN).is_some() || cx.runner.path_exists(Path::new(SCX_UNIT_PATH)) {
+        return Ok(Probe::Applicable);
+    }
+
+    let Some(packages) = cx.packages else {
+        return Ok(Probe::Unknown {
+            reason: "no package tooling was available to check whether scx can be installed"
+                .to_owned(),
+        });
+    };
+
+    let survey = ScxPackages::read(cx, packages)?;
+    if survey.can_install() {
+        return Ok(Probe::Applicable);
+    }
+    Ok(Probe::NotApplicable {
+        reason: survey.why_not(cx),
+    })
 }
 
 impl ScxPackages {

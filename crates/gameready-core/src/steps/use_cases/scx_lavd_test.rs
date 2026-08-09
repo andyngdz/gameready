@@ -5,6 +5,7 @@ use crate::facts::{Family, SystemFacts};
 use crate::infra::exec::MockRunner;
 use crate::infra::pkg::Apt;
 use crate::journal::{Journal, RunId, StatePaths};
+use crate::steps::constants::SCXCTL_BIN;
 
 fn facts() -> SystemFacts {
     SystemFacts::fixture(Family::Debian)

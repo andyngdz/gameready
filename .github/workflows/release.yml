@@ -28,14 +28,23 @@ jobs:
       - name: Install musl tools
         run: sudo apt-get update && sudo apt-get install -y musl-tools
 
-      - name: Build static binary
-        run: cargo build --release --target x86_64-unknown-linux-musl -p gameready-cli
+      - name: Build static binaries
+        run: |
+          cargo build --release --target x86_64-unknown-linux-musl \
+            -p gameready-cli -p gameready-tray
 
       - name: Package
         run: |
-          cp target/x86_64-unknown-linux-musl/release/gameready gameready-linux-x86_64
-          chmod +x gameready-linux-x86_64
-          sha256sum gameready-linux-x86_64 > gameready-linux-x86_64.sha256
+          for binary in gameready gameready-tray; do
+            asset="$binary-linux-x86_64"
+            cp "target/x86_64-unknown-linux-musl/release/$binary" "$asset"
+            chmod +x "$asset"
+            sha256sum "$asset" > "$asset.sha256"
+          done
+          # The desktop entry and its icon ship alongside, so a script install
+          # can put the tray on the bar the way the packages do.
+          cp pkg/gameready-tray.desktop .
+          cp crates/gameready-tray/assets/gameready.svg .
 
       - name: Create release
         env:
@@ -44,4 +53,8 @@ jobs:
           gh release create "${{ github.ref_name }}" \
             --generate-notes \
             gameready-linux-x86_64 \
-            gameready-linux-x86_64.sha256
+            gameready-linux-x86_64.sha256 \
+            gameready-tray-linux-x86_64 \
+            gameready-tray-linux-x86_64.sha256 \
+            gameready-tray.desktop \
+            gameready.svg

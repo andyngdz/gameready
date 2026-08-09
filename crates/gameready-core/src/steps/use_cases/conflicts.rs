@@ -8,6 +8,10 @@ use crate::journal::Change;
 use crate::steps::domain::COMPETING_DAEMONS;
 use crate::systemd::{unit_state, SystemdError};
 
+/// The label every row shows for this step. One constant because the
+/// terminal and the panel menu want the same words here.
+const SHORT_NAME: &str = "Competing daemons";
+
 /// Names the daemons that already own the settings gamemode changes.
 ///
 /// This step never changes anything, deliberately. Each of these is something
@@ -51,7 +55,11 @@ impl Improvement for Conflicts {
     }
 
     fn short_name(&self) -> &str {
-        "Competing daemons"
+        SHORT_NAME
+    }
+
+    fn bar_name(&self) -> &str {
+        "Daemon conflicts"
     }
 
     fn blurb(&self) -> &str {

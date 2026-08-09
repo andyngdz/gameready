@@ -5,7 +5,9 @@ use std::path::{Path, PathBuf};
 use itertools::Itertools as _;
 
 use crate::exec::CommandRunner;
-use crate::improvement::Probe;
+use crate::improvement::{ImprovementId, Probe};
+use crate::journal::RunId;
+use crate::steps::constants::managed_header;
 use crate::steps::domain::GOVERNOR_DAEMONS;
 use crate::systemd::{unit_state, UnitState};
 
@@ -37,6 +39,21 @@ pub(crate) const PERFORMANCE_GOVERNOR: &str = "performance";
 /// all. Its own file, never an edit, like every other `/etc` file gameready
 /// writes.
 pub(crate) const CPU_GOVERNOR_RULE: &str = "/etc/udev/rules.d/60-gameready-cpu-governor.rules";
+
+/// The one line that rule carries.
+pub(crate) const CPU_GOVERNOR_RULE_BODY: &str =
+    r#"SUBSYSTEM=="cpu", ATTR{cpufreq/scaling_governor}="performance""#;
+
+/// The rule file's full contents, carrying the marker `doctor` looks for.
+///
+/// Lives beside the path and the body rather than with the step, so a change
+/// to what gameready writes into `/etc/udev` is one file to read.
+pub(crate) fn cpu_governor_rule(step: ImprovementId, run: RunId) -> String {
+    format!(
+        "{header}\n{CPU_GOVERNOR_RULE_BODY}\n",
+        header = managed_header(step, run)
+    )
+}
 
 /// One frequency-scaling policy: where its governor lives, what it is set to
 /// now, and what its hardware can offer.

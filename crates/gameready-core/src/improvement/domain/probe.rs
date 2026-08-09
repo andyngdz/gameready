@@ -37,7 +37,40 @@ pub enum Probe {
     Unknown { reason: String },
 }
 
+/// What a probe result means to whatever draws it.
+///
+/// The words of a probe are one thing and its colour is another. A terminal
+/// gutter and a panel menu agree on which of four buckets a result falls in,
+/// and disagree on everything after that. The bucket lives here so the glyph,
+/// the colour, and the pixmap can each stay with the surface that owns them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ProbeStatus {
+    /// Found already in the desired state.
+    Set,
+
+    /// Not applied, and this system can take it.
+    Ready,
+
+    /// Something else owns the setting, and the user should read why.
+    Attention,
+
+    /// Ruled out, or unreadable. Either way nothing will happen here.
+    Inactive,
+}
+
 impl Probe {
+    /// Which of the four display buckets this result falls in.
+    #[must_use]
+    pub const fn status(&self) -> ProbeStatus {
+        match self {
+            Self::AlreadyApplied { .. } => ProbeStatus::Set,
+            Self::Applicable => ProbeStatus::Ready,
+            Self::Conflict { .. } => ProbeStatus::Attention,
+            Self::NotApplicable { .. } | Self::Unknown { .. } => ProbeStatus::Inactive,
+        }
+    }
+
     /// What was found, in the words shown to the user.
     ///
     /// A phrase rather than a sentence, and never parenthesised: every caller

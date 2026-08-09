@@ -61,6 +61,10 @@ impl Improvement for VmLatency {
         "vm latency"
     }
 
+    fn bar_name(&self) -> &str {
+        "Memory latency"
+    }
+
     fn blurb(&self) -> &str {
         "Memory manager latency"
     }

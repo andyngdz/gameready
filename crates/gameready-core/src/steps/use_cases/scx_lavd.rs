@@ -1,20 +1,22 @@
 //! Hand CPU scheduling to scx_lavd while gaming.
 
-use std::path::Path;
-
 use crate::exec::Cmd;
 use crate::improvement::{
     ApplyCx, Check, CoreCx, CoreImprovement, Improvement, ImprovementId, PlannedAction,
     PlannedPackage, Privilege, Probe, StepError, StepPlan, Tag, Verification,
 };
 use crate::journal::Change;
-use crate::steps::constants::{LAVD_SCHEDULER, SCHED_EXT_STATE, SCXCTL_BIN, SCX_UNIT_PATH};
+use crate::steps::constants::{LAVD_SCHEDULER, SCHED_EXT_STATE};
 use crate::steps::domain::{restore_scheduler, SchedExt};
 use crate::steps::use_cases::scx_lavd_loader::Loader;
-use crate::steps::use_cases::scx_lavd_packages::ScxPackages;
+use crate::steps::use_cases::scx_lavd_packages::{probe_tooling, ScxPackages};
 use crate::steps::use_cases::scx_ppa::ScxPpa;
 use crate::steps::use_cases::scx_state::read_sched_ext;
 use crate::systemd::{DISABLE, NOW, SYSTEMCTL};
+
+/// The label every row shows for this step. One constant because the
+/// terminal and the panel menu want the same words here.
+const SHORT_NAME: &str = "CPU scheduler scx_lavd";
 
 /// Loads the gaming-oriented sched_ext scheduler.
 ///
@@ -31,35 +33,6 @@ impl ScxLavd {
     pub const fn id_const() -> ImprovementId {
         ImprovementId::from_static("core.sched.scx-lavd")
     }
-
-    /// Whether the tooling is here or can be fetched.
-    ///
-    /// Split from `probe` so the kernel question and the packaging question
-    /// stay separate: a kernel without sched_ext is a permanent no, and missing
-    /// packages are a no only until they are installed.
-    fn probe_tooling(cx: &CoreCx<'_>) -> Result<Probe, StepError> {
-        // Either mechanism being present is enough. Ubuntu has the unit and no
-        // scxctl; Arch and Fedora have scxctl and no unit.
-        if cx.runner.which(SCXCTL_BIN).is_some() || cx.runner.path_exists(Path::new(SCX_UNIT_PATH))
-        {
-            return Ok(Probe::Applicable);
-        }
-
-        let Some(packages) = cx.packages else {
-            return Ok(Probe::Unknown {
-                reason: "no package tooling was available to check whether scx can be installed"
-                    .to_owned(),
-            });
-        };
-
-        let survey = ScxPackages::read(cx, packages)?;
-        if survey.can_install() {
-            return Ok(Probe::Applicable);
-        }
-        Ok(Probe::NotApplicable {
-            reason: survey.why_not(cx),
-        })
-    }
 }
 
 impl Improvement for ScxLavd {
@@ -72,7 +45,11 @@ impl Improvement for ScxLavd {
     }
 
     fn short_name(&self) -> &str {
-        "CPU scheduler scx_lavd"
+        SHORT_NAME
+    }
+
+    fn bar_name(&self) -> &str {
+        "Kernel scheduler"
     }
 
     fn blurb(&self) -> &str {
@@ -150,7 +127,7 @@ impl CoreImprovement for ScxLavd {
                 yours: None,
             }),
 
-            SchedExt::Idle => Self::probe_tooling(cx),
+            SchedExt::Idle => probe_tooling(cx),
         }
     }
 

@@ -1,7 +1,7 @@
 //! The one place a gutter mark is chosen.
 
 use console::style;
-use gameready_core::improvement::{OutcomeKind, Probe};
+use gameready_core::improvement::{OutcomeKind, ProbeStatus};
 
 /// Every mark the CLI draws in the two-column gutter.
 ///
@@ -51,13 +51,17 @@ impl Mark {
     /// The mark the doctor screen draws for what a probe found. `doctor` never
     /// changes anything, so an applicable step reads as a tick meaning "would
     /// apply", not "applied".
+    ///
+    /// Takes the bucket rather than the probe, because the tray answers the
+    /// same question with a coloured pixmap and the two must not disagree about
+    /// what "already set" means. Only the glyph is decided here.
     #[must_use]
-    pub(crate) fn for_probe(probe: &Probe) -> Self {
-        match probe {
-            Probe::Applicable => Self::Applied,
-            Probe::AlreadyApplied { .. } => Self::AlreadySet,
-            Probe::Conflict { .. } => Self::Warning,
-            Probe::NotApplicable { .. } | Probe::Unknown { .. } => Self::Skipped,
+    pub(crate) const fn for_status(status: ProbeStatus) -> Self {
+        match status {
+            ProbeStatus::Ready => Self::Applied,
+            ProbeStatus::Set => Self::AlreadySet,
+            ProbeStatus::Attention => Self::Warning,
+            ProbeStatus::Inactive => Self::Skipped,
         }
     }
 

@@ -26,6 +26,16 @@ pub trait Improvement: Send + Sync {
         self.name()
     }
 
+    /// The label for a desktop menu, where the row is read at a glance.
+    ///
+    /// Separate from `short_name` because that one is a terminal identifier and
+    /// reads like one: `vm.max_map_count` beside a monospace gutter is exactly
+    /// right, and in a panel menu next to "Swappiness" it looks like a typo.
+    /// Defaults to `short_name` for the steps already named in plain words.
+    fn bar_name(&self) -> &str {
+        self.short_name()
+    }
+
     /// A one-line description for the `explain` index, where the reader is
     /// scanning the catalog rather than reading one step. Defaults to `name`.
     fn blurb(&self) -> &str {

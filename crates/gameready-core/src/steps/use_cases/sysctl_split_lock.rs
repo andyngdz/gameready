@@ -65,6 +65,10 @@ impl Improvement for SplitLock {
         "split lock"
     }
 
+    fn bar_name(&self) -> &str {
+        "Split lock"
+    }
+
     fn blurb(&self) -> &str {
         "Split-lock penalty for games"
     }

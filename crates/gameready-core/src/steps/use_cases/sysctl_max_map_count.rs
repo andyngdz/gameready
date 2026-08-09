@@ -64,6 +64,10 @@ impl Improvement for MaxMapCount {
         "vm.max_map_count"
     }
 
+    fn bar_name(&self) -> &str {
+        "Memory maps"
+    }
+
     fn blurb(&self) -> &str {
         "Memory maps for Proton titles"
     }

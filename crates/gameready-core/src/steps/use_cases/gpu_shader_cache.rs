@@ -75,6 +75,10 @@ impl Improvement for ShaderCache {
         "shader cache"
     }
 
+    fn bar_name(&self) -> &str {
+        "Shader cache"
+    }
+
     fn blurb(&self) -> &str {
         "Shader cache size"
     }

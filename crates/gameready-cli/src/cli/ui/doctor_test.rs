@@ -1,6 +1,7 @@
 use super::*;
-use gameready_core::doctor::MachineReport;
+use gameready_core::doctor::{MachineReport, StepFinding};
 use gameready_core::facts::{Family, SystemFacts};
+use gameready_core::improvement::Probe;
 
 fn plain(text: &str) -> String {
     console::strip_ansi_codes(text).into_owned()

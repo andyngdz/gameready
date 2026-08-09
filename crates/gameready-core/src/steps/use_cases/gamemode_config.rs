@@ -76,6 +76,10 @@ impl Improvement for GamemodeConfig {
         "gamemode.ini"
     }
 
+    fn bar_name(&self) -> &str {
+        "GameMode config"
+    }
+
     fn blurb(&self) -> &str {
         "gamemode priority"
     }

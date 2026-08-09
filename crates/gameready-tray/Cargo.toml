@@ -1,0 +1,33 @@
+[package]
+name = "gameready-tray"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "System tray indicator for gameready"
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "gameready-tray"
+path = "src/main.rs"
+
+[dependencies]
+gameready-core.workspace = true
+
+directories.workspace = true
+ksni.workspace = true
+rustix.workspace = true
+resvg.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+zbus.workspace = true
+
+[dev-dependencies]
+gameready-core = { workspace = true, features = ["testkit"] }
+
+indoc = "2"
+tempfile.workspace = true

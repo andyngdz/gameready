@@ -58,6 +58,10 @@ impl Improvement for ScxPpa {
         "scx repository"
     }
 
+    fn bar_name(&self) -> &str {
+        "SCX repository"
+    }
+
     fn blurb(&self) -> &str {
         "The scx repository, Debian only"
     }

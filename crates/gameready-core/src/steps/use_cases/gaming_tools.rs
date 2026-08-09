@@ -57,6 +57,10 @@ impl Improvement for GamingTools {
         "gamemode + mangohud"
     }
 
+    fn bar_name(&self) -> &str {
+        "Gaming tools"
+    }
+
     fn blurb(&self) -> &str {
         "gamemode and mangohud"
     }

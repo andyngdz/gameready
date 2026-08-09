@@ -1,6 +1,6 @@
 # Maintainer: Andy D. Nguyen <10527554+andyngdz@users.noreply.github.com>
 pkgname=gameready
-pkgver=0.1.1
+pkgver=0.2.0
 pkgrel=1
 pkgdesc='Reversible Linux gaming optimizer with per-step verification and rollback'
 arch=('x86_64')
@@ -21,7 +21,7 @@ build() {
   cd "$pkgname-$pkgver"
   export RUSTUP_TOOLCHAIN=stable
   export CARGO_TARGET_DIR=target
-  cargo build --frozen --release -p gameready-cli
+  cargo build --frozen --release -p gameready-cli -p gameready-tray
 }
 
 check() {
@@ -34,5 +34,19 @@ check() {
 package() {
   cd "$pkgname-$pkgver"
   install -Dm755 target/release/gameready "$pkgdir/usr/bin/gameready"
+  install -Dm755 target/release/gameready-tray "$pkgdir/usr/bin/gameready-tray"
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+
+  # The tray reads its own artwork from the binary. This copy is for the
+  # desktop entry, which the panel and the app grid look up by name.
+  install -Dm644 crates/gameready-tray/assets/gameready.svg \
+    "$pkgdir/usr/share/icons/hicolor/scalable/apps/gameready.svg"
+  # Two copies of one entry, doing two jobs. /etc/xdg/autostart is what the
+  # XDG spec actually reads at login, so this is the one that puts the icon on
+  # the bar after an install. /usr/share/applications is the app grid, which is
+  # how a user starts it again after choosing Quit.
+  install -Dm644 pkg/gameready-tray.desktop \
+    "$pkgdir/etc/xdg/autostart/gameready-tray.desktop"
+  install -Dm644 pkg/gameready-tray.desktop \
+    "$pkgdir/usr/share/applications/gameready-tray.desktop"
 }

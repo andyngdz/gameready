@@ -6,17 +6,17 @@ use crate::improvement::{
     ApplyCx, Check, CoreCx, CoreImprovement, Improvement, ImprovementId, PlannedAction, Privilege,
     Probe, StepError, StepPlan, Tag, Verification,
 };
-use crate::journal::{digest, Change, RunId};
-use crate::steps::constants::managed_header;
+use crate::journal::{digest, Change};
 use crate::steps::domain::GAMEMODE;
 use crate::steps::use_cases::cpu_governor_policies::{
-    governor_conflict, read_policies, summary, GovernorPolicy, CPU_GOVERNOR_RULE,
-    PERFORMANCE_GOVERNOR,
+    cpu_governor_rule, governor_conflict, read_policies, summary, GovernorPolicy,
+    CPU_GOVERNOR_RULE, CPU_GOVERNOR_RULE_BODY, PERFORMANCE_GOVERNOR,
 };
 use crate::steps::use_cases::GamingTools;
 
-/// The udev rule body that re-pins the governor on every boot.
-const RULE_BODY: &str = r#"SUBSYSTEM=="cpu", ATTR{cpufreq/scaling_governor}="performance""#;
+/// The label every row shows for this step. One constant because the
+/// terminal and the panel menu want the same words here.
+const SHORT_NAME: &str = "CPU speed";
 
 /// The step that pins the governor GamingTools may unlock into a skip.
 ///
@@ -36,14 +36,6 @@ impl CpuGovernor {
     pub const fn id_const() -> ImprovementId {
         ImprovementId::from_static("core.cpu.governor")
     }
-
-    /// The rule file's contents, carrying the marker `doctor` looks for.
-    fn rule_contents(run: RunId) -> String {
-        format!(
-            "{header}\n{RULE_BODY}\n",
-            header = managed_header(Self::id_const(), run),
-        )
-    }
 }
 
 impl Improvement for CpuGovernor {
@@ -56,6 +48,10 @@ impl Improvement for CpuGovernor {
     }
 
     fn short_name(&self) -> &str {
+        SHORT_NAME
+    }
+
+    fn bar_name(&self) -> &str {
         "CPU speed"
     }
 
@@ -134,7 +130,7 @@ impl CoreImprovement for CpuGovernor {
         if cx.governor_pinned {
             plan = plan.action(PlannedAction::CreateFile {
                 path: CPU_GOVERNOR_RULE.to_owned(),
-                contents: RULE_BODY.to_owned(),
+                contents: CPU_GOVERNOR_RULE_BODY.to_owned(),
             });
         }
         Ok(plan)
@@ -166,7 +162,7 @@ impl CoreImprovement for CpuGovernor {
         if cx.cx.governor_pinned {
             cx.progress("Writing the boot rule");
             let rule = PathBuf::from(CPU_GOVERNOR_RULE);
-            let contents = Self::rule_contents(cx.run());
+            let contents = cpu_governor_rule(Self::id_const(), cx.run());
             let sha256_after = digest(&contents);
             cx.mutate(
                 Change::FileWritten {

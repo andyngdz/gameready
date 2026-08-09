@@ -17,6 +17,10 @@ use crate::steps::use_cases::user_home::user_home;
 
 use proton_ge_fetch::{download_verified, fetch_release};
 
+/// The label every row shows for this step. One constant because the
+/// terminal and the panel menu want the same words here.
+const SHORT_NAME: &str = "Proton-GE";
+
 /// Installs the latest Proton-GE release into Steam's compatibility tools
 /// directory so it appears in the per-game Proton version picker.
 #[derive(Debug, Clone)]
@@ -61,6 +65,10 @@ impl Improvement for ProtonGe {
     }
 
     fn short_name(&self) -> &str {
+        SHORT_NAME
+    }
+
+    fn bar_name(&self) -> &str {
         "Proton-GE"
     }
 

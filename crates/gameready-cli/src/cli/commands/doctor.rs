@@ -1,7 +1,7 @@
 //! `gameready doctor`.
 
 use anyhow::{Context as _, Result};
-use gameready_core::doctor::{self, machine_report};
+use gameready_core::doctor::{self, machine_report, StepFinding};
 use gameready_core::exec::CommandRunner;
 use gameready_core::facts;
 use gameready_core::improvement::CoreCx;
@@ -9,7 +9,7 @@ use gameready_core::infra::pkg;
 use gameready_core::steps::core_steps;
 
 use crate::cli::commands::constants::CANNOT_READ_SYSTEM;
-use crate::cli::ui::{DoctorReport, StepFinding};
+use crate::cli::ui::DoctorReport;
 
 /// Reports what the machine is and what each tuning would do, changing nothing.
 pub fn run(runner: &dyn CommandRunner) -> Result<String> {

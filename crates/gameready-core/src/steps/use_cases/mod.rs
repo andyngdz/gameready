@@ -14,6 +14,7 @@ mod gpu_shader_cache_vendor;
 mod io_scheduler;
 mod io_scheduler_devices;
 mod memory_swappiness;
+mod memory_swappiness_state;
 mod proton_ge;
 mod restore_backup;
 mod scx_lavd;
