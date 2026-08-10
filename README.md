@@ -39,8 +39,9 @@ curl -fsSL https://andyngdz.github.io/gameready/install.sh | sh
 
 That downloads the static x86_64 binary from the
 [latest release](https://github.com/andyngdz/gameready/releases/latest), checks
-it against the published sha256, and puts it in `~/.local/bin`. Two variables
-change what it does:
+it against the published sha256, and puts it in `~/.local/bin`. It also installs
+the tray indicator, searchable as "Gameready Tray" in the app grid, which opens
+right after install and at each login. Two variables change what it does:
 
 ```bash
 GAMEREADY_VERSION=v0.1.0 sh -c "$(curl -fsSL https://andyngdz.github.io/gameready/install.sh)"
