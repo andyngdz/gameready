@@ -52,3 +52,31 @@ pub enum WatchError {
     #[error("could not watch the journal for changes")]
     Watch(#[from] rustix::io::Errno),
 }
+
+/// Why clicking a row could not open the terminal.
+///
+/// None of these is fatal: the row was asked to update Proton-GE and the tray
+/// could not even start the terminal that would, so the main loop logs it and
+/// carries on serving the menu.
+#[derive(Debug, thiserror::Error)]
+pub enum TerminalError {
+    /// No terminal could be found, so there is nothing to run the command in.
+    #[error("no terminal could be found to run the update in")]
+    NoTerminal,
+
+    /// The `gameready` binary is not on the PATH, so the terminal would have
+    /// nothing to run.
+    #[error("the gameready command is not on the PATH")]
+    GamereadyNotFound,
+
+    /// A terminal was found but refused to start.
+    #[error("the terminal {program} could not be started")]
+    Spawn {
+        /// Which terminal was found but would not run.
+        program: String,
+
+        /// What the operating system said.
+        #[source]
+        source: std::io::Error,
+    },
+}

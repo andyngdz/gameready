@@ -1,3 +1,5 @@
+use std::sync::mpsc;
+
 use gameready_core::improvement::ProbeStatus;
 
 use super::*;
@@ -7,7 +9,13 @@ fn row(label: &str, status: ProbeStatus) -> Row {
         label: label.to_owned(),
         status,
         note: None,
+        action: None,
     }
+}
+
+fn indicator() -> (Indicator, mpsc::Receiver<Request>) {
+    let (requests, incoming) = mpsc::channel();
+    (Indicator::new(Ink::Light, requests), incoming)
 }
 
 #[test]
@@ -66,4 +74,35 @@ fn a_note_is_read_only_so_it_cannot_be_clicked() {
 #[test]
 fn nothing_holds_in_an_empty_group() {
     assert_eq!(held(&[]), 0);
+}
+
+#[test]
+fn a_row_whose_action_is_update_proton_ge_asks_for_the_update_when_clicked() {
+    let (mut indicator, incoming) = indicator();
+    let mut proton = row("Proton-GE", ProbeStatus::UpdateAvailable);
+    proton.action = Some(RowAction::UpdateProtonGe);
+
+    let items = tuning(&proton);
+    let MenuItem::Standard(item) = &items[0] else {
+        panic!("expected a standard item");
+    };
+
+    (item.activate)(&mut indicator);
+
+    assert_eq!(incoming.try_recv(), Ok(Request::UpdateProtonGe));
+}
+
+#[test]
+fn an_update_available_row_without_an_action_stays_read_only() {
+    let (mut indicator, incoming) = indicator();
+    let proton = row("Proton-GE", ProbeStatus::UpdateAvailable);
+
+    let items = tuning(&proton);
+    let MenuItem::Standard(item) = &items[0] else {
+        panic!("expected a standard item");
+    };
+
+    (item.activate)(&mut indicator);
+
+    assert!(incoming.try_recv().is_err());
 }

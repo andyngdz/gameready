@@ -1,3 +1,5 @@
+use gameready_core::improvement::Probe;
+
 use super::*;
 
 fn row(label: &str, status: ProbeStatus) -> Row {
@@ -5,6 +7,19 @@ fn row(label: &str, status: ProbeStatus) -> Row {
         label: label.to_owned(),
         status,
         note: None,
+        action: None,
+    }
+}
+
+/// A Proton-GE finding with an update pending, for building rows two ways.
+fn outdated_proton() -> StepFinding {
+    StepFinding {
+        short_name: "Proton-GE".to_owned(),
+        found: Ok(Probe::UpdateAvailable {
+            installed: "GE-Proton11-2".to_owned(),
+            latest: "GE-Proton11-5".to_owned(),
+        }),
+        would_do: None,
     }
 }
 
@@ -47,4 +62,26 @@ fn every_row_of_a_ready_snapshot_gets_its_own_line() {
     };
 
     assert_eq!(snapshot.to_string().lines().count(), 2);
+}
+
+#[test]
+fn a_row_built_with_an_action_stays_clickable_and_keeps_its_version_note() {
+    let clickable = Row::new(
+        "Proton-GE",
+        &outdated_proton(),
+        Some(RowAction::UpdateProtonGe),
+    );
+
+    assert_eq!(clickable.action, Some(RowAction::UpdateProtonGe));
+    assert_eq!(
+        clickable.note.as_deref(),
+        Some("installed GE-Proton11-2, GE-Proton11-5 available")
+    );
+}
+
+#[test]
+fn a_row_built_without_an_action_stays_read_only() {
+    let read_only = Row::new("Proton-GE", &outdated_proton(), None);
+
+    assert_eq!(read_only.action, None);
 }

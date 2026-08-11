@@ -6,7 +6,7 @@ use gameready_core::doctor::StepFinding;
 use gameready_core::exec::CommandRunner;
 use gameready_core::facts;
 use gameready_core::games::AppId;
-use gameready_core::improvement::{CoreCx, CoreImprovement};
+use gameready_core::improvement::{CoreCx, CoreImprovement, ProbeStatus};
 use gameready_core::infra::pkg;
 use gameready_core::infra::steam::{
     configs_under, discover_setups, installed_compat_tools, locate_steam_dir,
@@ -14,7 +14,7 @@ use gameready_core::infra::steam::{
 use gameready_core::run::{compat_targets_for, targets_for};
 use gameready_core::steps::{core_steps, SteamLaunchOptions, SteamProton};
 
-use crate::tray::domain::{Row, Snapshot};
+use crate::tray::{Row, RowAction, Snapshot, PROTON_GE_ID};
 
 /// Probes every core tuning and describes the state of each.
 ///
@@ -39,7 +39,15 @@ pub fn sweep(runner: &dyn CommandRunner) -> Snapshot {
 
     let rows = core_steps()
         .iter()
-        .map(|step| Row::new(step.bar_name(), &StepFinding::of(step.as_ref(), &cx)))
+        .map(|step| {
+            let finding = StepFinding::of(step.as_ref(), &cx);
+            // The one clickable row is Proton-GE with an update pending; every
+            // other row, including every game row, stays read-only.
+            let action = (step.id() == PROTON_GE_ID
+                && finding.status() == ProbeStatus::UpdateAvailable)
+                .then_some(RowAction::UpdateProtonGe);
+            Row::new(step.bar_name(), &finding, action)
+        })
         .collect();
     Snapshot::Ready { rows }
 }
@@ -78,7 +86,7 @@ pub fn sweep_game(runner: &dyn CommandRunner, app_id: AppId, user_games: &Path) 
     let cx = CoreCx::new(&facts, runner);
     steps
         .iter()
-        .map(|step| Row::new(step.bar_name(), &StepFinding::of(step.as_ref(), &cx)))
+        .map(|step| Row::new(step.bar_name(), &StepFinding::of(step.as_ref(), &cx), None))
         .collect()
 }
 

@@ -20,8 +20,8 @@ use tracing_subscriber::EnvFilter;
 use gameready_core::infra::exec::RealRunner;
 
 use crate::infra::{
-    claim, state_dir, user_games_dir, watch_for_changes, watch_for_games, Claim, Indicator, Ink,
-    Request,
+    claim, launch, state_dir, user_games_dir, watch_for_changes, watch_for_games, Claim, Indicator,
+    Ink, Request,
 };
 use crate::tray::{sweep, sweep_game, Activity};
 
@@ -143,6 +143,14 @@ fn serve(
                 let activity = with_game_rows(runner, activity, games);
                 if handle.update(|tray| tray.playing(activity)).is_none() {
                     return;
+                }
+            }
+            Some(Request::UpdateProtonGe) => {
+                // Opening the update lives outside the sweep: nothing here
+                // re-reads the machine, and the journal watcher refreshes the
+                // rows when the CLI's run lands.
+                if let Err(error) = launch(runner) {
+                    tracing::warn!(%error, "could not open the Proton-GE update");
                 }
             }
             Some(Request::Quit) | None => return,

@@ -12,7 +12,7 @@ use crate::improvement::{
 };
 use crate::journal::Change;
 use crate::steps::constants::{COMPAT_TOOLS_DIR, COMPAT_TOOL_VDF, CURL_BIN, MKDIR_BIN, TAR_BIN};
-use crate::steps::domain::tarball_name;
+use crate::steps::domain::ProtonRelease;
 use crate::steps::use_cases::user_home::user_home;
 
 use proton_ge_fetch::{download_verified, fetch_release};
@@ -54,8 +54,8 @@ impl ProtonGe {
         Self { compat_dir }
     }
 
-    fn install_dir(&self, tag: &str) -> PathBuf {
-        self.compat_dir.join(tag)
+    fn install_dir(&self, release: &ProtonRelease) -> PathBuf {
+        self.compat_dir.join(release.install_name())
     }
 }
 
@@ -123,9 +123,9 @@ impl CoreImprovement for ProtonGe {
                 });
             }
         };
-        if cx.runner.path_exists(&self.install_dir(&release.tag)) {
+        if cx.runner.path_exists(&self.install_dir(&release)) {
             return Ok(Probe::AlreadyApplied {
-                evidence: format!("{} is already installed", release.tag),
+                evidence: format!("{} is already installed", release.install_name()),
             });
         }
         // Latest tag absent: an older GE-Proton install still makes the tool
@@ -155,10 +155,10 @@ impl CoreImprovement for ProtonGe {
         let release = fetch_release(cx.runner)?;
         Ok(StepPlan::new(self.id(), format!("install {}", release.tag))
             .action(PlannedAction::RunCommand {
-                display: format!("download and verify {}", tarball_name(&release.tag)),
+                display: format!("download and verify {}", release.tarball_name),
             })
             .action(PlannedAction::RunCommand {
-                display: format!("extract to {}", self.install_dir(&release.tag).display()),
+                display: format!("extract to {}", self.install_dir(&release).display()),
             }))
     }
 
@@ -166,11 +166,11 @@ impl CoreImprovement for ProtonGe {
         cx.progress("Fetching latest release info");
         let release = fetch_release(cx.reader())?;
 
-        cx.progress(&format!("Downloading {}", tarball_name(&release.tag)));
+        cx.progress(&format!("Downloading {}", release.tarball_name));
         let total = release.tarball_bytes;
         let temp_path = download_verified(cx.reader(), &release, &|done| cx.bytes(done, total))?;
         let temp_str = temp_path.to_string_lossy().into_owned();
-        let install_dir = self.install_dir(&release.tag);
+        let install_dir = self.install_dir(&release);
 
         cx.progress(&format!("Extracting {} to Steam", release.tag));
         cx.mutate(
@@ -199,10 +199,10 @@ impl CoreImprovement for ProtonGe {
 
     fn verify(&self, cx: &CoreCx<'_>) -> Result<Verification, StepError> {
         let release = fetch_release(cx.runner)?;
-        let vdf = self.install_dir(&release.tag).join(COMPAT_TOOL_VDF);
+        let vdf = self.install_dir(&release).join(COMPAT_TOOL_VDF);
 
         Ok(Verification::new().check(Check::equals(
-            format!("{}/{COMPAT_TOOL_VDF} exists", release.tag),
+            format!("{}/{COMPAT_TOOL_VDF} exists", release.install_name()),
             "yes",
             if cx.runner.path_exists(&vdf) {
                 "yes"

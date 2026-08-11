@@ -8,12 +8,14 @@ mod items;
 pub(crate) mod journal;
 mod single;
 pub(crate) mod sni;
+mod terminal;
 mod watchers;
 
 pub use gamemode::Watch;
 pub use ink::Ink;
 pub use single::{claim, Claim};
 pub use sni::Indicator;
+pub(crate) use terminal::launch;
 pub use watchers::{state_dir, user_games_dir, watch_for_changes, watch_for_games};
 
 use crate::tray::Activity;
@@ -30,6 +32,9 @@ pub enum Request {
 
     /// A configured game started or stopped.
     Playing(Activity),
+
+    /// Open the default terminal running the one-command Proton-GE update.
+    UpdateProtonGe,
 
     /// Stop the tray.
     Quit,

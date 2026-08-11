@@ -7,6 +7,15 @@ use serde::Deserialize;
 pub struct ProtonRelease {
     /// The release tag, which is also the directory name after extraction.
     pub tag: String,
+
+    /// The x86_64 tarball's filename, as the release itself names it.
+    ///
+    /// Read from the release rather than built from the tag. Upstream renamed
+    /// the asset to `<tag>-x86_64.tar.gz` at GE-Proton11-4, and a name guessed
+    /// from the tag matches no line in the checksum file, so every run since
+    /// would fail before it downloaded anything.
+    pub tarball_name: String,
+
     /// Download URL for the x86_64 tarball.
     pub tarball_url: String,
     /// Download URL for the x86_64 sha512sum file.
@@ -20,6 +29,25 @@ pub struct ProtonRelease {
     /// rather than as an empty file.
     pub tarball_bytes: u64,
 }
+
+impl ProtonRelease {
+    /// The directory the tarball extracts to, which is also the name Steam
+    /// registers the tool under.
+    ///
+    /// The tarball's top-level directory is its own filename without the
+    /// extension, and upstream's manifest names the tool the same thing. That
+    /// stopped being the tag at GE-Proton11-4, where the asset became
+    /// `<tag>-x86_64.tar.gz` and the extracted directory followed it.
+    #[must_use]
+    pub fn install_name(&self) -> &str {
+        self.tarball_name
+            .strip_suffix(TARBALL_SUFFIX)
+            .unwrap_or(&self.tarball_name)
+    }
+}
+
+/// What every release tarball is compressed as.
+const TARBALL_SUFFIX: &str = ".tar.gz";
 
 /// Parses the GitHub API JSON for `/repos/.../releases/latest` into a
 /// [`ProtonRelease`], picking the x86_64 assets and skipping aarch64.
@@ -43,6 +71,7 @@ pub fn parse_release(json: &str) -> Option<ProtonRelease> {
 
     Some(ProtonRelease {
         tag,
+        tarball_name: tarball.name.clone(),
         tarball_url: tarball.browser_download_url.clone(),
         checksum_url,
         tarball_bytes: tarball.size,
@@ -60,12 +89,6 @@ pub fn parse_checksum(checksum_text: &str, tarball_name: &str) -> Option<String>
         .find(|line| line.contains(tarball_name))
         .and_then(|line| line.split_whitespace().next())
         .map(str::to_owned)
-}
-
-/// The tarball filename for a tag, e.g. `GE-Proton11-3.tar.gz`.
-#[must_use]
-pub fn tarball_name(tag: &str) -> String {
-    format!("{tag}.tar.gz")
 }
 
 /// The newest GE-Proton build among a set of installed tool names.
@@ -89,6 +112,10 @@ fn ge_version(name: &str) -> Option<(u32, u32)> {
     // as revision zero rather than dropped, so a future naming change costs the
     // build its place in the order instead of its place in the list.
     let (release, revision) = rest.split_once('-').unwrap_or((rest, "0"));
+    // Since GE-Proton11-4 the directory carries an architecture suffix, so the
+    // revision runs only as far as its digits. Reading "5-x86_64" whole drops
+    // the newest build out of the ranking entirely.
+    let revision = revision.split(|c: char| !c.is_ascii_digit()).next()?;
     Some((release.parse().ok()?, revision.parse().ok()?))
 }
 

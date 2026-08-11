@@ -9,7 +9,8 @@ use crate::infra::errors::IconError;
 use crate::infra::icon;
 use crate::infra::ink::Ink;
 use crate::infra::sni::Indicator;
-use crate::tray::Row;
+use crate::infra::Request;
+use crate::tray::{Row, RowAction};
 
 /// A submenu holding a group of rows, titled with how many of them hold.
 pub(super) fn folder(title: &str, rows: &[Row]) -> MenuItem<Indicator> {
@@ -22,20 +23,30 @@ pub(super) fn folder(title: &str, rows: &[Row]) -> MenuItem<Indicator> {
 }
 
 /// One tuning as its menu rows: a coloured dot and name, and a second
-/// read-only line when the row carries a note such as a newer version.
+/// read-only line when the row carries a note such as a newer version. A row
+/// with an action is clickable and posts a request; the rest stay read-only.
 pub(super) fn tuning(row: &Row) -> Vec<MenuItem<Indicator>> {
     let ink = Ink::for_status(row.status);
     let icon_data = icon::dot(ink).unwrap_or_else(|error| {
         report(&error);
         Vec::new()
     });
+    // Most rows stay read-only, and that is kept by the empty handler rather
+    // than by refusing to light up: a disabled dbusmenu item is drawn greyed
+    // and never highlights on hover, so a menu of them reads as broken next to
+    // every other tray on the bar. The one row that earns a click posts a
+    // request and returns; the main loop opens the terminal from the thread
+    // that owns it.
+    let activate: Box<dyn Fn(&mut Indicator) + Send> = match row.action {
+        Some(RowAction::UpdateProtonGe) => {
+            Box::new(|this: &mut Indicator| this.ask(Request::UpdateProtonGe))
+        }
+        None => Box::new(|_this: &mut Indicator| {}),
+    };
     let mut items = vec![StandardItem {
         label: format!("{row}"),
         icon_data,
-        // Enabled even though clicking does nothing. A disabled dbusmenu item
-        // is drawn greyed and never highlights on hover, so a menu of them
-        // reads as broken next to every other tray on the bar. Read-only is
-        // kept by the empty handler, not by refusing to light up.
+        activate,
         ..StandardItem::default()
     }
     .into()];

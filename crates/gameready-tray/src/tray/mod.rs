@@ -3,5 +3,6 @@
 mod domain;
 mod service;
 
-pub use domain::{Activity, Row, Snapshot};
+pub use domain::{Activity, Row, RowAction, Snapshot};
+pub(crate) use domain::{PROTON_GE_ID, PROTON_GE_STEP_ID};
 pub use service::{sweep, sweep_game};

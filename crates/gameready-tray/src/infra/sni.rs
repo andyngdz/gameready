@@ -127,8 +127,10 @@ impl Indicator {
     /// Posts a request, ignoring a closed channel.
     ///
     /// A closed channel means the main loop has already left, so the tray is
-    /// seconds from being torn down and there is nothing to report to.
-    fn ask(&self, request: Request) {
+    /// seconds from being torn down and there is nothing to report to. The menu
+    /// items live in a sibling module, so this is the crate-internal boundary
+    /// they hand clicks across.
+    pub(crate) fn ask(&self, request: Request) {
         let _ = self.requests.send(request);
     }
 }

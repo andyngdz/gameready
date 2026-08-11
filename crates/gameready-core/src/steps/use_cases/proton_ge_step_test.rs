@@ -11,20 +11,26 @@ use crate::journal::{Change, Journal, RunId, StatePaths};
 use crate::steps::constants::PROTON_GE_LATEST_URL;
 
 const COMPAT: &str = "/home/test/.steam/root/compatibilitytools.d";
-const TAG: &str = "GE-Proton11-3";
+const TAG: &str = "GE-Proton11-5";
+
+/// What the release names the x86_64 tarball, which is not the tag alone.
+const TARBALL: &str = "GE-Proton11-5-x86_64.tar.gz";
+
+/// The directory that tarball extracts to, which is what Steam sees.
+const INSTALL: &str = "GE-Proton11-5-x86_64";
 
 fn release_json() -> &'static str {
     indoc! {r#"
         {
-          "tag_name": "GE-Proton11-3",
+          "tag_name": "GE-Proton11-5",
           "assets": [
             {
-              "name": "GE-Proton11-3.tar.gz",
-              "browser_download_url": "https://github.com/dl/GE-Proton11-3.tar.gz"
+              "name": "GE-Proton11-5-x86_64.tar.gz",
+              "browser_download_url": "https://github.com/dl/GE-Proton11-5-x86_64.tar.gz"
             },
             {
-              "name": "GE-Proton11-3.sha512sum",
-              "browser_download_url": "https://github.com/dl/GE-Proton11-3.sha512sum"
+              "name": "GE-Proton11-5-x86_64.sha512sum",
+              "browser_download_url": "https://github.com/dl/GE-Proton11-5-x86_64.sha512sum"
             }
           ]
         }
@@ -54,18 +60,18 @@ fn journal(dir: &TempDir) -> Journal {
 }
 
 fn apply_runner() -> MockRunner {
-    let temp_tarball = format!("{}/GE-Proton11-3.tar.gz", std::env::temp_dir().display());
+    let temp_tarball = format!("{}/{TARBALL}", std::env::temp_dir().display());
     base_runner()
         .answering(
-            "curl -sfL https://github.com/dl/GE-Proton11-3.sha512sum",
-            "abc123  GE-Proton11-3.tar.gz\n",
+            "curl -sfL https://github.com/dl/GE-Proton11-5-x86_64.sha512sum",
+            format!("abc123  {TARBALL}\n"),
         )
         .answering(
             format!("sha512sum {temp_tarball}"),
-            "abc123  GE-Proton11-3.tar.gz\n",
+            format!("abc123  {TARBALL}\n"),
         )
         .serving(
-            "https://github.com/dl/GE-Proton11-3.tar.gz",
+            "https://github.com/dl/GE-Proton11-5-x86_64.tar.gz",
             "a tarball, as far as this test is concerned",
         )
 }
@@ -114,8 +120,11 @@ fn probe_not_applicable_when_steam_root_missing() {
 #[test]
 fn probe_already_applied_when_tag_dir_exists() {
     let runner = base_runner()
-        .with_file(format!("{COMPAT}/{TAG}"), "")
-        .with_file(format!("{COMPAT}/{TAG}/compatibilitytool.vdf"), "manifest");
+        .with_file(format!("{COMPAT}/{INSTALL}"), "")
+        .with_file(
+            format!("{COMPAT}/{INSTALL}/compatibilitytool.vdf"),
+            "manifest",
+        );
     let facts = facts();
     let cx = CoreCx::new(&facts, &runner);
     assert!(matches!(
@@ -146,7 +155,7 @@ fn probe_update_available_when_an_older_ge_install_exists() {
         Probe::UpdateAvailable {
             installed,
             latest
-        } if installed == "GE-Proton11-2" && latest == "GE-Proton11-3"
+        } if installed == "GE-Proton11-2" && latest == TAG
     ));
 }
 
@@ -207,7 +216,7 @@ fn apply_records_dir_tree_installed() {
     assert_eq!(changes.len(), 1);
     match &changes[0] {
         Change::DirTreeInstalled { path, privilege } => {
-            assert_eq!(path, &PathBuf::from(format!("{COMPAT}/{TAG}")));
+            assert_eq!(path, &PathBuf::from(format!("{COMPAT}/{INSTALL}")));
             assert_eq!(*privilege, Privilege::User);
         }
         other @ (Change::FileWritten { .. }
@@ -250,8 +259,10 @@ fn apply_runs_tar_to_extract() {
 
 #[test]
 fn verify_passes_when_vdf_exists() {
-    let runner =
-        base_runner().with_file(format!("{COMPAT}/{TAG}/compatibilitytool.vdf"), "manifest");
+    let runner = base_runner().with_file(
+        format!("{COMPAT}/{INSTALL}/compatibilitytool.vdf"),
+        "manifest",
+    );
     let facts = facts();
     let cx = CoreCx::new(&facts, &runner);
     let verification = step().verify(&cx).expect("verify succeeds");
@@ -276,7 +287,7 @@ fn rollback_removes_the_installed_dir_tree() {
     let dir = TempDir::new().expect("temp dir");
     let mut log = journal(&dir);
     let undo = vec![Change::DirTreeInstalled {
-        path: PathBuf::from(format!("{COMPAT}/{TAG}")),
+        path: PathBuf::from(format!("{COMPAT}/{INSTALL}")),
         privilege: Privilege::User,
     }];
     let mut cx = ApplyCx::new(

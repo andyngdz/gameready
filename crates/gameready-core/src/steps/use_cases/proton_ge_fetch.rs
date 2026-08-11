@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use crate::exec::{Cmd, CmdOutput, CommandRunner};
 use crate::improvement::{ParseFailure, StepError};
 use crate::steps::constants::{CURL_BIN, PROTON_GE_LATEST_URL, SHA512SUM_BIN};
-use crate::steps::domain::{parse_checksum, parse_release, tarball_name, ProtonRelease};
+use crate::steps::domain::{parse_checksum, parse_release, ProtonRelease};
 
 const FETCH_FLAGS: &str = "-sfL";
 
@@ -30,13 +30,13 @@ pub(super) fn download_verified(
     release: &ProtonRelease,
     on_bytes: &dyn Fn(u64),
 ) -> Result<PathBuf, StepError> {
-    let tarball = tarball_name(&release.tag);
-    let temp_path = std::env::temp_dir().join(&tarball);
+    let tarball = &release.tarball_name;
+    let temp_path = std::env::temp_dir().join(tarball);
     let temp_str = temp_path.to_string_lossy().into_owned();
 
     let checksum_output = fetch_text(runner, &release.checksum_url)?;
     let expected_hash =
-        parse_checksum(&checksum_output.stdout, &tarball).ok_or_else(|| StepError::Parse {
+        parse_checksum(&checksum_output.stdout, tarball).ok_or_else(|| StepError::Parse {
             what: "sha512 hash",
             path: PathBuf::from(&release.checksum_url),
             source: ParseFailure::Unexpected {

@@ -3,7 +3,7 @@ use std::sync::mpsc;
 use gameready_core::games::AppId;
 use gameready_core::improvement::ProbeStatus;
 
-use crate::tray::Row;
+use crate::tray::{Row, RowAction};
 
 use super::*;
 
@@ -12,6 +12,7 @@ fn row(label: &str, status: ProbeStatus) -> Row {
         label: label.to_owned(),
         status,
         note: None,
+        action: None,
     }
 }
 
@@ -272,4 +273,24 @@ fn a_click_after_the_main_loop_has_gone_is_dropped_rather_than_panicking() {
     drop(incoming);
 
     indicator.ask(Request::Refresh);
+}
+
+#[test]
+fn clicking_the_proton_ge_row_asks_the_main_loop_for_an_update() {
+    let (mut indicator, incoming) = indicator();
+    let mut proton = row("Proton-GE", ProbeStatus::UpdateAvailable);
+    proton.action = Some(RowAction::UpdateProtonGe);
+    indicator.show(Snapshot::Ready { rows: vec![proton] });
+
+    let MenuItem::SubMenu(system) = indicator.menu().remove(0) else {
+        panic!("expected the system submenu");
+    };
+    let mut inner = system.submenu;
+    let MenuItem::Standard(first) = inner.remove(0) else {
+        panic!("expected a standard item");
+    };
+
+    (first.activate)(&mut indicator);
+
+    assert_eq!(incoming.try_recv(), Ok(Request::UpdateProtonGe));
 }

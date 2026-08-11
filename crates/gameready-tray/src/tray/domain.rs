@@ -7,7 +7,27 @@ use std::fmt;
 
 use gameready_core::doctor::StepFinding;
 use gameready_core::games::AppId;
-use gameready_core::improvement::ProbeStatus;
+use gameready_core::improvement::{ImprovementId, ProbeStatus};
+
+/// The stable id of the one step a tray row can act on.
+///
+/// The CLI's `apply --step` understands exactly this string, so the row match
+/// here and the command the terminal runs must name the same step. Written
+/// once so the two cannot drift.
+pub(crate) const PROTON_GE_STEP_ID: &str = "core.proton.ge";
+
+/// The id as a comparable value, for the sweep's `step.id()` check.
+pub(crate) const PROTON_GE_ID: ImprovementId = ImprovementId::from_static(PROTON_GE_STEP_ID);
+
+/// What clicking a row asks the main loop to do.
+///
+/// A plain-data stand-in for the real handler so the menu can be built and
+/// asserted without a session bus. `None` keeps a row read-only.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RowAction {
+    /// Open the default terminal running the Proton-GE update command.
+    UpdateProtonGe,
+}
 
 /// One tuning, as one line of the menu.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -20,6 +40,9 @@ pub struct Row {
 
     /// A second, read-only line under the row, drawn only when a row earns one.
     pub note: Option<String>,
+
+    /// What clicking the row does, if anything. `None` keeps it read-only.
+    pub action: Option<RowAction>,
 }
 
 impl Row {
@@ -39,9 +62,11 @@ impl Row {
     ///
     /// The label comes from the step rather than from the finding, because
     /// `StepFinding` carries the terminal identifier the doctor screen wants
-    /// and a panel menu wants the step's [`Improvement::bar_name`].
+    /// and a panel menu wants the step's [`Improvement::bar_name`]. `action` is
+    /// the caller's call, not this constructor's: which row earns a click is a
+    /// decision about the catalog, and the sweep is the place that knows it.
     #[must_use]
-    pub fn new(bar_name: &str, finding: &StepFinding) -> Self {
+    pub fn new(bar_name: &str, finding: &StepFinding, action: Option<RowAction>) -> Self {
         let status = finding.status();
         Self {
             label: bar_name.to_owned(),
@@ -49,6 +74,7 @@ impl Row {
             // The one note a panel row earns is a version hint; every other
             // sentence a finding could add belongs to `gameready doctor`.
             note: (status == ProbeStatus::UpdateAvailable).then(|| finding.note()),
+            action,
         }
     }
 }

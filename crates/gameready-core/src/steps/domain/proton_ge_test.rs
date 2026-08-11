@@ -4,45 +4,49 @@ use super::*;
 
 #[test]
 fn parses_a_release_with_x86_and_aarch64_assets() {
+    // Asset order and naming as GitHub serves them since GE-Proton11-4:
+    // aarch64 first, and the x86_64 tarball no longer named after the tag
+    // alone. A name built from the tag matches nothing in the checksum file.
     let json = indoc! {r#"
         {
-          "tag_name": "GE-Proton11-3",
+          "tag_name": "GE-Proton11-5",
           "assets": [
             {
-              "name": "GE-Proton11-3.tar.gz",
-              "browser_download_url": "https://github.com/dl/GE-Proton11-3.tar.gz",
-              "size": 186703872
+              "name": "GE-Proton11-5-aarch64.sha512sum",
+              "browser_download_url": "https://github.com/dl/GE-Proton11-5-aarch64.sha512sum"
             },
             {
-              "name": "GE-Proton11-3.sha512sum",
-              "browser_download_url": "https://github.com/dl/GE-Proton11-3.sha512sum",
-              "size": 141
+              "name": "GE-Proton11-5-aarch64.tar.gz",
+              "browser_download_url": "https://github.com/dl/GE-Proton11-5-aarch64.tar.gz"
             },
             {
-              "name": "GE-Proton11-3-aarch64.tar.gz",
-              "browser_download_url": "https://github.com/dl/GE-Proton11-3-aarch64.tar.gz"
+              "name": "GE-Proton11-5-x86_64.sha512sum",
+              "browser_download_url": "https://github.com/dl/GE-Proton11-5-x86_64.sha512sum",
+              "size": 158
             },
             {
-              "name": "GE-Proton11-3-aarch64.sha512sum",
-              "browser_download_url": "https://github.com/dl/GE-Proton11-3-aarch64.sha512sum"
+              "name": "GE-Proton11-5-x86_64.tar.gz",
+              "browser_download_url": "https://github.com/dl/GE-Proton11-5-x86_64.tar.gz",
+              "size": 533066604
             }
           ]
         }
     "#};
 
     let release = parse_release(json).expect("should parse");
-    assert_eq!(release.tag, "GE-Proton11-3");
+    assert_eq!(release.tag, "GE-Proton11-5");
+    assert_eq!(release.tarball_name, "GE-Proton11-5-x86_64.tar.gz");
     assert_eq!(
         release.tarball_url,
-        "https://github.com/dl/GE-Proton11-3.tar.gz"
+        "https://github.com/dl/GE-Proton11-5-x86_64.tar.gz"
     );
     assert_eq!(
         release.checksum_url,
-        "https://github.com/dl/GE-Proton11-3.sha512sum"
+        "https://github.com/dl/GE-Proton11-5-x86_64.sha512sum"
     );
     // The tarball's size, not the checksum file's: the progress bar is about
-    // the 178 MB, not the 141 bytes beside it.
-    assert_eq!(release.tarball_bytes, 186_703_872);
+    // the 508 MB, not the 158 bytes beside it.
+    assert_eq!(release.tarball_bytes, 533_066_604);
 }
 
 #[test]
@@ -115,8 +119,18 @@ fn returns_none_when_tarball_not_in_checksum() {
 }
 
 #[test]
-fn tarball_name_matches_the_tag() {
-    assert_eq!(tarball_name("GE-Proton11-3"), "GE-Proton11-3.tar.gz");
+fn the_install_directory_is_the_tarball_name_rather_than_the_tag() {
+    // tar lays the archive down under its own filename, and upstream's own
+    // manifest registers the tool under that same name.
+    let release = ProtonRelease {
+        tag: "GE-Proton11-5".to_owned(),
+        tarball_name: "GE-Proton11-5-x86_64.tar.gz".to_owned(),
+        tarball_url: String::new(),
+        checksum_url: String::new(),
+        tarball_bytes: 0,
+    };
+
+    assert_eq!(release.install_name(), "GE-Proton11-5-x86_64");
 }
 
 fn tools(names: &[&str]) -> Vec<String> {
@@ -137,6 +151,15 @@ fn the_revision_breaks_a_tie_within_one_release() {
     let installed = tools(&["GE-Proton11-3", "GE-Proton11-20"]);
 
     assert_eq!(newest_ge_proton(&installed), Some("GE-Proton11-20"));
+}
+
+#[test]
+fn an_architecture_suffix_does_not_cost_a_build_its_place() {
+    // Installs made since GE-Proton11-4 carry the suffix. Reading the revision
+    // as "5-x86_64" drops the newest build and pins the game to an older one.
+    let installed = tools(&["GE-Proton11-3", "GE-Proton11-5-x86_64"]);
+
+    assert_eq!(newest_ge_proton(&installed), Some("GE-Proton11-5-x86_64"));
 }
 
 #[test]
