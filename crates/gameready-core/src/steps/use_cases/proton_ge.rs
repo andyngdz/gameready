@@ -12,7 +12,7 @@ use crate::improvement::{
 };
 use crate::journal::Change;
 use crate::steps::constants::{COMPAT_TOOLS_DIR, COMPAT_TOOL_VDF, CURL_BIN, MKDIR_BIN, TAR_BIN};
-use crate::steps::domain::ProtonRelease;
+use crate::steps::domain::{newest_ge_proton, ProtonRelease};
 use crate::steps::use_cases::user_home::user_home;
 
 use proton_ge_fetch::{download_verified, fetch_release};
@@ -20,10 +20,6 @@ use proton_ge_fetch::{download_verified, fetch_release};
 /// The label every row shows for this step. One constant because the
 /// terminal and the panel menu want the same words here.
 const SHORT_NAME: &str = "Proton-GE";
-
-/// The directory-name prefix every Proton-GE release extracts to. Any install
-/// under it counts as "has Proton-GE", so a stale one still reads as usable.
-const GE_PREFIX: &str = "GE-Proton";
 
 /// Installs the latest Proton-GE release into Steam's compatibility tools
 /// directory so it appears in the per-game Proton version picker.
@@ -130,7 +126,9 @@ impl CoreImprovement for ProtonGe {
         }
         // Latest tag absent: an older GE-Proton install still makes the tool
         // usable, so read as installed-but-outdated rather than "would install".
-        let older = cx
+        // The directory listing arrives sorted as text, which ranks
+        // GE-Proton9-20 above GE-Proton11-3, so the newest is picked by number.
+        let installed_tools = cx
             .runner
             .read_dir(&self.compat_dir)
             .into_iter()
@@ -140,11 +138,10 @@ impl CoreImprovement for ProtonGe {
                     .file_name()
                     .and_then(|name| name.to_str().map(str::to_owned))
             })
-            .filter(|name| name.starts_with(GE_PREFIX))
             .collect::<Vec<_>>();
-        if let Some(installed) = older.first() {
+        if let Some(installed) = newest_ge_proton(&installed_tools) {
             return Ok(Probe::UpdateAvailable {
-                installed: installed.clone(),
+                installed: installed.to_owned(),
                 latest: release.tag,
             });
         }

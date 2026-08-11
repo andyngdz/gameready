@@ -160,6 +160,32 @@ fn probe_update_available_when_an_older_ge_install_exists() {
 }
 
 #[test]
+fn probe_names_the_newest_install_rather_than_the_first_one_listed() {
+    // The listing arrives sorted as text, where GE-Proton10-15 comes first and
+    // GE-Proton9-20 comes last. Reporting either one tells the user they are on
+    // a build two releases older than what they actually have.
+    let runner = base_runner()
+        .with_file(
+            format!("{COMPAT}/GE-Proton10-15/compatibilitytool.vdf"),
+            "m",
+        )
+        .with_file(format!("{COMPAT}/GE-Proton11-2/compatibilitytool.vdf"), "m")
+        .with_file(format!("{COMPAT}/GE-Proton9-20/compatibilitytool.vdf"), "m");
+    let facts = facts();
+    let cx = CoreCx::new(&facts, &runner);
+
+    let found = step().probe(&cx).expect("ok");
+
+    assert!(
+        matches!(
+            &found,
+            Probe::UpdateAvailable { installed, .. } if installed == "GE-Proton11-2"
+        ),
+        "{found:?}"
+    );
+}
+
+#[test]
 fn probe_applicable_when_only_an_unrelated_compat_tool_is_installed() {
     let runner = base_runner().with_file(
         format!("{COMPAT}/DXVK-Custom/compatibilitytool.vdf"),
