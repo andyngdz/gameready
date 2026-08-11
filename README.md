@@ -1,56 +1,172 @@
 # gameready
 
-A command line tool that applies gaming-related system tuning on Linux and can
-undo it.
+A Linux tool that tunes your system for gaming, and undoes it when you are
+done. One command finds your Steam games, asks what you want, applies the
+tuning, verifies it worked, and keeps a receipt so `gameready rollback` puts
+everything back.
 
-Status: the engine, all planned steps, and the full `init` flow work.
-See [milestones](#milestones).
+It targets the three things that ruin a session: games that crash on launch,
+stutter, and frame-time hitches. For the GPU it raises the shader cache so games
+stop recompiling shaders mid-run, and adds an in-game FPS and GPU monitor. Every
+change is reversible.
 
-## Scope
+## What it fixes
 
-gameready applies changes in these categories:
+| What it fixes | Tuning | How |
+|---|---|---|
+| **Graphics & shaders** | Shader cache | Raises the GPU's shader cache ceiling so games stop recompiling shaders, the classic mid-game stutter |
+| | FPS + GPU monitor | Installs mangohud so you can see FPS, GPU and CPU usage, temperatures, and frame times in game |
+| | Proton-GE | Ships a newer Vulkan stack (DXVK, vkd3d-proton) so Windows games run with fewer graphics issues |
+| **CPU** | CPU scheduler | Runs the threads games wait on first, so stutter under load drops |
+| | CPU speed | Keeps the CPU at full speed while you play |
+| | Split-lock | Disables a CPU penalty that crawls some games |
+| | Game boost | Raises game priority and CPU speed while the game runs, then restores |
+| **Memory & storage** | Memory map limit | Raises the kernel's memory-map limit so memory-hungry games start instead of crashing on launch |
+| | Memory latency | Retunes the memory manager for low latency instead of server throughput |
+| | Swap | Uses zram for swap instead of starving RAM |
+| | I/O scheduler | Matches each disk to the right I/O scheduler, fewer hitches |
+| **Steam & Proton** | Launch options | Adds the boost and overlay to each game's launch |
+| | Proton version | Pins each game to the Proton build its profile asks for |
+| | Conflict check | Tells you if a power daemon is fighting the boost |
 
-- kernel parameters via `/etc/sysctl.d`
-- block device I/O schedulers via a udev rule
-- sched_ext schedulers, loaded at runtime
-- packages: gamemode and mangohud
-- gamemode's own configuration, in `~/.config/gamemode.ini`
-- the GPU shader cache size, via `~/.config/environment.d`
-- Proton-GE into `compatibilitytools.d`
-- per-game Steam launch options, environment variables, and Proton version
+`gameready init` applies the gamemode boost to every game you pick, and uses a
+tuned profile (launch options, Proton version) where one exists.
+`gameready explain` lists every tuning and what it would do on your machine.
 
-It does not install kernels, edit `/etc/default/grub`, change GPU drivers, or
-add kernel command line parameters.
+## It won't touch
 
-`gameready doctor` reports three settings it will not apply, and flags them if
-they are already present on the system:
+gameready does not install kernels, edit `/etc/default/grub`, change GPU
+drivers, or add kernel command line parameters. No overclocking, no bootloader
+edits, nothing that risks an unbootable system. The GPU fix it does make, the
+shader cache ceiling, is a config file, not a driver change.
+
+`gameready doctor` also reports three settings it deliberately does not apply,
+and flags them if they are already on your system:
 
 | Setting | Why it is not applied |
 |---|---|
-| `mitigations=off` | Measured gaming effect is around 1% on CPUs from 2020 onward, against Spectre and Meltdown exposure |
+| `mitigations=off` | Measured gaming gain is around 1% on CPUs from 2020 onward, against Spectre and Meltdown exposure |
 | `vm.swappiness=1` | Works against zram, which most distros now enable by default |
-| `kernel.sched_latency_ns` and related | Removed in kernel 6.6 with EEVDF; writing them to `/etc/sysctl.d` has no effect |
+| `kernel.sched_latency_ns` and related | Removed in kernel 6.6 with EEVDF; writing them to `/etc/sysctl.d` does nothing |
 
-## Install
+## Quick start
 
 ```bash
 curl -fsSL https://andyngdz.github.io/gameready/install.sh | sh
+gameready init
 ```
 
-That downloads the static x86_64 binary from the
+`init` finds your installed Steam games, asks which to set up and whether you
+want an FPS overlay, then applies the tunings. It asks for your sudo password
+once, and only if a tuning needs root. Change your mind later: `gameready
+rollback`.
+
+The installer also drops in a tray indicator, searchable as "Gameready Tray",
+which shows which tunings are in place and turns green while a configured game
+runs. It starts right after install and at each login.
+
+## How it works
+
+gameready checks your system before it changes anything. Each tuning decides
+whether it applies, you confirm the plan, and only then does it apply. Every
+change is written to a journal before it happens, each tuning is verified by
+reading the system back, and a tuning that fails verification is rolled back on
+the spot.
+
+```mermaid
+flowchart LR
+    Start["gameready init"] --> Probe["Probe every tuning<br/>read-only, changes nothing"]
+    Probe --> Sorted{"Each tuning is"}
+    Sorted -->|"would apply"| Any{"Any to apply?"}
+    Sorted -->|"already in place / not applicable / conflict / unknown"| Skip["Skipped - nothing to do"]
+    Any -->|no| Exit3["Exit 3 - nothing to apply"]
+    Any -->|yes| Plan["Plan screen:<br/>confirm what to apply"]
+    Plan --> InstallQ{"Packages to install?"}
+    InstallQ -->|yes| Pkg["Own consent prompt"]
+    InstallQ -->|no| DryQ
+    Pkg --> DryQ
+    DryQ{"Dry run?"}
+    DryQ -->|yes| PrintPlan["Print the plan<br/>change nothing"]
+    PrintPlan --> Exit0["Exit 0"]
+    DryQ -->|no| RootQ{"Needs root?"}
+    RootQ -->|yes| Sudo["One sudo password prompt"]
+    RootQ -->|no| Journal["Open the journal<br/>record RunBegin"]
+    Sudo --> Journal
+    Journal --> Apply["Each chosen tuning:<br/>apply it"]
+    Apply --> J["Changes journaled and fsync'd<br/>BEFORE they happen"]
+    J --> Verify{"Verify by<br/>reading the system back"}
+    Verify -->|passes| Applied["Mark applied"]
+    Verify -->|fails| StepRollback["Roll back that tuning's<br/>own recorded changes"]
+    Applied --> More{"More tunings?"}
+    StepRollback --> More
+    More -->|yes| Apply
+    More -->|no| Report["Report the summary"]
+    Report --> Exit0
+    Report --> Exit1["Exit 1 - a tuning failed"]
+```
+
+`--dry-run` short-circuits the whole flow: it prints the plan and changes
+nothing. Exit codes: 0 clean, 1 a tuning failed, 3 nothing to apply.
+
+## Undo is the whole point
+
+Every run writes a journal and backs up every file it edits. `rollback` undoes
+a run in reverse order, restores the backups, and refuses to touch a file you
+edited by hand after gameready wrote it.
+
+```mermaid
+flowchart LR
+    RB["gameready rollback"] --> Read["Read that run's journal"]
+    Read --> Order["Reverse the recorded changes,<br/>in reverse order"]
+    Order --> Backups["Restore pre-edit file backups"]
+    Backups --> Digest{"Was the file edited<br/>after gameready wrote it?"}
+    Digest -->|no| Revert["Restore our version"]
+    Digest -->|yes| Leave["Leave it alone and report"]
+    Revert --> PkgQ{"Run installed packages?"}
+    Leave --> PkgQ
+    PkgQ -->|"--purge-packages"| Remove["Remove them too"]
+    PkgQ -->|"default"| Keep["Keep them and report"]
+```
+
+Packages installed during a run stay installed unless you pass
+`--purge-packages`, because uninstalling is not the inverse of installing:
+dependency cascades, leftover configuration, and other users of the package all
+differ. gameready says so before it installs anything.
+
+## Your commands
+
+| Command | What it does |
+|---|---|
+| `gameready init` | Find your games, ask what you want, apply it |
+| `gameready rollback` | Put everything back. Any run, any time |
+| `gameready doctor` | What your machine is, and what each tuning would do |
+| `gameready explain [step]` | One tuning: why it exists, what it would change here |
+| `gameready list-games` | The game profiles gameready can see, and where each came from |
+| `gameready apply` | Apply, or one tuning with `--step <id>` |
+| `gameready selftest` | Apply, verify, revert, verify. Proves a tuning works |
+
+`init` and `apply` accept `--dry-run` (work out the plan, change nothing) and
+`--yes` (take every default, install without asking). `init` also takes
+`--fps-overlay` to pre-answer the overlay question. `rollback` takes
+`--run <id>` to target one run and `--purge-packages` to remove the packages it
+installed. `selftest` takes `--step <id>` to prove one tuning. `--json` prints
+the run report as JSON on `init` and `apply`.
+
+## Install options
+
+The one-liner downloads the static x86_64 binary from the
 [latest release](https://github.com/andyngdz/gameready/releases/latest), checks
-it against the published sha256, and puts it in `~/.local/bin`. It also installs
-the tray indicator, searchable as "Gameready Tray" in the app grid, which opens
-right after install and at each login. Two variables change what it does:
+it against the published sha256, and installs it to `~/.local/bin`. Read
+[docs/install.sh](docs/install.sh) before piping it to a shell. Two variables
+change what it does:
 
 ```bash
-GAMEREADY_VERSION=v0.1.0 sh -c "$(curl -fsSL https://andyngdz.github.io/gameready/install.sh)"
+GAMEREADY_VERSION=v0.2.1 sh -c "$(curl -fsSL https://andyngdz.github.io/gameready/install.sh)"
 GAMEREADY_INSTALL_DIR=/usr/local/bin sh -c "$(curl -fsSL https://andyngdz.github.io/gameready/install.sh)"
 ```
 
-A directory you cannot write to is installed into through `sudo`. The script
-lives at [docs/install.sh](docs/install.sh); read it before piping it to a
-shell.
+A directory you cannot write to is installed into through `sudo`. Set
+`GAMEREADY_NO_TRAY` to skip the tray indicator.
 
 To skip the script, download the asset and its checksum by hand:
 
@@ -71,87 +187,27 @@ cargo build --release
 
 Arch users can build from the [PKGBUILD](pkg/arch/PKGBUILD).
 
-## Use
-
-```bash
-gameready doctor            # system facts and what is currently applied
-gameready apply --dry-run   # the plan, without applying it
-gameready apply             # apply
-gameready rollback          # undo the last run
-gameready selftest          # apply, verify, roll back, verify reverted
-```
-
-The process runs as the invoking user. Commands that need root are run
-individually through `sudo`, primed once at the start of a run.
-
-## How a step works
-
-Each step implements five methods:
-
-- `probe` reads the current state and decides whether the step applies
-- `plan` describes what applying would change
-- `apply` makes the change, recording each mutation in the journal first
-- `verify` reads the system back and compares against what was written
-- `rollback` reverses the changes the step recorded
-
-The executor calls `verify` after `apply`. If a check fails, the step is
-reported as failed and rolled back from its own journal records rather than
-reported as applied.
-
-`verify` compares system state against the value the step wrote. It does not
-measure frame rates.
-
-## Undo
-
-Each run writes to `~/.local/state/gameready/journal.jsonl` before making a
-change, plus pre-images of replaced files under `backups/`.
-
-```bash
-gameready rollback                    # last run
-gameready rollback --run <id>         # a specific run
-gameready rollback --purge-packages   # also remove packages the run installed
-```
-
-Rollback reverses configuration changes in reverse order, so a runtime value
-goes back before the file that persists it is removed.
-
-A file that changed since gameready wrote it is left alone and reported. The
-recorded digest is what distinguishes undoing our own work from destroying a
-hand edit.
-
-Packages installed during a run stay installed unless `--purge-packages` is
-passed, because removing a package is not the inverse of installing one:
-dependency cascades, leftover configuration, and other users of the package all
-differ from the original operation.
-
-## Supported
+## Supported systems
 
 Arch (pacman), Debian and Ubuntu (apt), Fedora (dnf). Steam game detection.
 
-## Testing
+## For contributors
+
+See [TESTING.md](TESTING.md) for what each test layer covers and how to work
+with snapshots, and [CONTRIBUTING.md](CONTRIBUTING.md) for how to add a step or
+a game profile.
 
 ```bash
 cargo test                                       # unit and snapshot tests
 cargo test --features docker-tests -- --ignored  # per-distro containers, slow
-gameready selftest --all                         # real system, real rollback
+gameready selftest                               # real system, real rollback
 ```
-
-See [TESTING.md](TESTING.md) for what each layer covers and how to work with
-snapshots.
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Milestones
 
-- **M1** engine, journal, rollback, one step (done)
-- **M2** system detection, CLI shell, `doctor`, container test matrix (done)
-- **M3** package and service steps (done)
-- **M4** Steam scanning, per-game profiles, launch options (done)
-- **M5** sched_ext, I/O scheduler, swappiness policy, Proton-GE (done)
-- **M6** full `init` flow, docs, packaging (done)
-- **M7** split-lock and memory latency parameters, shader cache, gamemode config (done)
+All planned milestones (M1 through M7) are complete: engine and journal,
+system detection, package and service steps, Steam profiles, sched_ext and
+Proton-GE, the full `init` flow, and the remaining system tunings.
 
 ## License
 
