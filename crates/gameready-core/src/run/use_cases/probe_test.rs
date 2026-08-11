@@ -49,6 +49,20 @@ impl Fake {
                 .collect(),
         })
     }
+
+    fn update_available(id: &'static str, requires: &[&'static str]) -> Box<dyn CoreImprovement> {
+        Box::new(Self {
+            id,
+            probe_result: Probe::UpdateAvailable {
+                installed: "GE-Proton11-3".to_owned(),
+                latest: "GE-Proton11-5".to_owned(),
+            },
+            requires: requires
+                .iter()
+                .map(|id| ImprovementId::from_static(id))
+                .collect(),
+        })
+    }
 }
 
 impl Improvement for Fake {
@@ -141,6 +155,14 @@ fn a_step_that_names_nobody_is_settled_even_when_something_else_is_running() {
 
     assert!(probed.deferred.is_empty());
     assert_eq!(probed.settled.len(), 1);
+}
+
+#[test]
+fn an_outdated_install_is_still_work_a_run_would_do() {
+    let (probed, _) = sort(vec![Fake::update_available("test.old", &[])]);
+
+    assert_eq!(probed.pending.len(), 1);
+    assert!(probed.settled.is_empty());
 }
 
 #[test]

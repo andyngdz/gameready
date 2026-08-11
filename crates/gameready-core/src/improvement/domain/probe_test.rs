@@ -7,6 +7,10 @@ fn every_finding_reads_as_a_phrase_that_follows_a_step_name() {
         Probe::AlreadyApplied {
             evidence: "swappiness is 180".to_owned(),
         },
+        Probe::UpdateAvailable {
+            installed: "GE-Proton11-3".to_owned(),
+            latest: "GE-Proton11-5".to_owned(),
+        },
         Probe::NotApplicable {
             reason: "Arch ships scx".to_owned(),
         },
@@ -45,6 +49,18 @@ fn a_result_nothing_will_come_of_reads_as_inactive_whether_or_not_probing_worked
 
     assert_eq!(ruled_out.status(), ProbeStatus::Inactive);
     assert_eq!(unreadable.status(), ProbeStatus::Inactive);
+}
+
+#[test]
+fn an_update_available_step_is_neither_set_nor_would_apply() {
+    let update = Probe::UpdateAvailable {
+        installed: "GE-Proton11-3".to_owned(),
+        latest: "GE-Proton11-5".to_owned(),
+    };
+
+    assert_eq!(update.status(), ProbeStatus::UpdateAvailable);
+    assert_ne!(update.status(), ProbeStatus::Set);
+    assert_ne!(update.status(), ProbeStatus::Ready);
 }
 
 #[test]

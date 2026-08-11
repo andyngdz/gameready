@@ -21,6 +21,10 @@ use proton_ge_fetch::{download_verified, fetch_release};
 /// terminal and the panel menu want the same words here.
 const SHORT_NAME: &str = "Proton-GE";
 
+/// The directory-name prefix every Proton-GE release extracts to. Any install
+/// under it counts as "has Proton-GE", so a stale one still reads as usable.
+const GE_PREFIX: &str = "GE-Proton";
+
 /// Installs the latest Proton-GE release into Steam's compatibility tools
 /// directory so it appears in the per-game Proton version picker.
 #[derive(Debug, Clone)]
@@ -122,6 +126,26 @@ impl CoreImprovement for ProtonGe {
         if cx.runner.path_exists(&self.install_dir(&release.tag)) {
             return Ok(Probe::AlreadyApplied {
                 evidence: format!("{} is already installed", release.tag),
+            });
+        }
+        // Latest tag absent: an older GE-Proton install still makes the tool
+        // usable, so read as installed-but-outdated rather than "would install".
+        let older = cx
+            .runner
+            .read_dir(&self.compat_dir)
+            .into_iter()
+            .flatten()
+            .filter_map(|entry| {
+                entry
+                    .file_name()
+                    .and_then(|name| name.to_str().map(str::to_owned))
+            })
+            .filter(|name| name.starts_with(GE_PREFIX))
+            .collect::<Vec<_>>();
+        if let Some(installed) = older.first() {
+            return Ok(Probe::UpdateAvailable {
+                installed: installed.clone(),
+                latest: release.tag,
             });
         }
         Ok(Probe::Applicable)

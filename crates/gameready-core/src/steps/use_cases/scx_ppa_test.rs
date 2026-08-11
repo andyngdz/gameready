@@ -29,6 +29,7 @@ fn a_system_that_is_not_apt_never_needs_this() {
         other @ (Probe::Applicable
         | Probe::AlreadyApplied { .. }
         | Probe::Conflict { .. }
+        | Probe::UpdateAvailable { .. }
         | Probe::Unknown { .. }) => panic!("expected not applicable, got {other:?}"),
     }
 }

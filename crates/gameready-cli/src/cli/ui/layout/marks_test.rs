@@ -28,6 +28,14 @@ fn failed_does_not_borrow_the_mark_that_means_applied() {
 }
 
 #[test]
+fn an_update_available_install_reads_as_already_set() {
+    assert_eq!(
+        Mark::for_status(ProbeStatus::UpdateAvailable),
+        Mark::for_status(ProbeStatus::Set)
+    );
+}
+
+#[test]
 fn skipped_and_not_applicable_read_the_same_because_they_mean_the_same() {
     assert_eq!(
         Mark::of(OutcomeKind::Skipped),

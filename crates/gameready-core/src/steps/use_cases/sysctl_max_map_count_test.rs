@@ -87,6 +87,7 @@ fn probe_when_already_applied_says_so_with_evidence() {
         other @ (Probe::Applicable
         | Probe::NotApplicable { .. }
         | Probe::Conflict { .. }
+        | Probe::UpdateAvailable { .. }
         | Probe::Unknown { .. }) => panic!("expected already applied, got {other:?}"),
     }
 }

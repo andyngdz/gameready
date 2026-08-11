@@ -79,6 +79,7 @@ fn probe_when_every_disk_is_already_right_says_so() {
         other @ (Probe::Applicable
         | Probe::NotApplicable { .. }
         | Probe::Conflict { .. }
+        | Probe::UpdateAvailable { .. }
         | Probe::Unknown { .. }) => panic!("expected already applied, got {other:?}"),
     }
 }

@@ -17,6 +17,9 @@ pub struct Row {
 
     /// Which bucket the probe fell in, which decides the dot's colour.
     pub status: ProbeStatus,
+
+    /// A second, read-only line under the row, drawn only when a row earns one.
+    pub note: Option<String>,
 }
 
 impl Row {
@@ -39,9 +42,13 @@ impl Row {
     /// and a panel menu wants the step's [`Improvement::bar_name`].
     #[must_use]
     pub fn new(bar_name: &str, finding: &StepFinding) -> Self {
+        let status = finding.status();
         Self {
             label: bar_name.to_owned(),
-            status: finding.status(),
+            status,
+            // The one note a panel row earns is a version hint; every other
+            // sentence a finding could add belongs to `gameready doctor`.
+            note: (status == ProbeStatus::UpdateAvailable).then(|| finding.note()),
         }
     }
 }

@@ -43,6 +43,7 @@ fn a_kernel_without_sched_ext_can_never_run_this() {
         other @ (Probe::Applicable
         | Probe::AlreadyApplied { .. }
         | Probe::Conflict { .. }
+        | Probe::UpdateAvailable { .. }
         | Probe::Unknown { .. }) => panic!("expected not applicable, got {other:?}"),
     }
 }
@@ -90,6 +91,7 @@ fn a_scheduler_somebody_else_loaded_is_a_conflict_not_something_to_replace() {
         other @ (Probe::Applicable
         | Probe::AlreadyApplied { .. }
         | Probe::NotApplicable { .. }
+        | Probe::UpdateAvailable { .. }
         | Probe::Unknown { .. }) => panic!("expected a conflict, got {other:?}"),
     }
 }
@@ -116,6 +118,7 @@ fn a_system_whose_repositories_have_no_scx_is_not_sent_away_to_run_gameready_twi
         other @ (Probe::Applicable
         | Probe::AlreadyApplied { .. }
         | Probe::Conflict { .. }
+        | Probe::UpdateAvailable { .. }
         | Probe::Unknown { .. }) => panic!("expected not applicable, got {other:?}"),
     }
 }

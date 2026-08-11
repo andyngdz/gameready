@@ -91,6 +91,7 @@ fn a_governor_daemon_is_a_conflict() {
         other @ (Probe::Applicable
         | Probe::AlreadyApplied { .. }
         | Probe::NotApplicable { .. }
+        | Probe::UpdateAvailable { .. }
         | Probe::Unknown { .. }) => panic!("expected a conflict, got {other:?}"),
     }
 }
@@ -132,6 +133,7 @@ fn power_profiles_daemon_without_gamemode_is_a_conflict() {
         other @ (Probe::Applicable
         | Probe::AlreadyApplied { .. }
         | Probe::NotApplicable { .. }
+        | Probe::UpdateAvailable { .. }
         | Probe::Unknown { .. }) => panic!("expected a conflict, got {other:?}"),
     }
 }

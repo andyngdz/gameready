@@ -6,6 +6,7 @@ fn row(label: &str, status: ProbeStatus) -> Row {
     Row {
         label: label.to_owned(),
         status,
+        note: None,
     }
 }
 
@@ -27,12 +28,30 @@ fn a_folder_says_how_many_of_its_rows_hold() {
 
 #[test]
 fn a_tuning_carries_a_dot_and_stays_clickable_so_it_highlights() {
-    let MenuItem::Standard(item) = tuning(&row("Swappiness", ProbeStatus::Set)) else {
+    let items = tuning(&row("Swappiness", ProbeStatus::Set));
+
+    assert_eq!(items.len(), 1);
+    let MenuItem::Standard(item) = &items[0] else {
         panic!("expected a standard item");
     };
 
     assert!(item.enabled);
     assert!(!item.icon_data.is_empty());
+}
+
+#[test]
+fn a_row_with_a_note_gains_a_second_read_only_line_under_it() {
+    let mut with_note = row("Proton-GE", ProbeStatus::UpdateAvailable);
+    with_note.note = Some("installed GE-Proton11-3, GE-Proton11-5 available".to_owned());
+
+    let items = tuning(&with_note);
+
+    assert_eq!(items.len(), 2);
+    let MenuItem::Standard(note_line) = &items[1] else {
+        panic!("expected the note as a standard item");
+    };
+    assert!(!note_line.enabled);
+    assert!(note_line.label.contains("GE-Proton11-5"));
 }
 
 #[test]

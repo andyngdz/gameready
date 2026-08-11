@@ -11,6 +11,12 @@ pub enum Probe {
     /// Not applied, and this system can take it.
     Applicable,
 
+    /// Installed, but a newer release exists. Usable now, and worth updating.
+    ///
+    /// `installed` is the tag the machine already has and `latest` the newest
+    /// one, so a row can say both in one sentence.
+    UpdateAvailable { installed: String, latest: String },
+
     /// Already in the desired state. `evidence` is what was read to decide,
     /// so the summary can say why rather than just "skipped".
     AlreadyApplied { evidence: String },
@@ -49,6 +55,9 @@ pub enum ProbeStatus {
     /// Found already in the desired state.
     Set,
 
+    /// Installed and usable, but a newer release exists.
+    UpdateAvailable,
+
     /// Not applied, and this system can take it.
     Ready,
 
@@ -65,6 +74,7 @@ impl Probe {
     pub const fn status(&self) -> ProbeStatus {
         match self {
             Self::AlreadyApplied { .. } => ProbeStatus::Set,
+            Self::UpdateAvailable { .. } => ProbeStatus::UpdateAvailable,
             Self::Applicable => ProbeStatus::Ready,
             Self::Conflict { .. } => ProbeStatus::Attention,
             Self::NotApplicable { .. } | Self::Unknown { .. } => ProbeStatus::Inactive,
@@ -87,6 +97,9 @@ impl Probe {
         match self {
             Self::Applicable => "would apply".to_owned(),
             Self::AlreadyApplied { evidence } => format!("already set, {evidence}"),
+            Self::UpdateAvailable { installed, latest } => {
+                format!("installed {installed}, {latest} available")
+            }
             Self::NotApplicable { reason } => format!("not applicable, {reason}"),
             Self::Conflict { detail, .. } => detail.clone(),
             Self::Unknown { reason } => format!("could not tell, {reason}"),

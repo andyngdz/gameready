@@ -40,6 +40,7 @@ fn a_running_daemon_is_reported_as_a_conflict() {
         other @ (Probe::Applicable
         | Probe::AlreadyApplied { .. }
         | Probe::NotApplicable { .. }
+        | Probe::UpdateAvailable { .. }
         | Probe::Unknown { .. }) => panic!("expected Conflict, got {other:?}"),
     }
 }
@@ -92,6 +93,7 @@ fn two_live_daemons_are_named_together() {
         other @ (Probe::Applicable
         | Probe::AlreadyApplied { .. }
         | Probe::NotApplicable { .. }
+        | Probe::UpdateAvailable { .. }
         | Probe::Unknown { .. }) => panic!("expected Conflict, got {other:?}"),
     }
 }

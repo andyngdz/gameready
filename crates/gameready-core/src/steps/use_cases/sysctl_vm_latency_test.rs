@@ -79,6 +79,7 @@ fn probe_when_every_parameter_already_holds_its_target_says_so() {
         other @ (Probe::Applicable
         | Probe::NotApplicable { .. }
         | Probe::Conflict { .. }
+        | Probe::UpdateAvailable { .. }
         | Probe::Unknown { .. }) => panic!("expected already applied, got {other:?}"),
     }
 }
@@ -115,6 +116,7 @@ fn a_kernel_with_none_of_these_parameters_is_not_applicable() {
         other @ (Probe::Applicable
         | Probe::AlreadyApplied { .. }
         | Probe::Conflict { .. }
+        | Probe::UpdateAvailable { .. }
         | Probe::Unknown { .. }) => panic!("expected not applicable, got {other:?}"),
     }
 }

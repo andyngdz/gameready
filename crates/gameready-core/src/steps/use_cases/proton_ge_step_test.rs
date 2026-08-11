@@ -133,6 +133,35 @@ fn probe_applicable_when_tag_dir_absent() {
 }
 
 #[test]
+fn probe_update_available_when_an_older_ge_install_exists() {
+    let runner = base_runner().with_file(
+        format!("{COMPAT}/GE-Proton11-2/compatibilitytool.vdf"),
+        "manifest",
+    );
+    let facts = facts();
+    let cx = CoreCx::new(&facts, &runner);
+    let found = step().probe(&cx).expect("ok");
+    assert!(matches!(
+        found,
+        Probe::UpdateAvailable {
+            installed,
+            latest
+        } if installed == "GE-Proton11-2" && latest == "GE-Proton11-3"
+    ));
+}
+
+#[test]
+fn probe_applicable_when_only_an_unrelated_compat_tool_is_installed() {
+    let runner = base_runner().with_file(
+        format!("{COMPAT}/DXVK-Custom/compatibilitytool.vdf"),
+        "manifest",
+    );
+    let facts = facts();
+    let cx = CoreCx::new(&facts, &runner);
+    assert!(matches!(step().probe(&cx).expect("ok"), Probe::Applicable));
+}
+
+#[test]
 fn probe_not_applicable_when_github_unreachable() {
     let runner = MockRunner::new()
         .with_binary("curl")

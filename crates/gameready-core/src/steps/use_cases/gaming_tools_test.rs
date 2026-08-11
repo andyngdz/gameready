@@ -62,6 +62,7 @@ fn probe_reports_already_applied_when_every_binary_is_on_path() {
         Probe::Applicable
         | Probe::NotApplicable { .. }
         | Probe::Conflict { .. }
+        | Probe::UpdateAvailable { .. }
         | Probe::Unknown { .. } => panic!("expected already applied, got {probe:?}"),
     }
     // The package manager is never consulted once every binary is present, so a

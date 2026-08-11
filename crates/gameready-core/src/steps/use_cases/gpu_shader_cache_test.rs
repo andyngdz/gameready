@@ -63,6 +63,7 @@ fn a_machine_with_no_recognised_card_is_not_applicable() {
         other @ (Probe::Applicable
         | Probe::AlreadyApplied { .. }
         | Probe::Conflict { .. }
+        | Probe::UpdateAvailable { .. }
         | Probe::Unknown { .. }) => panic!("expected not applicable, got {other:?}"),
     }
 }
@@ -77,6 +78,7 @@ fn probe_when_the_fragment_already_sets_everything_says_so() {
         other @ (Probe::Applicable
         | Probe::NotApplicable { .. }
         | Probe::Conflict { .. }
+        | Probe::UpdateAvailable { .. }
         | Probe::Unknown { .. }) => panic!("expected already applied, got {other:?}"),
     }
 }

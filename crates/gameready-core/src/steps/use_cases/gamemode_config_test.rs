@@ -61,6 +61,7 @@ fn without_gamemode_there_is_nothing_to_configure() {
         other @ (Probe::Applicable
         | Probe::AlreadyApplied { .. }
         | Probe::Conflict { .. }
+        | Probe::UpdateAvailable { .. }
         | Probe::Unknown { .. }) => panic!("expected not applicable, got {other:?}"),
     }
 }
@@ -88,6 +89,7 @@ fn a_user_outside_the_gamemode_group_gets_the_command_not_a_useless_file() {
         other @ (Probe::Applicable
         | Probe::AlreadyApplied { .. }
         | Probe::Conflict { .. }
+        | Probe::UpdateAvailable { .. }
         | Probe::Unknown { .. }) => panic!("expected not applicable, got {other:?}"),
     }
 }
@@ -108,6 +110,7 @@ fn a_config_the_user_wrote_themselves_is_a_conflict_never_an_overwrite() {
         other @ (Probe::Applicable
         | Probe::AlreadyApplied { .. }
         | Probe::NotApplicable { .. }
+        | Probe::UpdateAvailable { .. }
         | Probe::Unknown { .. }) => panic!("expected a conflict, got {other:?}"),
     }
 }

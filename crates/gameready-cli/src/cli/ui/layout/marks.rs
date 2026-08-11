@@ -59,7 +59,7 @@ impl Mark {
     pub(crate) const fn for_status(status: ProbeStatus) -> Self {
         match status {
             ProbeStatus::Ready => Self::Applied,
-            ProbeStatus::Set => Self::AlreadySet,
+            ProbeStatus::Set | ProbeStatus::UpdateAvailable => Self::AlreadySet,
             ProbeStatus::Attention => Self::Warning,
             ProbeStatus::Inactive => Self::Skipped,
         }

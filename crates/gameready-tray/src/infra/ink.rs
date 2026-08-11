@@ -56,7 +56,9 @@ impl Ink {
     #[must_use]
     pub const fn for_status(status: ProbeStatus) -> Self {
         match status {
-            ProbeStatus::Set => Self::Live,
+            // An update available is still installed, so it wears the live
+            // green; its note line is what tells the two apart.
+            ProbeStatus::Set | ProbeStatus::UpdateAvailable => Self::Live,
             ProbeStatus::Ready => Self::Pending,
             ProbeStatus::Attention => Self::Alert,
             ProbeStatus::Inactive => Self::Muted,

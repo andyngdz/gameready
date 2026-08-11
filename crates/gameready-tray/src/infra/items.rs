@@ -15,20 +15,21 @@ use crate::tray::Row;
 pub(super) fn folder(title: &str, rows: &[Row]) -> MenuItem<Indicator> {
     SubMenu {
         label: format!("{title} ({} of {})", held(rows), rows.len()),
-        submenu: rows.iter().map(tuning).collect(),
+        submenu: rows.iter().flat_map(tuning).collect(),
         ..SubMenu::default()
     }
     .into()
 }
 
-/// One tuning as a menu row: a coloured dot, the name, and what it is set to.
-pub(super) fn tuning(row: &Row) -> MenuItem<Indicator> {
+/// One tuning as its menu rows: a coloured dot and name, and a second
+/// read-only line when the row carries a note such as a newer version.
+pub(super) fn tuning(row: &Row) -> Vec<MenuItem<Indicator>> {
     let ink = Ink::for_status(row.status);
     let icon_data = icon::dot(ink).unwrap_or_else(|error| {
         report(&error);
         Vec::new()
     });
-    StandardItem {
+    let mut items = vec![StandardItem {
         label: format!("{row}"),
         icon_data,
         // Enabled even though clicking does nothing. A disabled dbusmenu item
@@ -37,7 +38,11 @@ pub(super) fn tuning(row: &Row) -> MenuItem<Indicator> {
         // kept by the empty handler, not by refusing to light up.
         ..StandardItem::default()
     }
-    .into()
+    .into()];
+    if let Some(text) = &row.note {
+        items.push(note(text));
+    }
+    items
 }
 
 /// A line the user reads and cannot click.

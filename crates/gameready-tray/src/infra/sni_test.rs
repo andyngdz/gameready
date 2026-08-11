@@ -11,6 +11,7 @@ fn row(label: &str, status: ProbeStatus) -> Row {
     Row {
         label: label.to_owned(),
         status,
+        note: None,
     }
 }
 

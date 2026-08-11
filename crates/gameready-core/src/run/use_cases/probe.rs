@@ -152,6 +152,8 @@ pub(super) enum Settled {
 pub(super) fn probe_outcome(step: &dyn CoreImprovement, cx: &CoreCx<'_>) -> Settled {
     match step.probe(cx) {
         Ok(Probe::Applicable) => Settled::Apply,
+        // Outdated still means the step has work to do: a run upgrades it.
+        Ok(Probe::UpdateAvailable { .. }) => Settled::Apply,
         Ok(Probe::AlreadyApplied { evidence }) => {
             Settled::Now(Outcome::AlreadyApplied { evidence })
         }

@@ -33,7 +33,8 @@ fn one(
     journal: &mut Journal,
 ) -> SelftestResult {
     match step.probe(cx) {
-        Ok(Probe::Applicable) => cycle(step, cx, runner, journal),
+        // An outdated install is still work a run would do, so it cycles too.
+        Ok(Probe::Applicable | Probe::UpdateAvailable { .. }) => cycle(step, cx, runner, journal),
         // Not a failure. A machine that cannot take a step has told us
         // something true about itself, not about the step.
         Ok(probe) => SelftestResult::Skipped {

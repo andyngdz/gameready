@@ -66,6 +66,7 @@ fn probe_when_already_off_says_so_with_evidence() {
         other @ (Probe::Applicable
         | Probe::NotApplicable { .. }
         | Probe::Conflict { .. }
+        | Probe::UpdateAvailable { .. }
         | Probe::Unknown { .. }) => panic!("expected already applied, got {other:?}"),
     }
 }
@@ -85,6 +86,7 @@ fn it_stands_down_when_gamemode_is_here_to_do_the_same_thing() {
         other @ (Probe::Applicable
         | Probe::NotApplicable { .. }
         | Probe::Conflict { .. }
+        | Probe::UpdateAvailable { .. }
         | Probe::Unknown { .. }) => panic!("expected already applied, got {other:?}"),
     }
 }
@@ -115,6 +117,7 @@ fn a_kernel_without_the_detector_is_not_applicable_rather_than_an_error() {
         other @ (Probe::Applicable
         | Probe::AlreadyApplied { .. }
         | Probe::Conflict { .. }
+        | Probe::UpdateAvailable { .. }
         | Probe::Unknown { .. }) => panic!("expected not applicable, got {other:?}"),
     }
 }

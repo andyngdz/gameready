@@ -43,7 +43,8 @@ impl StepExplanation {
     #[must_use]
     pub fn of(step: &dyn CoreImprovement, cx: &CoreCx<'_>) -> Self {
         let probe = step.probe(cx);
-        let applicable = matches!(probe, Ok(Probe::Applicable));
+        // An outdated install is still work a run would do, so it is applicable.
+        let applicable = matches!(probe, Ok(Probe::Applicable | Probe::UpdateAvailable { .. }));
         let mut found = probe.map_or_else(
             |error| format!("could not tell: {error}"),
             |probe| probe.describe(),

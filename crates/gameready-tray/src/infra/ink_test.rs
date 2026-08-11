@@ -2,6 +2,8 @@ use super::*;
 
 #[test]
 fn no_two_statuses_are_drawn_in_the_same_colour() {
+    // Set and UpdateAvailable deliberately share the live green, which the
+    // sibling test pins; the statuses that must read apart still draw apart.
     let inks = [
         Ink::for_status(ProbeStatus::Set),
         Ink::for_status(ProbeStatus::Ready),
@@ -9,11 +11,21 @@ fn no_two_statuses_are_drawn_in_the_same_colour() {
         Ink::for_status(ProbeStatus::Inactive),
     ];
 
-    for (index, first) in inks.iter().enumerate() {
-        for second in &inks[index + 1..] {
-            assert_ne!(first.rgb(), second.rgb(), "{inks:?}");
-        }
-    }
+    let unique = {
+        let mut rgb: Vec<_> = inks.iter().map(|ink| ink.rgb()).collect();
+        rgb.sort();
+        rgb.dedup();
+        rgb
+    };
+    assert_eq!(unique.len(), inks.len(), "{inks:?}");
+}
+
+#[test]
+fn an_update_available_install_wears_the_live_green() {
+    assert_eq!(
+        Ink::for_status(ProbeStatus::UpdateAvailable),
+        Ink::for_status(ProbeStatus::Set)
+    );
 }
 
 #[test]
