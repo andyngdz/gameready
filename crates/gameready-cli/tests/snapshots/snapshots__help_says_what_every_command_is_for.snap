@@ -4,7 +4,7 @@ expression: "run_with(&[\"--help\"], Reads :: Fixture, | _, _ | {})"
 ---
 exit code: 0
 ----- stdout -----
-gameready 0.2.2 · tune a Linux desktop for gaming, and undo it.
+gameready 0.2.3 · tune a Linux desktop for gaming, and undo it.
 
 Start here
   init       Find your games, ask what you want, apply it.
