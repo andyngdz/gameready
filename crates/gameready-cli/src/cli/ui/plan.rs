@@ -6,6 +6,7 @@ use console::style;
 use gameready_core::facts::PackageManagerKind;
 use gameready_core::run::{InstallConsent, Mode, RunPlan};
 use gameready_core::steam::{GameSetup, Overlay};
+use gameready_core::steps::CompatRank;
 use itertools::Itertools as _;
 
 use crate::cli::ui::install::approx_size;
@@ -116,13 +117,26 @@ impl<'a> InitPlan<'a> {
     }
 
     /// What the run writes into Steam, counted per kind.
+    ///
+    /// The machine-wide default is named rather than folded into the pin count.
+    /// It is the one entry here that reaches games the user never picked, and a
+    /// number that quietly included it would not say so.
     fn per_game(&self) -> Option<String> {
         let mut parts = Vec::new();
         if !self.answers.targets.is_empty() {
             parts.push(format!("launch options ×{}", self.answers.targets.len()));
         }
-        if !self.answers.proton.is_empty() {
-            parts.push(format!("Proton pin ×{}", self.answers.proton.len()));
+        let pins = self
+            .answers
+            .proton
+            .iter()
+            .filter(|wish| matches!(wish.rank, CompatRank::Game))
+            .count();
+        if pins > 0 {
+            parts.push(format!("Proton pin ×{pins}"));
+        }
+        if self.answers.proton.len() > pins {
+            parts.push("Proton default for everything else".to_owned());
         }
         (!parts.is_empty()).then(|| parts.join(", "))
     }

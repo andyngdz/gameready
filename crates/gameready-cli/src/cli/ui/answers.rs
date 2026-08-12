@@ -1,9 +1,9 @@
 //! What the user decided, and the one pass that collects it.
 
 use anyhow::Result;
-use gameready_core::run::{compat_targets_for, targets_for, InstallConsent};
+use gameready_core::run::{compat_wishes_for, targets_for, InstallConsent};
 use gameready_core::steam::{with_overlay, GameSetup, Overlay};
-use gameready_core::steps::{CompatTarget, LaunchTarget};
+use gameready_core::steps::{CompatWish, LaunchTarget};
 
 use crate::cli::ui::{LaunchChoice, Questions, SteamWork, Steps};
 
@@ -13,8 +13,12 @@ pub struct Answers {
     pub selected: Vec<GameSetup>,
     /// The launch options to write, empty when there are none.
     pub targets: Vec<LaunchTarget>,
-    /// The Proton pins to write, empty when no profile asks for one.
-    pub proton: Vec<CompatTarget>,
+    /// The Proton entries to write, still in the profiles' own terms.
+    ///
+    /// Empty when no profile asks for a build, and empty when the user chose to
+    /// keep the Proton settings they already had. Which build each one resolves
+    /// to is worked out after the run has installed Proton-GE, not here.
+    pub proton: Vec<CompatWish>,
     /// How both of those should be applied.
     pub launch: LaunchChoice,
     /// Whether the run may install the packages its steps need.
@@ -41,7 +45,7 @@ pub fn ask_everything(questions: &Questions<'_>) -> Result<Answers> {
 
     let selected = with_overlay(&picked, overlay);
     let targets = targets_for(&selected);
-    let proton = compat_targets_for(&selected, questions.compat_tools);
+    let proton = questions.pick_proton(compat_wishes_for(&selected), &mut steps)?;
 
     let work = SteamWork {
         launch: targets.len(),

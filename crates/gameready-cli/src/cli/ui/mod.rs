@@ -22,6 +22,15 @@ pub(crate) const fn tunings(count: usize) -> &'static str {
     }
 }
 
+/// What to call `count` games, for the questions that count them.
+pub(crate) const fn games_noun(count: usize) -> &'static str {
+    if count == 1 {
+        "game"
+    } else {
+        "games"
+    }
+}
+
 mod answers;
 mod doctor;
 mod explain;
@@ -38,6 +47,7 @@ mod overlay;
 mod plan;
 mod progress;
 mod prompt;
+mod proton_choice;
 pub(crate) mod questions;
 mod region;
 mod rollback;
@@ -62,6 +72,7 @@ pub use overlay::choose_overlay;
 pub use plan::InitPlan;
 pub use progress::ProgressView;
 pub use prompt::choose_games;
+pub use proton_choice::{choose_proton_pin, ProtonPin};
 pub use questions::{Picker, Questions};
 pub use rollback::RollbackSummary;
 pub use selftest::SelftestSummary;

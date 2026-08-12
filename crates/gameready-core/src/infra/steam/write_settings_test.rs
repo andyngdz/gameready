@@ -6,6 +6,7 @@ use crate::facts::Family;
 use crate::games::AppId;
 use crate::infra::exec::MockRunner;
 use crate::journal::{RunId, StatePaths};
+use crate::steps::CompatRank;
 
 const LOCAL: &str = "/steam/userdata/1/config/localconfig.vdf";
 const INSTALL: &str = "/steam/config/config.vdf";
@@ -82,6 +83,7 @@ fn proton_target() -> CompatTarget {
         app_id: AppId(1_422_450),
         name: "Deadlock".to_owned(),
         tool: "GE-Proton11-3".to_owned(),
+        rank: CompatRank::Game,
     }
 }
 

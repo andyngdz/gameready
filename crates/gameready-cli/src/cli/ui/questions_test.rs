@@ -48,18 +48,17 @@ fn asking<'a>(setups: &'a [GameSetup], plan: &'a RunPlan, mode: Mode) -> Questio
         picker: Picker::Ask,
         overlay: None,
         mode,
-        compat_tools: &[],
     }
 }
 
 #[test]
-fn a_normal_run_with_games_has_the_three_questions_the_games_bring() {
-    // Games, overlay, and what to do about Steam. Nothing to install and no
-    // governor step, so those two do not count.
+fn a_normal_run_with_games_has_the_four_questions_the_games_bring() {
+    // Games, overlay, the Proton build, and what to do about Steam. Nothing to
+    // install and no governor step, so those two do not count.
     let games = [setup("Deadlock")];
     let empty = plan(Vec::new());
 
-    assert_eq!(asking(&games, &empty, Mode::Apply).count(), 3);
+    assert_eq!(asking(&games, &empty, Mode::Apply).count(), 4);
 }
 
 #[test]
@@ -87,7 +86,7 @@ fn the_overlay_flag_takes_its_question_off_the_count() {
     let mut questions = asking(&games, &empty, Mode::Apply);
     questions.overlay = Some(Overlay::Show);
 
-    assert_eq!(questions.count(), 2);
+    assert_eq!(questions.count(), 3);
 }
 
 #[test]
@@ -95,7 +94,7 @@ fn a_run_that_could_pin_the_governor_counts_that_question_too() {
     let games = [setup("Deadlock")];
     let governor = plan(vec![Box::new(CpuGovernor)]);
 
-    assert_eq!(asking(&games, &governor, Mode::Apply).count(), 4);
+    assert_eq!(asking(&games, &governor, Mode::Apply).count(), 5);
 }
 
 #[test]

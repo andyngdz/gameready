@@ -141,6 +141,9 @@ fn reported(cli: &Cli, run: (RunReport, String)) -> Result<(RunStatus, String)> 
     Ok((report.status(), output))
 }
 
+/// The directory under the user's config that holds their game profiles.
+const GAMES_DIR: &str = "games";
+
 /// Resolves where the user's own game profiles live.
 ///
 /// Separate from the state directory: profiles are configuration a user writes
@@ -151,7 +154,7 @@ fn user_games_dir(override_dir: Option<PathBuf>) -> Result<PathBuf> {
     }
     let dirs = ProjectDirs::from("", "", PROJECT)
         .context("could not determine a config directory for this user")?;
-    Ok(dirs.config_dir().join("games"))
+    Ok(dirs.config_dir().join(GAMES_DIR))
 }
 
 /// Resolves where the journal, backups, and logs live.

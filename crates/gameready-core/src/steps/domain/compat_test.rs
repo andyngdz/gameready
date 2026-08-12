@@ -58,7 +58,21 @@ fn target(app_id: u32, name: &str, tool: &str) -> CompatTarget {
         app_id: AppId(app_id),
         name: name.to_owned(),
         tool: tool.to_owned(),
+        rank: CompatRank::Game,
     }
+}
+
+fn wish(app_id: u32, name: &str, choice: ProtonChoice) -> CompatWish {
+    CompatWish {
+        app_id: AppId(app_id),
+        name: name.to_owned(),
+        choice,
+        rank: CompatRank::Game,
+    }
+}
+
+fn installed(names: &[&str]) -> Vec<String> {
+    names.iter().map(|name| (*name).to_owned()).collect()
 }
 
 #[test]
@@ -156,4 +170,61 @@ fn every_game_lands_in_one_pass_over_the_file() {
     assert!(edited.text.contains("1422450"), "{}", edited.text);
     assert!(edited.text.contains("1091500"), "{}", edited.text);
     assert!(edited.is_pending(AppId(1_091_500)));
+}
+
+#[test]
+fn the_machine_wide_entry_keeps_the_rank_steam_files_it_under() {
+    // Written at a game's rank it would claim every game outright, and which
+    // entry Steam honoured would come down to the order it read them in.
+    let targets = resolve_wishes(
+        &[CompatWish::machine_wide()],
+        &installed(&["GE-Proton11-5-x86_64"]),
+    );
+
+    assert_eq!(targets[0].rank, CompatRank::MachineWide);
+    assert_eq!(targets[0].rank.priority(), "75");
+    assert_eq!(CompatRank::Game.priority(), "250");
+}
+
+#[test]
+fn a_wish_for_the_newest_build_resolves_against_what_is_installed_now() {
+    let wishes = [wish(1_422_450, "Deadlock", ProtonChoice::NewestGeProton)];
+
+    let before = resolve_wishes(&wishes, &installed(&["GE-Proton11-3"]));
+    let after = resolve_wishes(
+        &wishes,
+        &installed(&["GE-Proton11-3", "GE-Proton11-5-x86_64"]),
+    );
+
+    // The same wish, two answers. This is why resolving happens after whatever
+    // installs a build, not while the run is still asking questions.
+    assert_eq!(before[0].tool, "GE-Proton11-3");
+    assert_eq!(after[0].tool, "GE-Proton11-5-x86_64");
+}
+
+#[test]
+fn a_wish_whose_build_is_not_there_is_dropped_rather_than_written() {
+    // Pinning to an absent build stops the game launching at all, which is
+    // worse than the version Steam would have picked for itself.
+    let targets = resolve_wishes(&[CompatWish::machine_wide()], &[]);
+
+    assert!(targets.is_empty());
+}
+
+#[test]
+fn an_exact_tool_name_resolves_without_it_being_installed() {
+    // A profile naming a build gameready has never heard of is used as written:
+    // the name is the user's, and second-guessing it helps nobody.
+    let targets = resolve_wishes(
+        &[wish(
+            1,
+            "Some Game",
+            ProtonChoice::Pinned {
+                tool: "GE-Proton8-32".to_owned(),
+            },
+        )],
+        &installed(&["GE-Proton11-3"]),
+    );
+
+    assert_eq!(targets[0].tool, "GE-Proton8-32");
 }

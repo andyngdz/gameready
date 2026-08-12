@@ -4,11 +4,11 @@ use anyhow::Result;
 use gameready_core::facts::PackageManagerKind;
 use gameready_core::run::{InstallConsent, Mode, RunPlan};
 use gameready_core::steam::{GameSetup, Overlay};
-use gameready_core::steps::{CpuGovernor, GamingTools};
+use gameready_core::steps::{CompatWish, CpuGovernor, GamingTools};
 
 use crate::cli::ui::{
     choose_games, choose_governor_persistence, choose_how_to_apply, choose_overlay,
-    consent_to_install, LaunchChoice, SteamWork, Steps,
+    choose_proton_pin, consent_to_install, LaunchChoice, ProtonPin, SteamWork, Steps,
 };
 
 /// What the header over the packages question warns about, since it is the one
@@ -39,12 +39,6 @@ pub struct Questions<'a> {
     pub overlay: Option<Overlay>,
     /// Whether this run may change anything.
     pub mode: Mode,
-    /// The compatibility tools installed on this machine, by directory name.
-    ///
-    /// A profile asking for the newest GE-Proton resolves against this, so a
-    /// machine with none installed pins nothing rather than pinning a game to
-    /// a build that is not there.
-    pub compat_tools: &'a [String],
 }
 
 impl Questions<'_> {
@@ -72,6 +66,31 @@ impl Questions<'_> {
                 choose_overlay()
             }
             (None, Picker::Ask | Picker::TakeAll) => Ok(Overlay::default_answer()),
+        }
+    }
+
+    /// Whether the newest Proton-GE becomes what these games run on.
+    ///
+    /// Asked before anything is installed, and answered into wishes rather than
+    /// build names. Which build is newest is only settled once the run has
+    /// finished installing one.
+    pub(super) fn pick_proton(
+        &self,
+        wishes: Vec<CompatWish>,
+        steps: &mut Steps,
+    ) -> Result<Vec<CompatWish>> {
+        if wishes.is_empty() {
+            return Ok(wishes);
+        }
+        match (self.picker, self.mode.mutates()) {
+            (Picker::Ask, true) => {
+                steps.heading(None);
+                Ok(choose_proton_pin(wishes.len())?.wishes(wishes))
+            }
+            // A dry run previews the fuller answer rather than the emptier one,
+            // for the same reason it is the run that lists the packages: it has
+            // only this screen to say what a real run would have done.
+            (Picker::TakeAll, _) | (Picker::Ask, false) => Ok(ProtonPin::UseNewest.wishes(wishes)),
         }
     }
 
@@ -119,6 +138,7 @@ impl Questions<'_> {
         let asked = [
             has_games,
             has_games && self.overlay.is_none(),
+            has_games && self.mode.mutates(),
             has_games && self.mode.mutates(),
             self.asks_about_packages(),
             self.mode.mutates() && self.pins_governor(),

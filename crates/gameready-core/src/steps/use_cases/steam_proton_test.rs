@@ -6,6 +6,7 @@ use crate::facts::{Family, SystemFacts};
 use crate::games::AppId;
 use crate::infra::exec::MockRunner;
 use crate::journal::{Journal, RunId, StatePaths};
+use crate::steps::CompatRank;
 
 const CONFIG: &str = "/home/someone/.steam/steam/config/config.vdf";
 
@@ -41,6 +42,7 @@ fn target(tool: &str) -> CompatTarget {
         app_id: AppId(1_422_450),
         name: "Deadlock".to_owned(),
         tool: tool.to_owned(),
+        rank: CompatRank::Game,
     }
 }
 

@@ -65,7 +65,6 @@ fn plan_for_selection(
         picker: Picker::TakeAll,
         overlay: None,
         mode,
-        compat_tools: &[],
     })
     .expect("answered");
     let rendered = InitPlan::new(found, &answers, &plan, PackageManagerKind::Apt, mode).to_string();

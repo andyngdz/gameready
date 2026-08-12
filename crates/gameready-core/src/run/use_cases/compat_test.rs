@@ -20,86 +20,46 @@ fn setup(name: &str, app_id: u32, proton: Option<ProtonChoice>) -> GameSetup {
     }
 }
 
-fn installed(names: &[&str]) -> Vec<String> {
-    names.iter().map(|name| (*name).to_owned()).collect()
-}
-
 #[test]
-fn a_profile_asking_for_ge_proton_resolves_to_the_newest_installed_build() {
-    let tools = installed(&["GE-Proton9-20", "GE-Proton11-3"]);
+fn a_profile_asking_for_ge_proton_becomes_a_wish_that_still_says_so() {
+    // The wish carries the profile's own words. Which build that is depends on
+    // what is installed when the run gets round to writing it, and that is not
+    // known here.
+    let wishes = compat_wishes_for(&[setup(
+        "Deadlock",
+        1_422_450,
+        Some(ProtonChoice::NewestGeProton),
+    )]);
 
-    let targets = compat_targets_for(
-        &[setup(
-            "Deadlock",
-            1_422_450,
-            Some(ProtonChoice::NewestGeProton),
-        )],
-        &tools,
-    );
-
-    assert_eq!(targets.len(), 1);
-    let deadlock = &targets[0];
-    assert_eq!(deadlock.tool, "GE-Proton11-3");
+    assert_eq!(wishes.len(), 1);
+    let deadlock = &wishes[0];
+    assert_eq!(deadlock.choice, ProtonChoice::NewestGeProton);
     assert_eq!(deadlock.name, "Deadlock");
     assert_eq!(deadlock.app_id, AppId(1_422_450));
+    assert_eq!(deadlock.rank, CompatRank::Game);
 }
 
 #[test]
-fn a_game_is_left_alone_when_the_build_it_asks_for_is_not_installed() {
-    // Pinning it to a build that is not there stops it launching, which is
-    // worse than the version Steam would have picked.
-    let targets = compat_targets_for(
-        &[setup(
-            "Deadlock",
-            1_422_450,
-            Some(ProtonChoice::NewestGeProton),
-        )],
-        &[],
-    );
+fn a_profile_that_says_nothing_about_proton_wishes_for_nothing() {
+    // Steam's own choice is the default, and overwriting it for a game nobody
+    // said anything about is a change nobody asked for.
+    let wishes = compat_wishes_for(&[setup("Hollow Knight", 367_520, None)]);
 
-    assert!(targets.is_empty());
+    assert!(wishes.is_empty());
 }
 
 #[test]
-fn experimental_resolves_without_anything_installed_by_hand() {
-    // Steam ships it as an ordinary app, so it is never in compatibilitytools.d.
-    let targets = compat_targets_for(
-        &[setup(
+fn every_game_with_a_choice_gets_its_own_wish() {
+    let wishes = compat_wishes_for(&[
+        setup("Deadlock", 1_422_450, Some(ProtonChoice::NewestGeProton)),
+        setup(
             "Cyberpunk 2077",
             1_091_500,
             Some(ProtonChoice::Experimental),
-        )],
-        &[],
-    );
+        ),
+        setup("Hollow Knight", 367_520, None),
+    ]);
 
-    assert_eq!(targets.len(), 1);
-    assert_eq!(targets[0].tool, PROTON_EXPERIMENTAL);
-}
-
-#[test]
-fn an_exact_tool_name_is_used_as_written() {
-    let targets = compat_targets_for(
-        &[setup(
-            "Some Game",
-            1,
-            Some(ProtonChoice::Pinned {
-                tool: "GE-Proton8-32".to_owned(),
-            }),
-        )],
-        &installed(&["GE-Proton11-3"]),
-    );
-
-    assert_eq!(targets[0].tool, "GE-Proton8-32");
-}
-
-#[test]
-fn a_profile_that_says_nothing_about_proton_pins_nothing() {
-    // Steam's own choice is the default, and overwriting it for a game nobody
-    // said anything about is a change nobody asked for.
-    let targets = compat_targets_for(
-        &[setup("Hollow Knight", 367_520, None)],
-        &installed(&["GE-Proton11-3"]),
-    );
-
-    assert!(targets.is_empty());
+    assert_eq!(wishes.len(), 2);
+    assert_eq!(wishes[1].choice, ProtonChoice::Experimental);
 }

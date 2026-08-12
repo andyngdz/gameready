@@ -15,7 +15,9 @@ pub use block_device::{
     is_tunable_disk, parse_scheduler_line, BlockDevice, SchedulerState, NVME_SCHEDULER,
     ROTATIONAL_SCHEDULER, SSD_SCHEDULER,
 };
-pub use compat::{apply_compat_targets, CompatEdited, CompatTarget};
+pub use compat::{
+    apply_compat_targets, resolve_wishes, CompatEdited, CompatRank, CompatTarget, CompatWish,
+};
 pub use daemons::{CompetingDaemon, COMPETING_DAEMONS, GOVERNOR_DAEMONS};
 pub use gpu::{CacheSetting, DetectedGpu, GpuVendor};
 pub use launch::{apply_targets, Edited, LaunchTarget};

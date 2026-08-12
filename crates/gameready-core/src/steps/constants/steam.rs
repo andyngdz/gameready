@@ -34,7 +34,17 @@ pub const COMPAT_PRIORITY_KEY: &str = "priority";
 /// priority 75, so a per-game entry below that would be written and then
 /// ignored. 250 is what Steam itself writes for a game picked in the
 /// Compatibility tab.
-pub const COMPAT_PRIORITY: &str = "250";
+pub const COMPAT_GAME_PRIORITY: &str = "250";
+
+/// The rank Steam files its machine-wide default under.
+///
+/// Left at 75, the value Steam itself writes, so a per-game entry still wins.
+/// Raising it to match a game would leave two entries claiming the same game
+/// and the winner decided by the order Steam read them in.
+pub const COMPAT_MACHINE_WIDE_PRIORITY: &str = "75";
+
+/// The appid Steam files its machine-wide default under.
+pub const COMPAT_MACHINE_WIDE_APP_ID: u32 = 0;
 
 /// Valve's own name for Proton Experimental in the mapping.
 ///

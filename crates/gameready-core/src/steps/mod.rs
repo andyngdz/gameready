@@ -12,8 +12,8 @@ pub use constants::{
     SYSCTL_DROPIN,
 };
 pub use domain::{
-    apply_targets, newest_ge_proton, restore_scheduler, CompatTarget, CompetingDaemon, Edited,
-    GamingTool, LaunchTarget, COMPETING_DAEMONS, GAMING_TOOLS,
+    apply_targets, newest_ge_proton, resolve_wishes, restore_scheduler, CompatRank, CompatTarget,
+    CompatWish, CompetingDaemon, Edited, GamingTool, LaunchTarget, COMPETING_DAEMONS, GAMING_TOOLS,
 };
 pub use service::{core_steps, find_core_step, game_steps};
 pub(crate) use use_cases::{disk_inventory, read_sched_ext, DiskInventory};

@@ -11,8 +11,8 @@ use gameready_core::infra::pkg;
 use gameready_core::infra::steam::{
     configs_under, discover_setups, installed_compat_tools, locate_steam_dir,
 };
-use gameready_core::run::{compat_targets_for, targets_for};
-use gameready_core::steps::{core_steps, SteamLaunchOptions, SteamProton};
+use gameready_core::run::{compat_wishes_for, targets_for};
+use gameready_core::steps::{core_steps, resolve_wishes, SteamLaunchOptions, SteamProton};
 
 use crate::tray::{Row, RowAction, Snapshot, PROTON_GE_ID};
 
@@ -79,7 +79,7 @@ pub fn sweep_game(runner: &dyn CommandRunner, app_id: AppId, user_games: &Path) 
         Box::new(SteamLaunchOptions::new(configs.local, targets_for(running))),
         Box::new(SteamProton::new(
             configs.install,
-            compat_targets_for(running, &installed_compat_tools(&steam)),
+            resolve_wishes(&compat_wishes_for(running), &installed_compat_tools(&steam)),
         )),
     ];
 

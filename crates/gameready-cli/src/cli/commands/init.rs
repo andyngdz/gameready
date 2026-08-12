@@ -8,7 +8,7 @@ use gameready_core::facts;
 use gameready_core::facts::PackageManagerKind;
 use gameready_core::improvement::CoreCx;
 use gameready_core::infra::pkg;
-use gameready_core::infra::steam::{discover_setups, installed_compat_tools, locate_steam_dir};
+use gameready_core::infra::steam::{discover_setups, locate_steam_dir};
 use gameready_core::journal::{Journal, RunId, StatePaths};
 use gameready_core::run::{apply_plan, plan_run, Mode, RunPlan, RunReport};
 use gameready_core::steam::{GameSetup, Overlay};
@@ -35,7 +35,6 @@ impl InitRequest<'_> {
         setups: &'a [GameSetup],
         plan: &'a RunPlan,
         packages: PackageManagerKind,
-        compat_tools: &'a [String],
     ) -> Questions<'a> {
         Questions {
             setups,
@@ -44,7 +43,6 @@ impl InitRequest<'_> {
             picker: self.picker,
             overlay: self.overlay,
             mode: self.mode,
-            compat_tools,
         }
     }
 
@@ -54,10 +52,8 @@ impl InitRequest<'_> {
         setups: &[GameSetup],
         run_plan: &RunPlan,
         packages: PackageManagerKind,
-        compat_tools: &[String],
     ) -> Result<(Answers, String)> {
-        let answers =
-            ui::ask_everything(&self.questions(setups, run_plan, packages, compat_tools))?;
+        let answers = ui::ask_everything(&self.questions(setups, run_plan, packages))?;
         let rendered = self.agreed_plan(setups, &answers, run_plan, packages);
         Ok((answers, rendered))
     }
@@ -136,15 +132,6 @@ impl InitRequest<'_> {
     }
 }
 
-/// The compatibility tools this machine has, by directory name.
-///
-/// Read before the first question, because a profile asking for the newest
-/// GE-Proton can only resolve against the builds that are there now. A machine
-/// with no Steam has none, which is not a failure worth reporting here.
-fn compat_tools(steam: Option<&Path>) -> Vec<String> {
-    steam.map(installed_compat_tools).unwrap_or_default()
-}
-
 /// What the games line on the opening screen reports.
 ///
 /// The count comes from the paired setups rather than from the Steam directory
@@ -184,8 +171,7 @@ pub fn run(
     drop(progress);
 
     let family = facts.distro.package_manager();
-    let tools = compat_tools(steam.as_deref());
-    let (answers, rendered) = request.ask(&setups, &run_plan, family, &tools)?;
+    let (answers, rendered) = request.ask(&setups, &run_plan, family)?;
     let mut out = request.checkpoint(rendered);
 
     // Nothing above this line changed anything. Nothing below it asks. The

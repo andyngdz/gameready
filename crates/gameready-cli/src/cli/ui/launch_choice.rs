@@ -6,12 +6,13 @@ use anyhow::{Context as _, Result};
 use gameready_core::exec::CommandRunner;
 use gameready_core::facts::SystemFacts;
 use gameready_core::infra::steam::{
-    configs_under, locate_steam_dir, write_steam_settings, SteamSettings,
+    configs_under, installed_compat_tools, locate_steam_dir, write_steam_settings, SteamSettings,
 };
 use gameready_core::journal::Journal;
 use gameready_core::run::RunReport;
+use gameready_core::steps::resolve_wishes;
 
-use crate::cli::ui::{theme, Answers, LaunchInstructions};
+use crate::cli::ui::{games_noun, theme, Answers, LaunchInstructions};
 
 /// What the user wants done about the per-game settings Steam holds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,16 +56,28 @@ impl LaunchChoice {
         if answers.targets.is_empty() && answers.proton.is_empty() {
             return Ok(SteamSettingsDone::Nothing);
         }
+
+        // The wishes are resolved here rather than with the rest of the
+        // answers, because the run installs Proton-GE a moment before this
+        // line. A build name worked out before that pins the games to the one
+        // being replaced.
+        let steam = locate_steam_dir().ok();
+        let installed = steam
+            .as_deref()
+            .map(installed_compat_tools)
+            .unwrap_or_default();
+        let proton = resolve_wishes(&answers.proton, &installed);
+
         match self {
             Self::ShowForCopying => Ok(SteamSettingsDone::Instructions(
-                LaunchInstructions::new(answers).to_string(),
+                LaunchInstructions::new(answers, &proton).to_string(),
             )),
             Self::CloseSteamAndWrite => {
-                let steam = locate_steam_dir().context(NO_STEAM)?;
+                let steam = steam.context(NO_STEAM)?;
                 let configs = configs_under(&steam).context(NO_STEAM)?;
                 let settings = SteamSettings {
                     launch: answers.targets.clone(),
-                    proton: answers.proton.clone(),
+                    proton,
                 };
                 let written = write_steam_settings(runner, facts, journal, configs, settings)?;
                 Ok(SteamSettingsDone::Written(Box::new(written)))
@@ -100,10 +113,10 @@ pub struct SteamWork {
 impl SteamWork {
     /// The question, counting the games it is about.
     fn question(&self) -> String {
-        let games = if self.launch == 1 { "game" } else { "games" };
         format!(
-            "Steam settings for {} {games}: set them for you?",
-            self.launch
+            "Steam settings for {} {}: set them for you?",
+            self.launch,
+            games_noun(self.launch)
         )
     }
 
