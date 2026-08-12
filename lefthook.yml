@@ -1,0 +1,10 @@
+pre-commit:
+  commands:
+    branch-protection:
+      run: branch-protection pre-commit
+
+pre-push:
+  commands:
+    branch-protection:
+      use_stdin: true
+      run: branch-protection pre-push
