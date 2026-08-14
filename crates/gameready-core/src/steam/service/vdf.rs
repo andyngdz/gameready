@@ -112,7 +112,7 @@ pub fn set_block(
 
 /// What a block on the path that the file does not have means.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Missing {
+pub(super) enum Missing {
     /// The path names something the file should already have, so its absence is
     /// a file this should not be writing to.
     Fail,
@@ -122,7 +122,7 @@ enum Missing {
 }
 
 /// Walks into nested blocks, creating or refusing the ones that are absent.
-fn descend<'a>(
+pub(super) fn descend<'a>(
     value: &'a mut Value<'static>,
     path: &[&str],
     missing: Missing,
@@ -149,7 +149,7 @@ fn descend<'a>(
 }
 
 /// Puts a scalar in a block, replacing whatever was under that key.
-fn write(block: &mut Obj<'static>, key: &str, value: &str) {
+pub(super) fn write(block: &mut Obj<'static>, key: &str, value: &str) {
     block.0.insert(
         Cow::Owned(key.to_owned()),
         vec![Value::Str(Cow::Owned(value.to_owned()))],
@@ -167,7 +167,7 @@ fn as_block<'a>(value: &'a mut Value<'static>) -> Result<&'a mut Obj<'static>, V
 }
 
 /// The current value of a key, when it is present and is a scalar.
-fn read(block: &Obj<'static>, key: &str) -> Option<String> {
+pub(super) fn read(block: &Obj<'static>, key: &str) -> Option<String> {
     match block.0.get(key)?.first()? {
         Value::Str(text) => Some(text.clone().into_owned()),
         Value::Obj(_) => None,

@@ -26,6 +26,7 @@ fn a_file_we_created_is_undone_by_deleting_it() {
             assert_eq!(expect_sha256, "abc123");
         }
         other @ (Undo::RestoreFile { .. }
+        | Undo::RestoreSteamConfig { .. }
         | Undo::SetSysctl { .. }
         | Undo::WriteSysfs { .. }
         | Undo::ReportPackages { .. }
@@ -53,6 +54,7 @@ fn a_file_we_replaced_is_undone_by_restoring_its_pre_image() {
             assert_eq!(mode, 0o600);
         }
         other @ (Undo::DeleteFile { .. }
+        | Undo::RestoreSteamConfig { .. }
         | Undo::SetSysctl { .. }
         | Undo::WriteSysfs { .. }
         | Undo::ReportPackages { .. }
@@ -95,6 +97,7 @@ fn installed_packages_are_reported_rather_than_removed() {
         }
         other @ (Undo::DeleteFile { .. }
         | Undo::RestoreFile { .. }
+        | Undo::RestoreSteamConfig { .. }
         | Undo::SetSysctl { .. }
         | Undo::WriteSysfs { .. }
         | Undo::RestoreUnit { .. }

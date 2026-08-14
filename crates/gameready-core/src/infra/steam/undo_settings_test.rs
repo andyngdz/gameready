@@ -3,7 +3,7 @@ use tempfile::TempDir;
 use super::*;
 use crate::improvement::{ImprovementId, Privilege};
 use crate::infra::exec::MockRunner;
-use crate::journal::{RunId, StatePaths, Undo};
+use crate::journal::{digest, RunId, StatePaths, Undo};
 use crate::rollback::{PlannedUndo, UndoOutcome};
 
 const CONFIG: &str = "/steam/config/config.vdf";
@@ -35,6 +35,7 @@ fn restore_config() -> Undo {
     Undo::RestoreFile {
         path: CONFIG.into(),
         from: BACKUP.into(),
+        expect_sha256: Some(digest("the config gameready wrote")),
         mode: 0o644,
         privilege: Privilege::User,
     }

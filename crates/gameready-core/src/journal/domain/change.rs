@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::improvement::Privilege;
+use crate::steam::PriorSection;
 
 use super::undo::{PriorUnitState, Undo};
 
@@ -63,6 +64,19 @@ pub enum Change {
         /// to save its own settings.
         #[serde(default = "assumed_root")]
         privilege: Privilege,
+    },
+
+    /// Scalars set inside a config file another program owns and rewrites.
+    ///
+    /// Recorded instead of a pre-image because Steam saves `localconfig.vdf`
+    /// and `config.vdf` every time it exits. Putting a whole file back would
+    /// undo the run and take everything the user changed in Steam since with
+    /// it, so the undo puts back only the keys the run wrote.
+    SteamConfigWritten {
+        path: PathBuf,
+        /// One entry per block the run wrote into, since a run sets several
+        /// games in a single write and the undo puts them back the same way.
+        sections: Vec<PriorSection>,
     },
 
     /// A file gameready deleted, with its pre-image kept.
@@ -139,6 +153,7 @@ impl Change {
                 (true, Some(backup)) => Undo::RestoreFile {
                     path: path.clone(),
                     from: backup.clone(),
+                    expect_sha256: Some(sha256_after.clone()),
                     mode: *mode,
                     privilege: *privilege,
                 },
@@ -157,8 +172,15 @@ impl Change {
             } => Undo::RestoreFile {
                 path: path.clone(),
                 from: backup.clone(),
+                // Nothing was written, so there is no digest of ours to match.
+                expect_sha256: None,
                 mode: *mode,
                 privilege: *privilege,
+            },
+
+            Self::SteamConfigWritten { path, sections } => Undo::RestoreSteamConfig {
+                path: path.clone(),
+                sections: sections.clone(),
             },
 
             Self::SysctlRuntime { key, previous } => Undo::SetSysctl {

@@ -6,10 +6,10 @@ use crate::improvement::{
     ApplyCx, Check, CoreCx, CoreImprovement, Improvement, ImprovementId, PlannedAction, Privilege,
     Probe, StepError, StepPlan, Tag, Verification,
 };
-use crate::journal::{digest, Change};
-use crate::steps::constants::{LOCAL_CONFIG_BACKUP, NOT_SET};
-use crate::steps::domain::{apply_targets, Edited, LaunchTarget};
-use crate::steps::use_cases::restore_backup::restore_from_backup;
+use crate::journal::Change;
+use crate::steps::constants::NOT_SET;
+use crate::steps::domain::{apply_targets, capture_targets, Edited, LaunchTarget};
+use crate::steps::use_cases::restore_steam_config::restore_steam_config;
 
 /// The label every row shows for this step. One constant because the
 /// terminal and the panel menu want the same words here.
@@ -21,10 +21,10 @@ const SHORT_NAME: &str = "Launch options";
 /// so it is not part of `core_steps()`; `init` constructs it and runs it as its
 /// own step once the picker has answered.
 ///
-/// The whole file is backed up before it is touched. It holds every game's
-/// playtime and cloud sync state as well as launch options, and a rollback that
-/// restored only the one value would be a rollback that could not put a
-/// mistake right.
+/// Only the launch options key is recorded for undo, not a copy of the file.
+/// Steam owns this file and rewrites it every time it exits, so a rollback that
+/// put a whole pre-image back would undo the run and throw away every setting
+/// the user changed in Steam since, from playtime to cloud sync state.
 #[derive(Debug, Clone)]
 pub struct SteamLaunchOptions {
     config: PathBuf,
@@ -81,9 +81,9 @@ impl Improvement for SteamLaunchOptions {
 
     fn rationale(&self) -> &str {
         "Launch options are how a wrapper such as gamemode or mangohud gets in \
-         front of a game, and Steam has no other way to set them per game. The \
-         whole config file is copied first, so undoing this puts back exactly \
-         what Steam had, including anything you had typed in the box yourself."
+         front of a game, and Steam has no other way to set them per game. \
+         Whatever was in the box first is recorded, so undoing this puts your \
+         own launch options back and leaves the rest of Steam's config alone."
     }
 
     fn privilege(&self) -> Privilege {
@@ -149,30 +149,20 @@ impl CoreImprovement for SteamLaunchOptions {
             return Ok(());
         }
 
-        // The pre-image goes down before the journal record, so the record never
-        // names a backup that is not on disk yet. Written owner-only: this file
-        // carries an encrypted app ticket and a cloud key, and a copy of them is
-        // kept for every run in a directory nothing prunes.
-        let backup = cx.backup_dir().join(LOCAL_CONFIG_BACKUP);
-        cx.reader()
-            .write_private_file(&backup, &original)
-            .map_err(StepError::Exec)?;
+        // Read off the file as it stands, before the write, so the undo names
+        // values that were really there.
+        let sections = capture_targets(&original, &edited.replaced)?;
 
         let config = self.config.clone();
         let text = edited.text;
         cx.mutate(
-            Change::FileWritten {
+            Change::SteamConfigWritten {
                 path: config.clone(),
-                existed: true,
-                backup: Some(backup),
-                sha256_after: digest(&text),
-                mode: 0o644,
-                // The file is in the user's home. A rollback that restored it
-                // as root would leave it owned by root, and Steam would then
-                // fail to save its own settings.
-                privilege: Privilege::User,
+                sections,
             },
             |runner| {
+                // Written as the user: the file is in the user's home, and a
+                // root-owned copy stops Steam saving its own settings.
                 runner
                     .write_file(&config, &text, Privilege::User)
                     .map_err(StepError::Exec)
@@ -202,7 +192,7 @@ impl CoreImprovement for SteamLaunchOptions {
     }
 
     fn rollback(&self, undo: &[Change], cx: &mut ApplyCx<'_, CoreCx<'_>>) -> Result<(), StepError> {
-        restore_from_backup(undo, cx)
+        restore_steam_config(undo, cx)
     }
 }
 

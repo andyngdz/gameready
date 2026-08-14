@@ -116,7 +116,21 @@ impl<'a> RollbackSummary<'a> {
     fn note(report: &UndoReport) -> String {
         match &report.outcome {
             UndoOutcome::Reverted { .. } => Self::reverted_note(&report.undo),
-            UndoOutcome::AlreadyGone => "was already gone".to_owned(),
+            // "Already gone" is right for an undo that removes something and
+            // wrong for one that puts something back, where nothing left to do
+            // means it is already back.
+            UndoOutcome::AlreadyGone => match report.undo {
+                Undo::RestoreFile { .. } | Undo::RestoreSteamConfig { .. } => {
+                    "was already put back".to_owned()
+                }
+                Undo::DeleteFile { .. }
+                | Undo::SetSysctl { .. }
+                | Undo::WriteSysfs { .. }
+                | Undo::ReportPackages { .. }
+                | Undo::RestoreUnit { .. }
+                | Undo::RemoveDirIfEmpty { .. }
+                | Undo::RemoveDirTree { .. } => "was already gone".to_owned(),
+            },
             UndoOutcome::Left { reason } | UndoOutcome::Refused { reason } => reason.clone(),
             UndoOutcome::Failed { error } => error.clone(),
         }
@@ -130,6 +144,9 @@ impl<'a> RollbackSummary<'a> {
                 format!("back to {value}")
             }
             Undo::RestoreFile { .. } => "restored from the copy taken first".to_owned(),
+            // Says "your settings" because the row is about a file Steam owns,
+            // and the point the user needs is that only their own entries moved.
+            Undo::RestoreSteamConfig { .. } => "your settings put back".to_owned(),
             Undo::RestoreUnit { .. } => "disabled again".to_owned(),
             Undo::DeleteFile { .. }
             | Undo::RemoveDirIfEmpty { .. }

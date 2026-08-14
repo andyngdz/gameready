@@ -34,17 +34,20 @@ fn a_file_already_gone_needs_no_undo() {
     assert!(matches!(outcome, UndoOutcome::AlreadyGone));
 }
 
+const BACKUP: &str = "/state/backups/01/localconfig.vdf";
+const REPLACED: &str = "replaced\n";
+
 #[test]
 fn a_pre_image_is_copied_back_over_the_file_it_came_from() {
-    let backup = "/state/backups/01/localconfig.vdf";
     let runner = MockRunner::new()
-        .with_file(backup, "original\n")
-        .with_file(DROPIN, "replaced\n");
+        .with_file(BACKUP, "original\n")
+        .with_file(DROPIN, REPLACED);
 
     let outcome = restore_file(
         &runner,
         Path::new(DROPIN),
-        Path::new(backup),
+        Path::new(BACKUP),
+        Some(&digest(REPLACED)),
         Privilege::User,
     );
 
@@ -56,15 +59,110 @@ fn a_pre_image_is_copied_back_over_the_file_it_came_from() {
 fn a_missing_pre_image_fails_rather_than_reporting_a_revert() {
     // Claiming the file was restored from a backup that is not there would tell
     // the user their machine is back to normal when it is not.
-    let runner = MockRunner::new().with_file(DROPIN, "replaced\n");
+    let runner = MockRunner::new().with_file(DROPIN, REPLACED);
     let outcome = restore_file(
         &runner,
         Path::new(DROPIN),
         Path::new("/state/backups/gone"),
+        Some(&digest(REPLACED)),
         Privilege::User,
     );
 
     assert!(matches!(outcome, UndoOutcome::Failed { .. }));
+}
+
+#[test]
+fn a_file_edited_after_we_replaced_it_is_not_overwritten_by_the_pre_image() {
+    // The in-place case is the one that matters most: the file held the user's
+    // own content before gameready touched it, so the pre-image is not a
+    // superset of what a hand edit would destroy.
+    let runner = MockRunner::new()
+        .with_file(BACKUP, "original\n")
+        .with_file(DROPIN, "the user's own edit\n");
+
+    let outcome = restore_file(
+        &runner,
+        Path::new(DROPIN),
+        Path::new(BACKUP),
+        Some(&digest(REPLACED)),
+        Privilege::User,
+    );
+
+    assert!(
+        matches!(outcome, UndoOutcome::Refused { .. }),
+        "{outcome:?}"
+    );
+    assert_eq!(
+        runner.file(DROPIN).as_deref(),
+        Some("the user's own edit\n"),
+        "the hand edit was clobbered"
+    );
+}
+
+#[test]
+fn a_file_recreated_after_we_removed_it_is_left_alone() {
+    // The removal case records no digest, because gameready wrote no bytes it
+    // could recognise. Anything at that path now arrived after the run.
+    let runner = MockRunner::new()
+        .with_file(BACKUP, "original\n")
+        .with_file(DROPIN, "something else put this here\n");
+
+    let outcome = restore_file(
+        &runner,
+        Path::new(DROPIN),
+        Path::new(BACKUP),
+        None,
+        Privilege::User,
+    );
+
+    assert!(
+        matches!(outcome, UndoOutcome::Refused { .. }),
+        "{outcome:?}"
+    );
+    assert_eq!(
+        runner.file(DROPIN).as_deref(),
+        Some("something else put this here\n")
+    );
+}
+
+#[test]
+fn restoring_a_file_already_put_back_is_not_read_as_a_hand_edit() {
+    // Rollback has to be safe to re-run. After the first restore the file holds
+    // the pre-image, which matches neither what the run wrote nor a hand edit.
+    let runner = MockRunner::new()
+        .with_file(BACKUP, "original\n")
+        .with_file(DROPIN, "original\n");
+
+    let outcome = restore_file(
+        &runner,
+        Path::new(DROPIN),
+        Path::new(BACKUP),
+        Some(&digest(REPLACED)),
+        Privilege::User,
+    );
+
+    assert!(matches!(outcome, UndoOutcome::AlreadyGone), "{outcome:?}");
+}
+
+#[test]
+fn a_pre_image_lands_on_a_path_whose_file_is_gone() {
+    // The removal case in its normal shape: gameready deleted the file, nothing
+    // recreated it, and the pre-image goes straight back.
+    let runner = MockRunner::new().with_file(BACKUP, "original\n");
+
+    let outcome = restore_file(
+        &runner,
+        Path::new(DROPIN),
+        Path::new(BACKUP),
+        None,
+        Privilege::User,
+    );
+
+    assert!(
+        matches!(outcome, UndoOutcome::Reverted { .. }),
+        "{outcome:?}"
+    );
+    assert_eq!(runner.file(DROPIN).as_deref(), Some("original\n"));
 }
 
 #[test]

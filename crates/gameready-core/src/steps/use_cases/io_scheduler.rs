@@ -211,7 +211,8 @@ impl CoreImprovement for IoScheduler {
                         .remove_file(path, Privilege::Root)
                         .map_err(StepError::Exec)?;
                 }
-                Change::FileRemoved { .. }
+                Change::SteamConfigWritten { .. }
+                | Change::FileRemoved { .. }
                 | Change::SysctlRuntime { .. }
                 | Change::PackagesInstalled { .. }
                 | Change::SystemdUnit { .. }

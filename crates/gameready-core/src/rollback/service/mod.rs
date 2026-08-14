@@ -2,6 +2,7 @@
 
 mod perform;
 mod perform_files;
+mod perform_steam;
 
 use crate::exec::CommandRunner;
 use crate::journal::{Change, Journal, JournalEvent, JournalRecord, RunId};

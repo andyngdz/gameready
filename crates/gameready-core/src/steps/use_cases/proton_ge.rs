@@ -222,6 +222,7 @@ impl CoreImprovement for ProtonGe {
                     cx.reader().run(&rm).map_err(StepError::Exec)?;
                 }
                 Change::FileWritten { .. }
+                | Change::SteamConfigWritten { .. }
                 | Change::FileRemoved { .. }
                 | Change::SysctlRuntime { .. }
                 | Change::SysfsWrite { .. }

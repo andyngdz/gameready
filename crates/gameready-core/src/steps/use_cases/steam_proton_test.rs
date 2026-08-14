@@ -6,6 +6,7 @@ use crate::facts::{Family, SystemFacts};
 use crate::games::AppId;
 use crate::infra::exec::MockRunner;
 use crate::journal::{Journal, RunId, StatePaths};
+use crate::steam::PriorBlock;
 use crate::steps::CompatRank;
 
 const CONFIG: &str = "/home/someone/.steam/steam/config/config.vdf";
@@ -123,23 +124,54 @@ fn applied(runner: &MockRunner, dir: &TempDir, tool: &str) -> Vec<Change> {
     apply.recorded().to_vec()
 }
 
+/// Reverses a recorded apply through the step's own rollback.
+fn roll_back(runner: &MockRunner, dir: &TempDir, recorded: &[Change]) {
+    let facts = SystemFacts::fixture(Family::Debian);
+    let cx = CoreCx::new(&facts, runner);
+    let mut journal =
+        Journal::open(StatePaths::new(dir.path().to_path_buf()), RunId::generate()).expect("open");
+    let mut apply = ApplyCx::new(cx, SteamProton::id_const(), runner, &mut journal);
+
+    step("GE-Proton11-3")
+        .rollback(recorded, &mut apply)
+        .expect("rolled back");
+}
+
 #[test]
-fn apply_writes_the_config_and_journals_a_backup() {
+fn apply_writes_the_config_and_journals_that_the_entry_was_ours() {
     let dir = TempDir::new().expect("temp dir");
     let runner = machine();
 
     let recorded = applied(&runner, &dir, "GE-Proton11-3");
 
     match recorded.as_slice() {
-        [Change::FileWritten {
-            backup, existed, ..
-        }] => {
-            assert!(existed, "the config already existed");
-            assert!(backup.is_some(), "no pre-image was recorded");
+        [Change::SteamConfigWritten { sections, .. }] => {
+            assert_eq!(sections.len(), 1);
+            // The game had no compatibility entry, so undoing removes the one
+            // gameready added rather than setting its keys to empty.
+            assert_eq!(sections[0].prior, PriorBlock::Absent);
         }
-        other => panic!("expected one file write, got {other:?}"),
+        other => panic!("expected one Steam config write, got {other:?}"),
     }
     assert!(runner.file(CONFIG).expect("config").contains("1422450"));
+}
+
+#[test]
+fn apply_keeps_no_copy_of_a_file_holding_credentials() {
+    // config.vdf carries the account's stored credentials. Nothing reads a
+    // pre-image any more, so keeping one in a directory nothing prunes would be
+    // a copy of those for no purpose.
+    let dir = TempDir::new().expect("temp dir");
+    let runner = machine();
+
+    applied(&runner, &dir, "GE-Proton11-3");
+
+    let copies: Vec<_> = runner
+        .paths()
+        .into_iter()
+        .filter(|path| path != CONFIG)
+        .collect();
+    assert!(copies.is_empty(), "a pre-image was written: {copies:?}");
 }
 
 #[test]
@@ -156,24 +188,39 @@ fn the_machine_wide_default_survives_a_per_game_pin() {
 }
 
 #[test]
-fn rollback_puts_the_original_config_back_byte_for_byte() {
-    // config.vdf holds the machine's Steam settings as well as this mapping, so
-    // a rollback that restored only the one entry would not put a mistake right.
+fn rollback_takes_the_entry_gameready_added_back_out() {
     let dir = TempDir::new().expect("temp dir");
     let runner = machine();
     let recorded = applied(&runner, &dir, "GE-Proton11-3");
 
-    let facts = SystemFacts::fixture(Family::Debian);
-    let cx = CoreCx::new(&facts, &runner);
-    let mut journal =
-        Journal::open(StatePaths::new(dir.path().to_path_buf()), RunId::generate()).expect("open");
-    let mut apply = ApplyCx::new(cx, SteamProton::id_const(), &runner, &mut journal);
+    roll_back(&runner, &dir, &recorded);
 
-    step("GE-Proton11-3")
-        .rollback(&recorded, &mut apply)
-        .expect("rolled back");
+    let after = runner.file(CONFIG).expect("still there");
+    assert!(!after.contains("1422450"), "{after}");
+    // The machine-wide entry is Steam's, not part of what the run added.
+    assert!(after.contains("\"75\""), "{after}");
+}
 
-    assert_eq!(runner.file(CONFIG).as_deref(), Some(config_text().as_str()));
+#[test]
+fn rollback_keeps_what_steam_wrote_after_the_run() {
+    // Steam saves config.vdf every time it exits. A pre-image restore would
+    // take away whatever it recorded between the run and the rollback.
+    let dir = TempDir::new().expect("temp dir");
+    let runner = machine();
+    let recorded = applied(&runner, &dir, "GE-Proton11-3");
+
+    let written = runner.file(CONFIG).expect("written");
+    let steam_wrote = written.replace(
+        "\"CompatToolMapping\"",
+        "\"SurveyDateVersion\"\t\t\"1\"\n\t\t\t\t\t\"CompatToolMapping\"",
+    );
+    let runner = MockRunner::new().with_file(CONFIG, &steam_wrote);
+
+    roll_back(&runner, &dir, &recorded);
+
+    let after = runner.file(CONFIG).expect("still there");
+    assert!(after.contains("SurveyDateVersion"), "{after}");
+    assert!(!after.contains("1422450"), "{after}");
 }
 
 #[test]

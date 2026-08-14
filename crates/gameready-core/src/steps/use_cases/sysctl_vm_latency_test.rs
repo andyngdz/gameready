@@ -162,6 +162,7 @@ fn each_parameter_records_its_own_previous_value() {
         .filter_map(|change| match change {
             Change::SysctlRuntime { key, previous } => Some((key.clone(), previous.clone())),
             Change::FileWritten { .. }
+            | Change::SteamConfigWritten { .. }
             | Change::FileRemoved { .. }
             | Change::SysfsWrite { .. }
             | Change::PackagesInstalled { .. }

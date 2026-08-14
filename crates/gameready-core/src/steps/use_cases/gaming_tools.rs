@@ -208,6 +208,7 @@ impl CoreImprovement for GamingTools {
                 // starts recording fails to compile here instead of being
                 // silently skipped by rollback.
                 Change::FileWritten { .. }
+                | Change::SteamConfigWritten { .. }
                 | Change::FileRemoved { .. }
                 | Change::SysctlRuntime { .. }
                 | Change::SysfsWrite { .. }

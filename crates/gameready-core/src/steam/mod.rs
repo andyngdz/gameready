@@ -7,5 +7,6 @@ mod service;
 pub use domain::{is_valve_tool, InstalledGame};
 pub use errors::{SteamError, VdfError};
 pub use service::{
-    pair_with_catalog, set_block, set_scalar, with_overlay, Edit, GameSetup, Overlay, SetResult,
+    capture_block, pair_with_catalog, restore_block, restore_sections, set_block, set_scalar,
+    with_overlay, Edit, GameSetup, Overlay, PriorBlock, PriorScalar, PriorSection, SetResult,
 };

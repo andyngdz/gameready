@@ -82,11 +82,20 @@ fn managed_run(contents: &str) -> Option<&str> {
         .map(str::trim)
 }
 
-/// Puts a pre-image back.
+/// Puts a pre-image back, unless something else owns the file now.
+///
+/// Checked for the same reason [`delete_file`] checks: a file gameready edited
+/// in place held the user's own content first, so clobbering an edit made
+/// afterwards destroys something no backup of ours holds.
+///
+/// `expect_sha256` is `None` when the change was a removal rather than a write.
+/// Nothing of ours was left at that path, so any file there now arrived after
+/// the run and is not ours to overwrite.
 pub(super) fn restore_file(
     runner: &dyn CommandRunner,
     path: &Path,
     from: &Path,
+    expect_sha256: Option<&str>,
     privilege: Privilege,
 ) -> UndoOutcome {
     let contents = match runner.read_to_string(from) {
@@ -97,6 +106,29 @@ pub(super) fn restore_file(
             };
         }
     };
+
+    if runner.path_exists(path) {
+        let current = match runner.read_to_string(path) {
+            Ok(current) => current,
+            Err(error) => {
+                return UndoOutcome::Failed {
+                    error: error.to_string(),
+                };
+            }
+        };
+
+        // Checked before the digest, because an earlier rollback of this same
+        // run already put the pre-image back. Comparing against what the run
+        // wrote would call that a hand edit and refuse to finish a retry.
+        if current == contents {
+            return UndoOutcome::AlreadyGone;
+        }
+
+        match expect_sha256 {
+            Some(expected) if digest(&current) == expected => {}
+            _ => return mismatch(path, &current),
+        }
+    }
 
     match runner.write_file(path, &contents, privilege) {
         Ok(()) => UndoOutcome::Reverted {

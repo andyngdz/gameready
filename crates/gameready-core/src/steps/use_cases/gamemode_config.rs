@@ -217,7 +217,8 @@ impl CoreImprovement for GamemodeConfig {
                 // Listed rather than wildcarded: a new Change variant this
                 // step starts recording must fail to compile here rather than
                 // be silently skipped by rollback.
-                Change::FileRemoved { .. }
+                Change::SteamConfigWritten { .. }
+                | Change::FileRemoved { .. }
                 | Change::SysctlRuntime { .. }
                 | Change::SysfsWrite { .. }
                 | Change::PackagesInstalled { .. }

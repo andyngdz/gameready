@@ -9,6 +9,7 @@ use crate::rollback::domain::UndoOutcome;
 use crate::rollback::service::perform_files::{
     delete_file, remove_dir, remove_dir_tree, restore_file,
 };
+use crate::rollback::service::perform_steam::restore_steam_config;
 use crate::steps::SYSCTL_BIN;
 use crate::systemd::{DISABLE, NOW, RESTART, SYSTEMCTL};
 
@@ -24,9 +25,12 @@ pub(super) fn perform(undo: &Undo, runner: &dyn CommandRunner) -> UndoOutcome {
         Undo::RestoreFile {
             path,
             from,
+            expect_sha256,
             privilege,
             ..
-        } => restore_file(runner, path, from, *privilege),
+        } => restore_file(runner, path, from, expect_sha256.as_deref(), *privilege),
+
+        Undo::RestoreSteamConfig { path, sections } => restore_steam_config(runner, path, sections),
 
         Undo::SetSysctl { key, value } => set_sysctl(runner, key, value),
 

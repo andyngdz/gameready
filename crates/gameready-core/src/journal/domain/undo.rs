@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::improvement::Privilege;
+use crate::steam::PriorSection;
 
 use super::change::assumed_root;
 
@@ -38,12 +39,28 @@ pub enum Undo {
     },
 
     /// Put a pre-image back, restoring the recorded mode.
+    ///
+    /// Refuses for the same reason [`Undo::DeleteFile`] does, and needs its own
+    /// digest to do it: a file edited in place is the higher-value one, since it
+    /// held the user's content before gameready touched it. `None` is the
+    /// [`Change::FileRemoved`](super::Change::FileRemoved) case, where gameready
+    /// deleted the file and so wrote no bytes it could later recognise.
     RestoreFile {
         path: PathBuf,
         from: PathBuf,
+        expect_sha256: Option<String>,
         mode: u32,
         #[serde(default = "assumed_root")]
         privilege: Privilege,
+    },
+
+    /// Put back the keys a run set inside a config file Steam owns.
+    ///
+    /// Surgical rather than a pre-image restore: Steam rewrites the file on
+    /// exit, so everything it wrote after the run has to survive the undo.
+    RestoreSteamConfig {
+        path: PathBuf,
+        sections: Vec<PriorSection>,
     },
 
     /// Set a kernel parameter back to its prior value.
@@ -93,7 +110,8 @@ impl Undo {
             Self::WriteSysfs { path, .. } => scheduler_subject(path),
             Self::RestoreUnit { unit, .. } => unit.clone(),
             Self::ReportPackages { .. } => "packages".to_owned(),
-            Self::RestoreFile { path, .. }
+            Self::RestoreSteamConfig { path, .. }
+            | Self::RestoreFile { path, .. }
             | Self::DeleteFile { path, .. }
             | Self::RemoveDirIfEmpty { path, .. }
             | Self::RemoveDirTree { path, .. } => file_name(path),
@@ -116,6 +134,10 @@ impl Undo {
             Self::SetSysctl { .. } | Self::WriteSysfs { .. } | Self::RestoreUnit { .. } => {
                 Privilege::Root
             }
+            // Both files live in the user's home. Rewriting one as root would
+            // leave it owned by root, and Steam would stop being able to save
+            // its own settings.
+            Self::RestoreSteamConfig { .. } => Privilege::User,
             // Reporting packages changes nothing. Removing them does, and that
             // is the caller's policy rather than a property of this record.
             Self::ReportPackages { .. } => Privilege::User,

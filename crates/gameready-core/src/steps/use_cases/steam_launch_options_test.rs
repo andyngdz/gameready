@@ -6,6 +6,7 @@ use crate::facts::{Family, SystemFacts};
 use crate::games::AppId;
 use crate::infra::exec::MockRunner;
 use crate::journal::{Journal, RunId, StatePaths};
+use crate::steam::{PriorBlock, PriorScalar};
 
 const CONFIG: &str = "/home/someone/.steam/steam/userdata/1/config/localconfig.vdf";
 
@@ -118,21 +119,40 @@ fn applied(runner: &MockRunner, dir: &TempDir, options: &str) -> Vec<Change> {
     apply.recorded().to_vec()
 }
 
+/// Reverses a recorded apply through the step's own rollback.
+fn roll_back(runner: &MockRunner, dir: &TempDir, recorded: &[Change]) {
+    let facts = SystemFacts::fixture(Family::Debian);
+    let cx = CoreCx::new(&facts, runner);
+    let mut journal =
+        Journal::open(StatePaths::new(dir.path().to_path_buf()), RunId::generate()).expect("open");
+    let mut apply = ApplyCx::new(cx, SteamLaunchOptions::id_const(), runner, &mut journal);
+
+    step("gamemoderun %command%")
+        .rollback(recorded, &mut apply)
+        .expect("rolled back");
+}
+
 #[test]
-fn apply_writes_the_config_and_journals_a_backup() {
+fn apply_writes_the_config_and_journals_what_the_key_held() {
     let dir = TempDir::new().expect("temp dir");
     let runner = machine();
 
     let recorded = applied(&runner, &dir, "gamemoderun %command%");
 
     match recorded.as_slice() {
-        [Change::FileWritten {
-            backup, existed, ..
-        }] => {
-            assert!(existed, "the config already existed");
-            assert!(backup.is_some(), "no pre-image was recorded");
+        [Change::SteamConfigWritten { sections, .. }] => {
+            assert_eq!(sections.len(), 1);
+            assert_eq!(
+                sections[0].prior,
+                PriorBlock::Present {
+                    entries: vec![PriorScalar {
+                        key: "LaunchOptions".to_owned(),
+                        value: Some("LD_PRELOAD=".to_owned()),
+                    }],
+                }
+            );
         }
-        other => panic!("expected one file write, got {other:?}"),
+        other => panic!("expected one Steam config write, got {other:?}"),
     }
     assert!(runner
         .file(CONFIG)
@@ -141,41 +161,58 @@ fn apply_writes_the_config_and_journals_a_backup() {
 }
 
 #[test]
-fn the_backup_holds_the_file_exactly_as_it_was() {
+fn apply_keeps_no_copy_of_a_file_holding_credentials() {
+    // localconfig.vdf carries an encrypted app ticket and a cloud key. Nothing
+    // reads a pre-image any more, so keeping one in a directory nothing prunes
+    // would be a copy of those for no purpose.
     let dir = TempDir::new().expect("temp dir");
     let runner = machine();
 
-    let recorded = applied(&runner, &dir, "gamemoderun %command%");
-    let Some(Change::FileWritten {
-        backup: Some(backup),
-        ..
-    }) = recorded.first()
-    else {
-        panic!("no backup recorded");
-    };
+    applied(&runner, &dir, "gamemoderun %command%");
 
-    assert_eq!(runner.file(backup).as_deref(), Some(config_text().as_str()));
+    let copies: Vec<_> = runner
+        .paths()
+        .into_iter()
+        .filter(|path| path != CONFIG)
+        .collect();
+    assert!(copies.is_empty(), "a pre-image was written: {copies:?}");
 }
 
 #[test]
-fn rollback_puts_the_original_config_back_byte_for_byte() {
-    // This file holds every game's playtime and cloud sync state, so a rollback
-    // that restored only the one value would not put a mistake right.
+fn rollback_puts_the_users_own_launch_options_back() {
     let dir = TempDir::new().expect("temp dir");
     let runner = machine();
     let recorded = applied(&runner, &dir, "gamemoderun %command%");
 
-    let facts = SystemFacts::fixture(Family::Debian);
-    let cx = CoreCx::new(&facts, &runner);
-    let mut journal =
-        Journal::open(StatePaths::new(dir.path().to_path_buf()), RunId::generate()).expect("open");
-    let mut apply = ApplyCx::new(cx, SteamLaunchOptions::id_const(), &runner, &mut journal);
+    roll_back(&runner, &dir, &recorded);
 
-    step("gamemoderun %command%")
-        .rollback(&recorded, &mut apply)
-        .expect("rolled back");
+    let after = runner.file(CONFIG).expect("still there");
+    assert!(after.contains("LD_PRELOAD="), "{after}");
+    assert!(!after.contains("gamemoderun"), "{after}");
+}
 
-    assert_eq!(runner.file(CONFIG).as_deref(), Some(config_text().as_str()));
+#[test]
+fn rollback_keeps_what_steam_wrote_after_the_run() {
+    // Steam saves this file every time it exits, so anything it wrote between
+    // the run and the rollback has to survive. Restoring a pre-image of the
+    // whole file would throw away the user's week of Steam settings.
+    let dir = TempDir::new().expect("temp dir");
+    let runner = machine();
+    let recorded = applied(&runner, &dir, "gamemoderun %command%");
+
+    let written = runner.file(CONFIG).expect("written");
+    let steam_wrote = written.replace(
+        r#""LaunchOptions"#,
+        "\"LastPlayed\"\t\t\"1799999999\"\n\t\t\t\t\t\t\"LaunchOptions",
+    );
+    let runner = MockRunner::new().with_file(CONFIG, &steam_wrote);
+
+    roll_back(&runner, &dir, &recorded);
+
+    let after = runner.file(CONFIG).expect("still there");
+    assert!(after.contains("1799999999"), "{after}");
+    assert!(after.contains("LD_PRELOAD="), "{after}");
+    assert!(!after.contains("gamemoderun"), "{after}");
 }
 
 #[test]

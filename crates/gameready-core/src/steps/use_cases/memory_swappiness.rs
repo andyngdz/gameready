@@ -196,7 +196,8 @@ impl CoreImprovement for Swappiness {
                 }
                 // Listed rather than wildcarded: a new Change variant this step
                 // records must fail to compile here, not be skipped silently.
-                Change::FileRemoved { .. }
+                Change::SteamConfigWritten { .. }
+                | Change::FileRemoved { .. }
                 | Change::SysfsWrite { .. }
                 | Change::PackagesInstalled { .. }
                 | Change::SystemdUnit { .. }
