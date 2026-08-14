@@ -105,7 +105,8 @@ flowchart LR
 ```
 
 `--dry-run` short-circuits the whole flow: it prints the plan and changes
-nothing. Exit codes: 0 clean, 1 a tuning failed, 3 nothing to apply.
+nothing. Exit codes: 0 clean, 1 a tuning failed, 2 bad arguments, 3 nothing to
+apply.
 
 ## Undo is the whole point
 
@@ -160,7 +161,7 @@ it against the published sha256, and installs it to `~/.local/bin`. Read
 change what it does:
 
 ```bash
-GAMEREADY_VERSION=v0.2.4 sh -c "$(curl -fsSL https://andyngdz.github.io/gameready/install.sh)"
+GAMEREADY_VERSION=v0.2.5 sh -c "$(curl -fsSL https://andyngdz.github.io/gameready/install.sh)"
 GAMEREADY_INSTALL_DIR=/usr/local/bin sh -c "$(curl -fsSL https://andyngdz.github.io/gameready/install.sh)"
 ```
 
