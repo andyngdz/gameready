@@ -24,4 +24,5 @@ pub use explain::run as explain;
 pub use init::{run as init, InitRequest};
 pub use list_games::run as list_games;
 pub use rollback::run as rollback;
+pub use selection::select_steps_including_games;
 pub use selftest::run as selftest;

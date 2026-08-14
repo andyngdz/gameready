@@ -1,11 +1,10 @@
-use std::path::Path;
-
 use gameready_core::infra::exec::MockRunner;
 use gameready_core::journal::StatePaths;
 use tempfile::TempDir;
 
 use super::run;
 use crate::cli::commands::prompt_recorder::PromptRecorder;
+use crate::cli::commands::selection::select_steps;
 use crate::cli::escalation::Escalation;
 
 #[test]
@@ -22,8 +21,7 @@ fn a_step_that_applies_and_reverts_cleanly_passes() {
     let (status, text) = run(
         &runner,
         StatePaths::new(dir.path().to_path_buf()),
-        None,
-        Path::new("/nonexistent/gameready-test/games"),
+        select_steps(None).expect("every core step"),
         Escalation::NotNeeded,
     )
     .expect("selftest runs");
@@ -49,8 +47,7 @@ fn selftest_leaves_nothing_behind() {
     let _ = run(
         &runner,
         StatePaths::new(dir.path().to_path_buf()),
-        None,
-        Path::new("/nonexistent/gameready-test/games"),
+        select_steps(None).expect("every core step"),
         Escalation::NotNeeded,
     )
     .expect("selftest runs");
@@ -77,8 +74,7 @@ fn selftest_primes_before_the_first_privileged_command() {
     run(
         &runner,
         StatePaths::new(dir.path().to_path_buf()),
-        Some("core.sysctl.max-map-count"),
-        Path::new("/nonexistent/gameready-test/games"),
+        select_steps(Some("core.sysctl.max-map-count")).expect("the step"),
         Escalation::Ask(&prompt),
     )
     .expect("selftest runs");
@@ -110,8 +106,7 @@ fn a_step_filter_runs_only_that_step() {
     let (_, text) = run(
         &runner,
         StatePaths::new(dir.path().to_path_buf()),
-        Some("core.io.scheduler"),
-        Path::new("/nonexistent/gameready-test/games"),
+        select_steps(Some("core.io.scheduler")).expect("the step"),
         Escalation::NotNeeded,
     )
     .expect("selftest runs");

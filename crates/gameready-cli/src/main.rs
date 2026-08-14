@@ -91,7 +91,8 @@ fn carry_out(
 
         Command::Selftest { step } => {
             let games = user_games_dir(cli.games_dir.clone())?;
-            cli::commands::selftest(runner, paths, step.as_deref(), &games, escalation)
+            let selected = cli::commands::select_steps_including_games(step.as_deref(), &games)?;
+            cli::commands::selftest(runner, paths, selected, escalation)
         }
     }
 }

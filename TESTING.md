@@ -80,11 +80,15 @@ rollback, verify reverted. This is the only way to test:
 - Writing to `/proc/sys` and `/sys`
 - Writing Steam config files against a real installation
 
-The two per-game steps are reachable only by naming them. A bare
-`gameready selftest` leaves them out because writing Steam's config means
-quitting Steam, and closing a running game client is not something to do to
-someone who typed two words. Name one and it quits Steam, runs the cycle
-against the real `localconfig.vdf` or `config.vdf`, and starts Steam again.
+Every step runs, the two per-game ones included, so "all passed" means all of
+them. Steam is quit first when a per-game step is in the list and Steam is up,
+then started again after, which is what `init` does to write the settings in
+the first place.
+
+A machine with no Steam skips those two rather than failing, the same as a
+container skips the shader cache step. Naming one outright is an error instead:
+somebody asking for that step specifically is owed the reason it could not run,
+not a skip.
 
 `selftest` needs the privileges the steps need (sudo for kernel parameters,
 user for Steam config). It rolls back everything it applies, so the system
