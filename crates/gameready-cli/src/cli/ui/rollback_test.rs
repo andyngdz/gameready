@@ -130,6 +130,6 @@ fn each_undo_reads_as_a_subject_and_what_became_of_it() {
         text.contains("gamemode, mangohud and lutris are still installed"),
         "{text}"
     );
-    assert!(text.contains("--purge-packages"), "{text}");
+    assert!(text.contains("Remove them yourself"), "{text}");
     assert!(text.contains("2 reverted, 1 failed"), "{text}");
 }

@@ -53,8 +53,7 @@ fn undoing_a_proton_pin_checks_whether_steam_is_running() {
     let runner = stopped_steam();
     let plan = plan_of(SteamProton::id_const(), restore_config());
 
-    undo_with_steam_closed(&plan, &runner, &mut journal(&dir), PackagePolicy::Keep)
-        .expect("rolled back");
+    undo_with_steam_closed(&plan, &runner, &mut journal(&dir)).expect("rolled back");
 
     assert!(
         runner
@@ -72,8 +71,7 @@ fn undoing_launch_options_checks_whether_steam_is_running() {
     let runner = stopped_steam();
     let plan = plan_of(SteamLaunchOptions::id_const(), restore_config());
 
-    undo_with_steam_closed(&plan, &runner, &mut journal(&dir), PackagePolicy::Keep)
-        .expect("rolled back");
+    undo_with_steam_closed(&plan, &runner, &mut journal(&dir)).expect("rolled back");
 
     assert!(
         runner
@@ -94,8 +92,7 @@ fn undoing_a_kernel_setting_leaves_steam_alone() {
         sysctl_undo(),
     );
 
-    undo_with_steam_closed(&plan, &runner, &mut journal(&dir), PackagePolicy::Keep)
-        .expect("rolled back");
+    undo_with_steam_closed(&plan, &runner, &mut journal(&dir)).expect("rolled back");
 
     assert!(
         !runner
@@ -113,8 +110,7 @@ fn a_steam_that_is_already_stopped_is_not_asked_to_quit() {
     let runner = stopped_steam();
     let plan = plan_of(SteamProton::id_const(), restore_config());
 
-    undo_with_steam_closed(&plan, &runner, &mut journal(&dir), PackagePolicy::Keep)
-        .expect("rolled back");
+    undo_with_steam_closed(&plan, &runner, &mut journal(&dir)).expect("rolled back");
 
     assert!(
         !runner
@@ -132,8 +128,7 @@ fn the_backup_still_goes_back_over_the_written_config() {
     let runner = stopped_steam();
     let plan = plan_of(SteamProton::id_const(), restore_config());
 
-    let report = undo_with_steam_closed(&plan, &runner, &mut journal(&dir), PackagePolicy::Keep)
-        .expect("rolled back");
+    let report = undo_with_steam_closed(&plan, &runner, &mut journal(&dir)).expect("rolled back");
 
     assert_eq!(runner.file(CONFIG).as_deref(), Some("the config Steam had"));
     assert_eq!(report.reverted(), 1);

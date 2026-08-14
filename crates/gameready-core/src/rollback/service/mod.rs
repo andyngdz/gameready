@@ -5,9 +5,7 @@ mod perform_files;
 
 use crate::exec::CommandRunner;
 use crate::journal::{Change, Journal, JournalEvent, JournalRecord, RunId};
-use crate::rollback::domain::{
-    PackagePolicy, PlannedUndo, RollbackPlan, RollbackReport, UndoReport,
-};
+use crate::rollback::domain::{PlannedUndo, RollbackPlan, RollbackReport, UndoReport};
 use crate::rollback::errors::RollbackError;
 use crate::rollback::service::perform::perform;
 
@@ -84,13 +82,12 @@ pub fn execute(
     plan: &RollbackPlan,
     runner: &dyn CommandRunner,
     journal: &mut Journal,
-    packages: PackagePolicy,
 ) -> Result<RollbackReport, RollbackError> {
     journal.append(JournalEvent::RollbackBegin { target: plan.run })?;
 
     let mut undos = Vec::with_capacity(plan.undos.len());
     for planned in &plan.undos {
-        let outcome = perform(&planned.undo, runner, packages);
+        let outcome = perform(&planned.undo, runner);
         journal.append(JournalEvent::Undone {
             step: planned.step.clone(),
             detail: outcome.describe(),

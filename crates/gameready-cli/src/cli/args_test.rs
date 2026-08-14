@@ -48,10 +48,7 @@ fn every_mutating_command_is_covered() {
             yes: false,
             dry_run: false,
         },
-        Command::Rollback {
-            run: None,
-            purge_packages: false,
-        },
+        Command::Rollback { run: None },
         Command::Selftest { step: None },
     ];
 

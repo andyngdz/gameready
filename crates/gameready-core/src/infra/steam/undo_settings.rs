@@ -3,7 +3,7 @@
 use crate::exec::CommandRunner;
 use crate::infra::steam::process::{is_running, shutdown, start};
 use crate::journal::Journal;
-use crate::rollback::{execute, PackagePolicy, RollbackError, RollbackPlan, RollbackReport};
+use crate::rollback::{execute, RollbackError, RollbackPlan, RollbackReport};
 use crate::steps::{SteamLaunchOptions, SteamProton};
 
 /// Reverses a run, quitting Steam first when the run changed a file Steam owns.
@@ -20,10 +20,9 @@ pub fn undo_with_steam_closed(
     plan: &RollbackPlan,
     runner: &dyn CommandRunner,
     journal: &mut Journal,
-    packages: PackagePolicy,
 ) -> Result<RollbackReport, RollbackError> {
     if !touches_steam_config(plan) {
-        return execute(plan, runner, journal, packages);
+        return execute(plan, runner, journal);
     }
 
     let was_running = is_running(runner);
@@ -31,7 +30,7 @@ pub fn undo_with_steam_closed(
         shutdown(runner)?;
     }
 
-    let report = execute(plan, runner, journal, packages);
+    let report = execute(plan, runner, journal);
     if was_running {
         start(runner);
     }

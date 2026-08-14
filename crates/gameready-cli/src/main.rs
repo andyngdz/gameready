@@ -14,7 +14,6 @@ use anyhow::{Context as _, Result};
 use gameready_core::exec::CommandRunner;
 use gameready_core::infra::dirs;
 use gameready_core::journal::StatePaths;
-use gameready_core::rollback::PackagePolicy;
 use gameready_core::run::{RunReport, RunStatus};
 use gameready_core::steam::Overlay;
 
@@ -86,16 +85,8 @@ fn carry_out(
             )?,
         ),
 
-        Command::Rollback {
-            run,
-            purge_packages,
-        } => {
-            let packages = if *purge_packages {
-                PackagePolicy::Purge
-            } else {
-                PackagePolicy::Keep
-            };
-            cli::commands::rollback(runner, paths, run.as_deref(), packages, escalation)
+        Command::Rollback { run } => {
+            cli::commands::rollback(runner, paths, run.as_deref(), escalation)
         }
 
         Command::Selftest { step } => {

@@ -124,14 +124,13 @@ flowchart LR
     Digest -->|yes| Leave["Leave it alone and report"]
     Revert --> PkgQ{"Run installed packages?"}
     Leave --> PkgQ
-    PkgQ -->|"--purge-packages"| Remove["Remove them too"]
-    PkgQ -->|"default"| Keep["Keep them and report"]
+    PkgQ --> Keep["Keep them and report"]
 ```
 
-Packages installed during a run stay installed unless you pass
-`--purge-packages`, because uninstalling is not the inverse of installing:
-dependency cascades, leftover configuration, and other users of the package all
-differ. gameready says so before it installs anything.
+Packages installed during a run stay installed. Uninstalling is not the inverse
+of installing: dependency cascades, leftover configuration, and other users of
+the package all differ. Rollback names what it installed so you can remove it
+yourself, and gameready says so before it installs anything.
 
 ## Your commands
 
@@ -148,9 +147,8 @@ differ. gameready says so before it installs anything.
 `init` and `apply` accept `--dry-run` (work out the plan, change nothing) and
 `--yes` (take every default, install without asking). `init` also takes
 `--fps-overlay` to pre-answer the overlay question. `rollback` takes
-`--run <id>` to target one run and `--purge-packages` to remove the packages it
-installed. `selftest` takes `--step <id>` to prove one tuning. `--json` prints
-the run report as JSON on `init` and `apply`.
+`--run <id>` to target one run. `selftest` takes `--step <id>` to prove one
+tuning. `--json` prints the run report as JSON on `init` and `apply`.
 
 ## Install options
 

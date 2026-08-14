@@ -97,7 +97,7 @@ impl<'a> RollbackSummary<'a> {
             Mark::Warning,
             &format!("{} are still installed.", join_and(&installed)),
         )?;
-        s.sub("Remove them yourself, or rerun with --purge-packages.")?;
+        s.sub("Remove them yourself if you want them gone.")?;
         s.blank()
     }
 

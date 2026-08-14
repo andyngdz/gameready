@@ -185,13 +185,6 @@ pub enum Command {
         /// Which run to undo. Defaults to the most recent.
         #[arg(long)]
         run: Option<String>,
-
-        /// Also remove packages the run installed.
-        ///
-        /// Off by default: uninstalling is not the inverse of installing, so
-        /// the dependency cascade is the user's call, not ours.
-        #[arg(long)]
-        purge_packages: bool,
     },
 
     /// Apply a step, verify it, roll it back, and verify it reverted.

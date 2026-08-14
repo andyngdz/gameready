@@ -20,7 +20,7 @@ fn delete_undo(expected: &str) -> Undo {
 #[test]
 fn deletes_a_file_that_is_still_what_we_wrote() {
     let runner = MockRunner::new().with_file(DROPIN, WROTE);
-    let outcome = perform(&delete_undo(&digest(WROTE)), &runner, PackagePolicy::Keep);
+    let outcome = perform(&delete_undo(&digest(WROTE)), &runner);
 
     assert!(matches!(outcome, UndoOutcome::Reverted { .. }));
     assert!(runner.file(DROPIN).is_none());
@@ -30,7 +30,7 @@ fn deletes_a_file_that_is_still_what_we_wrote() {
 fn refuses_to_delete_a_file_the_user_edited() {
     // Leaving a stale drop-in is recoverable; clobbering a hand edit is not.
     let runner = MockRunner::new().with_file(DROPIN, "vm.max_map_count = 999\n");
-    let outcome = perform(&delete_undo(&digest(WROTE)), &runner, PackagePolicy::Keep);
+    let outcome = perform(&delete_undo(&digest(WROTE)), &runner);
 
     assert!(matches!(outcome, UndoOutcome::Refused { .. }));
     assert!(runner.file(DROPIN).is_some(), "the edited file was deleted");
@@ -47,7 +47,7 @@ fn a_file_a_later_run_rewrote_points_at_that_run_instead_of_blaming_the_user() {
     "};
     let runner = MockRunner::new().with_file(DROPIN, later);
 
-    let outcome = perform(&delete_undo(&digest(WROTE)), &runner, PackagePolicy::Keep);
+    let outcome = perform(&delete_undo(&digest(WROTE)), &runner);
 
     match outcome {
         UndoOutcome::Left { reason } => {
@@ -71,7 +71,7 @@ fn a_file_a_later_run_rewrote_points_at_that_run_instead_of_blaming_the_user() {
 fn a_file_already_gone_is_not_a_failure() {
     // Rollback has to be safe to re-run after a partial undo.
     let runner = MockRunner::new();
-    let outcome = perform(&delete_undo(&digest(WROTE)), &runner, PackagePolicy::Keep);
+    let outcome = perform(&delete_undo(&digest(WROTE)), &runner);
 
     assert_eq!(outcome, UndoOutcome::AlreadyGone);
     assert!(!outcome.is_failure());
@@ -84,7 +84,7 @@ fn restores_a_sysctl_to_its_previous_value() {
         key: "vm.max_map_count".to_owned(),
         value: "1048576".to_owned(),
     };
-    let outcome = perform(&undo, &runner, PackagePolicy::Keep);
+    let outcome = perform(&undo, &runner);
 
     assert!(matches!(outcome, UndoOutcome::Reverted { .. }));
     assert_eq!(
@@ -100,7 +100,7 @@ fn packages_are_left_installed_by_default() {
         manager: "apt".to_owned(),
         installed: vec!["mangohud".to_owned()],
     };
-    let outcome = perform(&undo, &runner, PackagePolicy::Keep);
+    let outcome = perform(&undo, &runner);
 
     match outcome {
         UndoOutcome::Left { reason } => assert!(reason.contains("mangohud")),
@@ -122,7 +122,7 @@ fn a_unit_enabled_before_the_run_is_restarted_on_its_own_config() {
         unit: "tuned.service".to_owned(),
         prior: crate::journal::PriorUnitState::WasEnabled,
     };
-    let outcome = perform(&undo, &runner, PackagePolicy::Keep);
+    let outcome = perform(&undo, &runner);
 
     assert!(matches!(outcome, UndoOutcome::Reverted { .. }));
     assert!(
@@ -142,7 +142,7 @@ fn a_unit_the_run_enabled_is_disabled_again() {
         unit: "tuned.service".to_owned(),
         prior: crate::journal::PriorUnitState::WasDisabled,
     };
-    let outcome = perform(&undo, &runner, PackagePolicy::Keep);
+    let outcome = perform(&undo, &runner);
 
     assert!(matches!(outcome, UndoOutcome::Reverted { .. }));
     assert_eq!(

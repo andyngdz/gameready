@@ -15,7 +15,7 @@ use gameready_core::facts::{Family, SystemFacts};
 use gameready_core::improvement::{CoreCx, Privilege};
 use gameready_core::infra::exec::MockRunner;
 use gameready_core::journal::{load, Journal, RunId, StatePaths};
-use gameready_core::rollback::{execute, latest_run, plan, PackagePolicy, UndoOutcome};
+use gameready_core::rollback::{execute, latest_run, plan, UndoOutcome};
 use gameready_core::run::{execute as run_steps, InstallConsent, Mode};
 use gameready_core::steps::{core_steps, SYSCTL_DROPIN};
 use tempfile::TempDir;
@@ -69,8 +69,7 @@ fn rollback_latest(runner: &MockRunner, paths: &StatePaths) -> Vec<UndoOutcome> 
     };
     let undo_plan = plan(&records, target).expect("plans");
     let mut journal = Journal::open(paths.clone(), RunId::generate()).expect("journal opens");
-    let report =
-        execute(&undo_plan, runner, &mut journal, PackagePolicy::Keep).expect("rollback runs");
+    let report = execute(&undo_plan, runner, &mut journal).expect("rollback runs");
     report.undos.into_iter().map(|undo| undo.outcome).collect()
 }
 
@@ -140,8 +139,7 @@ fn rolling_back_an_older_run_points_at_the_run_that_owns_the_file_now() {
     let records = load(&paths.journal()).expect("reads");
     let undo_plan = plan(&records, older).expect("plans");
     let mut journal = Journal::open(paths.clone(), RunId::generate()).expect("journal opens");
-    let report =
-        execute(&undo_plan, &runner, &mut journal, PackagePolicy::Keep).expect("rollback runs");
+    let report = execute(&undo_plan, &runner, &mut journal).expect("rollback runs");
 
     let pointed_at_owner = report.undos.iter().any(|undo| match &undo.outcome {
         UndoOutcome::Left { reason } => reason.contains(&newer.to_string()),

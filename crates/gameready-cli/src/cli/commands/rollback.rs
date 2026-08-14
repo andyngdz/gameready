@@ -7,7 +7,7 @@ use gameready_core::journal::{self, Journal, RunId, StatePaths};
 use crate::cli::escalation::Escalation;
 use crate::cli::ui;
 use gameready_core::infra::steam::undo_with_steam_closed;
-use gameready_core::rollback::{latest_run, plan, PackagePolicy, RollbackError};
+use gameready_core::rollback::{latest_run, plan, RollbackError};
 use gameready_core::run::RunStatus;
 
 /// Reverses a previous run's changes, newest change first.
@@ -15,7 +15,6 @@ pub fn run(
     runner: &dyn CommandRunner,
     paths: StatePaths,
     requested: Option<&str>,
-    packages: PackagePolicy,
     escalation: Escalation<'_>,
 ) -> Result<(RunStatus, String)> {
     let records = journal::load(&paths.journal()).context("could not read the journal")?;
@@ -38,14 +37,14 @@ pub fn run(
     // Asked here rather than at the top, so a malformed run id and a run with
     // nothing to undo both answer without a password. A run that only touched
     // the user's own files is not asked for one at all.
-    if undo_plan.needs_root() || packages == PackagePolicy::Purge {
+    if undo_plan.needs_root() {
         escalation.ask()?;
     }
 
     // Journalled under a new run id, so a rollback that itself fails partway is
     // inspectable rather than invisible.
     let mut journal = Journal::open(paths.clone(), RunId::generate())?;
-    let report = undo_with_steam_closed(&undo_plan, runner, &mut journal, packages)?;
+    let report = undo_with_steam_closed(&undo_plan, runner, &mut journal)?;
 
     let status = if report.failed() == 0 {
         RunStatus::Clean

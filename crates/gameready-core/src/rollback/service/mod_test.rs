@@ -83,8 +83,7 @@ fn executing_reverses_both_changes() {
     let mut journal = Journal::open(StatePaths::new(dir.path().to_path_buf()), RunId::generate())
         .expect("journal opens");
 
-    let report =
-        execute(&undo_plan, &runner, &mut journal, PackagePolicy::Keep).expect("rollback runs");
+    let report = execute(&undo_plan, &runner, &mut journal).expect("rollback runs");
 
     assert_eq!(report.reverted(), 2);
     assert_eq!(report.failed(), 0);
@@ -165,8 +164,8 @@ fn rollback_is_safe_to_run_twice() {
     let mut journal = Journal::open(StatePaths::new(dir.path().to_path_buf()), RunId::generate())
         .expect("journal opens");
 
-    let _ = execute(&undo_plan, &runner, &mut journal, PackagePolicy::Keep).expect("first");
-    let second = execute(&undo_plan, &runner, &mut journal, PackagePolicy::Keep).expect("second");
+    let _ = execute(&undo_plan, &runner, &mut journal).expect("first");
+    let second = execute(&undo_plan, &runner, &mut journal).expect("second");
 
     // The file is already gone, which is not a failure.
     assert_eq!(second.failed(), 0);
