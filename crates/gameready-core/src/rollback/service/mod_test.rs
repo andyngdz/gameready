@@ -196,7 +196,10 @@ fn a_command_that_exits_zero_without_changing_anything_is_reported_as_failed() {
             assert!(error.contains("2147483642"), "{error}");
             assert!(error.contains("1048576"), "{error}");
         }
-        other => panic!("expected a failure, got {other:?}"),
+        other @ (UndoOutcome::Reverted { .. }
+        | UndoOutcome::AlreadyGone
+        | UndoOutcome::Left { .. }
+        | UndoOutcome::Refused { .. }) => panic!("expected a failure, got {other:?}"),
     }
 }
 

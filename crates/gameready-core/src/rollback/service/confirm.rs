@@ -93,14 +93,26 @@ fn sysfs_reads_back(runner: &dyn CommandRunner, path: &Path, value: &str) -> Opt
 }
 
 /// Confirms a unit is back in the state the run found it in.
+///
+/// Both sides are worded by [`UnitState::describe`], so the row reads the same
+/// way the rest of the tool talks about units.
 fn unit_is_back(runner: &dyn CommandRunner, unit: &str, prior: PriorUnitState) -> Option<String> {
     let state = unit_state(runner, unit).ok()?;
     let wanted_running = prior == PriorUnitState::WasEnabled;
-    let running = state == UnitState::Running;
-    (running != wanted_running).then(|| {
-        let expected = if wanted_running { "running" } else { "stopped" };
-        format!("{unit} is {state:?}, not {expected}")
-    })
+    if (state == UnitState::Running) == wanted_running {
+        return None;
+    }
+
+    let expected = if wanted_running {
+        UnitState::Running
+    } else {
+        UnitState::Dormant
+    };
+    Some(format!(
+        "{unit} is {}; the run found it {}",
+        state.describe(),
+        expected.describe()
+    ))
 }
 
 #[cfg(test)]

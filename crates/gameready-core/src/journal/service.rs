@@ -45,12 +45,6 @@ impl StatePaths {
         self.root.join("runs")
     }
 
-    /// Pre-images of every file gameready replaced.
-    #[must_use]
-    pub fn backups(&self, run: RunId) -> PathBuf {
-        self.root.join("backups").join(run.to_string())
-    }
-
     /// Log files, pruned by age and count at startup.
     #[must_use]
     pub fn logs(&self) -> PathBuf {
@@ -58,13 +52,8 @@ impl StatePaths {
     }
 
     /// Creates every directory the run will write into.
-    pub fn ensure(&self, run: RunId) -> Result<(), JournalError> {
-        for dir in [
-            self.root.clone(),
-            self.runs(),
-            self.backups(run),
-            self.logs(),
-        ] {
+    pub fn ensure(&self) -> Result<(), JournalError> {
+        for dir in [self.root.clone(), self.runs(), self.logs()] {
             std::fs::create_dir_all(&dir)
                 .map_err(|source| JournalError::StateDir { path: dir, source })?;
         }
@@ -88,7 +77,7 @@ pub struct Journal {
 impl Journal {
     /// Opens the journal for a run, creating the state directories if needed.
     pub fn open(paths: StatePaths, run: RunId) -> Result<Self, JournalError> {
-        paths.ensure(run)?;
+        paths.ensure()?;
         let path = paths.journal();
         let file = OpenOptions::new()
             .create(true)

@@ -65,10 +65,6 @@ impl<R: CommandRunner> CommandRunner for DryRunner<R> {
         Self::refuse(&format!("write {}", path.display()))
     }
 
-    fn write_private_file(&self, path: &Path, _contents: &str) -> Result<(), ExecError> {
-        Self::refuse(&format!("write {}", path.display()))
-    }
-
     fn remove_file(&self, path: &Path, _p: Privilege) -> Result<(), ExecError> {
         Self::refuse(&format!("remove {}", path.display()))
     }

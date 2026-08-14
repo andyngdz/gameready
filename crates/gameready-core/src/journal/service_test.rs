@@ -56,7 +56,6 @@ fn opening_creates_the_directories_a_run_writes_into() {
     let _journal = Journal::open(state.clone(), run).expect("opens");
 
     assert!(state.runs().is_dir());
-    assert!(state.backups(run).is_dir());
     assert!(state.logs().is_dir());
 }
 

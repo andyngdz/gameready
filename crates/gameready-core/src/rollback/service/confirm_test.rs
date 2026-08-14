@@ -2,6 +2,7 @@ use indoc::indoc;
 
 use crate::improvement::Privilege;
 use crate::infra::exec::MockRunner;
+use crate::journal::PriorUnitState;
 use crate::steam::{PriorBlock, PriorScalar};
 
 use super::*;
@@ -171,4 +172,51 @@ fn packages_have_nothing_to_read_back() {
     };
 
     assert_eq!(confirm(&undo, &runner), None);
+}
+
+fn unit_undo(prior: PriorUnitState) -> Undo {
+    Undo::RestoreUnit {
+        unit: "tuned.service".to_owned(),
+        prior,
+    }
+}
+
+/// Seeds systemctl answering for a unit in the given shape.
+fn systemd_box(enabled: &str, active: &str) -> MockRunner {
+    MockRunner::new()
+        .with_binary("systemctl")
+        .answering("systemctl is-enabled tuned.service", enabled)
+        .answering("systemctl is-active tuned.service", active)
+}
+
+#[test]
+fn a_unit_the_run_found_running_confirms_when_it_runs_again() {
+    let runner = systemd_box("enabled", "active");
+
+    assert_eq!(
+        confirm(&unit_undo(PriorUnitState::WasEnabled), &runner),
+        None
+    );
+}
+
+#[test]
+fn a_unit_that_accepted_disable_and_kept_running_is_reported_back() {
+    // systemctl disable --now exits zero on a unit that ignores it, and the
+    // scheduler stays attached.
+    let runner = systemd_box("disabled", "active");
+
+    let reason = confirm(&unit_undo(PriorUnitState::WasDisabled), &runner).expect("not confirmed");
+
+    assert!(reason.contains("tuned.service"), "{reason}");
+    assert!(reason.contains("running"), "{reason}");
+}
+
+#[test]
+fn a_unit_the_run_enabled_confirms_once_it_is_stopped_again() {
+    let runner = systemd_box("disabled", "inactive");
+
+    assert_eq!(
+        confirm(&unit_undo(PriorUnitState::WasDisabled), &runner),
+        None
+    );
 }

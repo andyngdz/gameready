@@ -5,7 +5,7 @@ use std::process::Command;
 
 use crate::exec::{Cmd, CmdOutput, CommandRunner, Escalator, ExecError};
 use crate::improvement::Privilege;
-use crate::infra::exec::files::{install_command, stage_temp_file, write_owner_only};
+use crate::infra::exec::files::{install_command, stage_temp_file};
 use crate::infra::exec::sysfs::write_sysfs_value;
 
 /// The production [`CommandRunner`].
@@ -186,10 +186,6 @@ impl CommandRunner for RealRunner {
 
     fn write_sysfs(&self, path: &Path, value: &str, privilege: Privilege) -> Result<(), ExecError> {
         write_sysfs_value(&self.escalator, path, value, privilege)
-    }
-
-    fn write_private_file(&self, path: &Path, contents: &str) -> Result<(), ExecError> {
-        write_owner_only(path, contents)
     }
 
     fn remove_file(&self, path: &Path, privilege: Privilege) -> Result<(), ExecError> {

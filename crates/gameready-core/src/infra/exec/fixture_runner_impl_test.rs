@@ -104,7 +104,6 @@ fn every_write_is_refused_so_a_fixture_run_cannot_reach_a_disk() {
 
     assert!(runner.write_file(path, "x", Privilege::Root).is_err());
     assert!(runner.write_sysfs(path, "x", Privilege::Root).is_err());
-    assert!(runner.write_private_file(path, "x").is_err());
     assert!(runner.remove_file(path, Privilege::Root).is_err());
     assert!(!dir.path().join("etc/sysctl.d").exists());
 }

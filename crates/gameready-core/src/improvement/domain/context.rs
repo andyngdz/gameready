@@ -126,16 +126,6 @@ impl<'a, C> ApplyCx<'a, C> {
         self.journal.run()
     }
 
-    /// Where this run keeps pre-images of files it replaces.
-    ///
-    /// A step that edits a file it did not create needs somewhere to put the
-    /// original, and the directory is per run so two runs never overwrite each
-    /// other's copy.
-    #[must_use]
-    pub fn backup_dir(&self) -> std::path::PathBuf {
-        self.journal.paths().backups(self.journal.run())
-    }
-
     /// Reads through the runner without recording anything.
     ///
     /// For a step that needs to look at the system mid-apply, such as reading a
