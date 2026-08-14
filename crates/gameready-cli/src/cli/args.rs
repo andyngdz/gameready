@@ -189,9 +189,9 @@ pub enum Command {
 
     /// Apply a step, verify it, roll it back, and verify it reverted.
     ///
-    /// The only way to prove a step that touches kernel state actually works,
-    /// since containers cannot write `/proc/sys` and CI cannot repoint a
-    /// scheduler.
+    /// The only way to prove a step that touches kernel state actually works.
+    /// An unprivileged container cannot write `/proc/sys` at all, and one that
+    /// can is sharing the host's kernel rather than a kernel of its own.
     Selftest {
         /// Test only this step, by id.
         #[arg(long)]

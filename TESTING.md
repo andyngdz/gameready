@@ -35,22 +35,41 @@ To review snapshot changes after editing CLI output:
 cargo insta review
 ```
 
-## Distro containers (`cargo test --features docker-tests -- --ignored`)
+## Distro containers (`.github/workflows/ci.yml`, job `distro-matrix`)
 
 A static musl binary is built and mounted into Arch, Debian, Ubuntu, and Fedora
-containers. Tests cover:
+containers. The musl build avoids glibc version skew across the four images.
+There is no cargo feature for this: the job runs `docker run` directly, and CI
+runs it on every push to main and every pull request.
+
+Each image runs two steps. The first is read-only and needs nothing installed:
 
 - Distro detection on a real `/etc/os-release`
 - Package manager selection
 - `gameready doctor` and `gameready list-games` running to completion
 
-CI runs this matrix on every push to main and every pull request. The musl
-build avoids glibc version skew across the four images.
+The second runs `gameready selftest`, which applies each tuning, verifies it,
+rolls it back, and verifies it reverted. That one needs a privileged container
+and `sudo` installed. Both for reasons worth knowing:
+
+- An unprivileged container mounts `/proc/sys` read-only, and `sysctl -w` there
+  prints the new value and **exits 0** while changing nothing. gameready catches
+  that by reading `/proc/sys` back, so the run reports a verify failure rather
+  than a false success, but no kernel step can actually apply.
+- gameready never runs as root. It stays as the invoking user and escalates one
+  command at a time, so it needs an escalator on `PATH` even when that user is
+  already root. A stock container image ships none.
+
+Fedora and Arch also need `procps-ng` for the `sysctl` binary itself.
+
+A privileged container shares the runner's kernel, so the job really does move
+`vm.max_map_count` on the host. selftest puts it back, which is the thing being
+tested, and the runner is discarded either way.
 
 ## Real hardware (`gameready selftest`)
 
 ```bash
-gameready selftest --all
+gameready selftest
 gameready selftest --step core.sysctl.max-map-count
 ```
 
@@ -71,11 +90,11 @@ Layer       Scope                           Needs
 ----------- ------------------------------- -----------------
 Unit        logic, parsing, journal math    nothing
 Snapshot    CLI screens, help text          nothing
-Container   distro detection, pkg names     Docker
+Container   distro detection, apply+rollback Docker
 Selftest    kernel state, Steam config      real machine, sudo
 ```
 
-Container tests cannot write to `/proc/sys` or `/sys` (read-only in Docker,
-and sysctl namespaces do not cover `vm.*`). Selftest cannot run in CI because
-GitHub Actions runners share a kernel. The two layers together cover what
-neither can alone.
+A container run skips what its image cannot offer, and says so per step rather
+than passing quietly: no GPU means no shader cache step, no Steam means no
+Proton-GE step, and no systemd means the conflict check cannot read unit state.
+Those are the steps only real hardware covers.
