@@ -1,7 +1,7 @@
 //! Appending to and reading back the undo journal.
 
 use std::fs::{File, OpenOptions};
-use std::io::{BufRead, BufReader, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use crate::journal::domain::{JournalEvent, JournalRecord, RunId};
@@ -162,9 +162,19 @@ impl Journal {
 /// A corrupt line stops the read rather than being skipped: a journal with a
 /// hole in it cannot be replayed safely, and silently ignoring the hole would
 /// produce a rollback that misses a change.
+///
+/// An unparseable *final* line is the one exception, because it is not a hole.
+/// `append` writes each record and its newline in a single `write_all`, so a
+/// process killed partway through leaves an unterminated fragment at the end of
+/// the file and nothing else. Every record before it was fsynced and is intact.
+/// Treating that fragment as whole-file corruption would make every completed
+/// run in the journal unrollbackable, which is the opposite of what this file
+/// exists for. Dropping it loses nothing either: the record is fsynced before
+/// the mutation it describes is allowed to run, so a change whose record never
+/// finished being written never happened.
 pub fn load(path: &Path) -> Result<Vec<JournalRecord>, JournalError> {
-    let file = match File::open(path) {
-        Ok(file) => file,
+    let bytes = match std::fs::read(path) {
+        Ok(bytes) => bytes,
         Err(source) if source.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
         Err(source) => {
             return Err(JournalError::Open {
@@ -175,20 +185,26 @@ pub fn load(path: &Path) -> Result<Vec<JournalRecord>, JournalError> {
     };
 
     let mut records = Vec::new();
-    for (index, line) in BufReader::new(file).lines().enumerate() {
-        let line = line.map_err(|source| JournalError::Open {
-            path: path.to_path_buf(),
-            source,
-        })?;
-        if line.trim().is_empty() {
+    // split_inclusive keeps the newline, which is what tells a completed record
+    // apart from the tail of a write that never finished.
+    for (index, line) in bytes.split_inclusive(|byte| *byte == b'\n').enumerate() {
+        let terminated = line.last() == Some(&b'\n');
+        let text = line.strip_suffix(b"\n").unwrap_or(line);
+        if text.iter().all(u8::is_ascii_whitespace) {
             continue;
         }
-        let record = serde_json::from_str(&line).map_err(|source| JournalError::Corrupt {
-            path: path.to_path_buf(),
-            line: index + 1,
-            source,
-        })?;
-        records.push(record);
+
+        match serde_json::from_slice(text) {
+            Ok(record) => records.push(record),
+            Err(_) if !terminated => break,
+            Err(source) => {
+                return Err(JournalError::Corrupt {
+                    path: path.to_path_buf(),
+                    line: index + 1,
+                    source,
+                });
+            }
+        }
     }
 
     Ok(records)
