@@ -104,17 +104,17 @@ fn a_conflict_with_no_command_is_just_the_row() {
 #[test]
 fn a_failure_still_states_what_broke_and_the_state_it_left() {
     let text = rendered(
-        "CPU scheduler scx_lavd",
+        "I/O scheduler nvme0n1",
         &Outcome::Failed {
-            error: "scxctl exited 1: no BPF-capable kernel headers".to_owned(),
+            error: "write failed: read-only sysfs".to_owned(),
             rolled_back: RollbackStatus::Succeeded,
         },
     );
 
     let lines: Vec<&str> = text.lines().collect();
     assert_eq!(lines.len(), 3, "{text}");
-    assert!(lines[0].contains("CPU scheduler scx_lavd"), "{text}");
-    assert!(lines[1].contains("no BPF-capable kernel headers"), "{text}");
+    assert!(lines[0].contains("I/O scheduler nvme0n1"), "{text}");
+    assert!(lines[1].contains("read-only sysfs"), "{text}");
     assert!(lines[2].contains("exactly as it was"), "{text}");
 }
 

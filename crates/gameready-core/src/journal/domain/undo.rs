@@ -62,15 +62,6 @@ pub enum Undo {
     /// Return a unit to the state it was in before the run.
     RestoreUnit { unit: String, prior: PriorUnitState },
 
-    /// Take a third-party repository back off the system.
-    RemoveAptRepository { spec: String },
-
-    /// Put the CPU scheduler back where it was.
-    ///
-    /// `None` unloads whatever gameready started, which hands scheduling back
-    /// to the kernel's own scheduler immediately, with no reboot.
-    RestoreScxScheduler { previous: Option<String> },
-
     /// Remove a directory, but only if nothing else put anything in it.
     RemoveDirIfEmpty {
         path: PathBuf,
@@ -100,9 +91,7 @@ impl Undo {
         match self {
             Self::SetSysctl { key, .. } => key.clone(),
             Self::WriteSysfs { path, .. } => scheduler_subject(path),
-            Self::RestoreScxScheduler { .. } => "CPU scheduler".to_owned(),
             Self::RestoreUnit { unit, .. } => unit.clone(),
-            Self::RemoveAptRepository { spec } => spec.clone(),
             Self::ReportPackages { .. } => "packages".to_owned(),
             Self::RestoreFile { path, .. }
             | Self::DeleteFile { path, .. }
@@ -116,8 +105,7 @@ impl Undo {
     /// The path operations carry the privilege the change was made with, so
     /// undoing something in the user's own home is a user's job and a run that
     /// only touched their home never asks for a password. Everything else
-    /// touches the system by definition: `/proc/sys`, `/sys`, a systemd unit,
-    /// an apt repository.
+    /// touches the system by definition: `/proc/sys`, `/sys`, a systemd unit.
     #[must_use]
     pub const fn privilege(&self) -> Privilege {
         match self {
@@ -125,11 +113,9 @@ impl Undo {
             | Self::DeleteFile { privilege, .. }
             | Self::RemoveDirIfEmpty { privilege, .. }
             | Self::RemoveDirTree { privilege, .. } => *privilege,
-            Self::SetSysctl { .. }
-            | Self::WriteSysfs { .. }
-            | Self::RestoreScxScheduler { .. }
-            | Self::RestoreUnit { .. }
-            | Self::RemoveAptRepository { .. } => Privilege::Root,
+            Self::SetSysctl { .. } | Self::WriteSysfs { .. } | Self::RestoreUnit { .. } => {
+                Privilege::Root
+            }
             // Reporting packages changes nothing. Removing them does, and that
             // is the caller's policy rather than a property of this record.
             Self::ReportPackages { .. } => Privilege::User,

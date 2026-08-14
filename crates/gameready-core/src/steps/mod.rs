@@ -6,18 +6,16 @@ mod service;
 mod use_cases;
 
 pub use constants::{
-    ADD_APT_REPOSITORY_BIN, APT_ASSUME_YES, APT_REMOVE, COMPAT_MAPPING_PATH, COMPAT_NAME_KEY,
-    COMPAT_TOOLS_DIR, COMPAT_TOOL_VDF, LAUNCH_OPTIONS_KEY, MANAGED_HEADER, MKDIR_BIN, PROC_SWAPS,
-    PROTON_EXPERIMENTAL, PROTON_GE_LATEST_URL, RMDIR_BIN, SCXCTL_BIN, STEAM_APPS_PATH, SYSCTL_BIN,
-    SYSCTL_DROPIN,
+    COMPAT_MAPPING_PATH, COMPAT_NAME_KEY, COMPAT_TOOLS_DIR, COMPAT_TOOL_VDF, LAUNCH_OPTIONS_KEY,
+    MANAGED_HEADER, MKDIR_BIN, PROC_SWAPS, PROTON_EXPERIMENTAL, PROTON_GE_LATEST_URL, RMDIR_BIN,
+    STEAM_APPS_PATH, SYSCTL_BIN, SYSCTL_DROPIN,
 };
 pub use domain::{
-    apply_targets, newest_ge_proton, resolve_wishes, restore_scheduler, CompatRank, CompatTarget,
-    CompatWish, CompetingDaemon, Edited, GamingTool, LaunchTarget, COMPETING_DAEMONS, GAMING_TOOLS,
+    apply_targets, newest_ge_proton, resolve_wishes, CompatRank, CompatTarget, CompatWish,
+    CompetingDaemon, Edited, GamingTool, LaunchTarget, COMPETING_DAEMONS, GAMING_TOOLS,
 };
 pub use service::{core_steps, find_core_step, game_steps};
-pub(crate) use use_cases::{disk_inventory, read_sched_ext, DiskInventory};
+pub(crate) use use_cases::{disk_inventory, DiskInventory};
 pub use use_cases::{
-    Conflicts, CpuGovernor, GamingTools, IoScheduler, MaxMapCount, ScxLavd, ScxPpa,
-    SteamLaunchOptions, SteamProton,
+    Conflicts, CpuGovernor, GamingTools, IoScheduler, MaxMapCount, SteamLaunchOptions, SteamProton,
 };

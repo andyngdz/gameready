@@ -200,8 +200,6 @@ impl CoreImprovement for Swappiness {
                 | Change::SysfsWrite { .. }
                 | Change::PackagesInstalled { .. }
                 | Change::SystemdUnit { .. }
-                | Change::AptRepository { .. }
-                | Change::ScxScheduler { .. }
                 | Change::DirCreated { .. }
                 | Change::DirTreeInstalled { .. } => {}
             }

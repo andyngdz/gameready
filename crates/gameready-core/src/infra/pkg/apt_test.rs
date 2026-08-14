@@ -37,10 +37,10 @@ fn reports_an_uninstalled_but_available_package() {
 
 #[test]
 fn reports_a_package_missing_from_every_repository() {
-    // scx-scheds is genuinely absent from the Ubuntu archive, which is why the
-    // sched_ext step has to report NotApplicable rather than fail there.
-    let runner = MockRunner::new().failing("apt-cache show scx-scheds");
-    let state = Apt.state(&runner, "scx-scheds").expect("queries");
+    // A package absent from every configured repository is not failing: a step
+    // needing it becomes NotApplicable rather than failing there.
+    let runner = MockRunner::new().failing("apt-cache show missing-package");
+    let state = Apt.state(&runner, "missing-package").expect("queries");
 
     assert_eq!(state, PackageState::Unavailable);
 }

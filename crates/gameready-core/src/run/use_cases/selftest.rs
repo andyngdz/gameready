@@ -1,8 +1,8 @@
 //! Prove a step end to end on the live machine.
 //!
 //! Applies, verifies, rolls back, and verifies the change is gone. Containers
-//! cannot write `/proc/sys` and CI cannot repoint a live scheduler, so this is
-//! the only place some steps are exercised against a real kernel at all.
+//! cannot write `/proc/sys`, so this is the only place steps that touch kernel
+//! state are exercised against a real kernel.
 
 use crate::exec::CommandRunner;
 use crate::improvement::{ApplyCx, CoreCx, CoreImprovement, Probe};

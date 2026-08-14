@@ -121,7 +121,10 @@ fn a_step_whose_package_this_distro_lacks_is_not_applicable_before_anything_is_a
     let cx = CoreCx::new(&system, &runner).with_packages(&packages);
 
     let plan = plan_run(
-        vec![Fake::applicable("test.a", vec![package_dep("scx-scheds")])],
+        vec![Fake::applicable(
+            "test.a",
+            vec![package_dep("missing-package")],
+        )],
         &cx,
         &mut |_| {},
     );

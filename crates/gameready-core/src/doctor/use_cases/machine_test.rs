@@ -3,18 +3,10 @@ use crate::infra::exec::MockRunner;
 use crate::steps::domain::SwapBacking;
 
 #[test]
-fn a_bare_machine_reports_no_sched_ext_no_swap_no_disks() {
+fn a_bare_machine_reports_no_swap_no_disks() {
     let report = machine_report(&MockRunner::new());
-    assert!(!report.sched_ext_ready);
     assert!(report.swap.is_none());
     assert!(report.disks.is_empty());
-}
-
-#[test]
-fn an_idle_sched_ext_kernel_reads_as_ready() {
-    // "ready" is about support, not about a scheduler being loaded.
-    let runner = MockRunner::new().with_file("/sys/kernel/sched_ext/state", "disabled\n");
-    assert!(machine_report(&runner).sched_ext_ready);
 }
 
 #[test]

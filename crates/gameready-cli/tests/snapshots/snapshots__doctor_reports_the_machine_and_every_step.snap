@@ -8,27 +8,23 @@ exit code: 0
 Your machine
   distro    Ubuntu 26.04 LTS
   family    debian · apt-get
-  kernel    7.0.0-29-generic · sched_ext ready
+  kernel    7.0.0-29-generic
   swap      disk, 8 GB
   disks     nvme0n1 · none
 
 What each tuning would do here
-  • Competing daemons         already set, no competing daemons found
-  ✓ vm.max_map_count          would apply, vm.max_map_count 1048576 -> 2147483642
-  - split lock                not applicable, this kernel has no split-lock detector
-  - vm latency                not applicable, this kernel exposes none of these parameters
-  • I/O schedulers            already set, nvme0n1 on none
-  - Swappiness                not applicable, swap is on disk, not zram; the default swappiness is
-                              right
-  ✓ gamemode + mangohud       would apply, install mangohud
-  - gamemode.ini              not applicable, gamemode is not installed yet
-  - shader cache              not applicable, no NVIDIA, AMD, or Intel GPU found
-  - Proton-GE                 not applicable, Steam root not found
-  ✓ scx repository            would apply, add ppa:arighi/sched-ext, pinned to scx only
-  - CPU scheduler scx_lavd    not applicable, scx is not in this system's repositories yet (Ubuntu
-                              26.04 LTS); the "core.repo.scx-ppa" step in this run adds the PPA
-                              that carries it, and this step is looked at again once it has
-  ✓ CPU speed                 would apply, CPU speed: policy0 powersave -> performance
+  • Competing daemons      already set, no competing daemons found
+  ✓ vm.max_map_count       would apply, vm.max_map_count 1048576 -> 2147483642
+  - split lock             not applicable, this kernel has no split-lock detector
+  - vm latency             not applicable, this kernel exposes none of these parameters
+  • I/O schedulers         already set, nvme0n1 on none
+  - Swappiness             not applicable, swap is on disk, not zram; the default swappiness is
+                           right
+  ✓ gamemode + mangohud    would apply, install mangohud
+  - gamemode.ini           not applicable, gamemode is not installed yet
+  - shader cache           not applicable, no NVIDIA, AMD, or Intel GPU found
+  - Proton-GE              not applicable, Steam root not found
+  ✓ CPU speed              would apply, CPU speed: policy0 powersave -> performance
 
   Nothing above has been changed. Run gameready init to apply.
 

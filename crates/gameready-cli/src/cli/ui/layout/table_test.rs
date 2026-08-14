@@ -29,12 +29,12 @@ fn starts_at(text: &str, evidence: &str) -> usize {
 fn every_rows_evidence_starts_at_the_same_column() {
     let text = rendered(&[
         (Mark::AlreadySet, "Swappiness", "already 180"),
-        (Mark::Applied, "CPU scheduler scx_lavd", "loaded"),
+        (Mark::Applied, "I/O scheduler nvme0n1", "mq-deadline"),
     ]);
 
     assert_eq!(
         starts_at(&text, "already 180"),
-        starts_at(&text, "loaded"),
+        starts_at(&text, "mq-deadline"),
         "{text}"
     );
 }
@@ -44,11 +44,11 @@ fn a_short_name_does_not_pull_the_column_in() {
     // The column is pinned, so a table of short names lines up with a table of
     // long ones on the screen before it.
     let short = rendered(&[(Mark::Applied, "Swappiness", "already 180")]);
-    let long = rendered(&[(Mark::Applied, "CPU scheduler scx_lavd", "loaded")]);
+    let long = rendered(&[(Mark::Applied, "I/O scheduler nvme0n1", "mq-deadline")]);
 
     assert_eq!(
         starts_at(&short, "already 180"),
-        starts_at(&long, "loaded"),
+        starts_at(&long, "mq-deadline"),
         "{short}{long}"
     );
 }

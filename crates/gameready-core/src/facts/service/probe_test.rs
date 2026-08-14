@@ -30,8 +30,8 @@ fn treats_a_missing_patch_level_as_zero() {
 #[test]
 fn orders_versions_so_a_minimum_check_works() {
     let running = parse_kernel_release("7.0.0-29-generic").expect("parses");
-    let sched_ext_minimum = KernelVersion::new(6, 12, 0);
-    assert!(running >= sched_ext_minimum);
+    let minimum_version = KernelVersion::new(6, 12, 0);
+    assert!(running >= minimum_version);
 }
 
 #[test]

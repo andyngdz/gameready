@@ -200,8 +200,6 @@ impl CoreImprovement for MaxMapCount {
                 | Change::SysfsWrite { .. }
                 | Change::PackagesInstalled { .. }
                 | Change::SystemdUnit { .. }
-                | Change::AptRepository { .. }
-                | Change::ScxScheduler { .. }
                 | Change::DirCreated { .. }
                 | Change::DirTreeInstalled { .. } => {}
             }

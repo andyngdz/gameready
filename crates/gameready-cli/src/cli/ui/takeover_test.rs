@@ -6,8 +6,8 @@ fn the_two_answers_read_differently() {
 }
 
 #[test]
-fn switching_names_the_scheduler_the_run_would_load() {
-    assert!(Takeover::TakeIt.to_string().contains("scx_lavd"));
+fn taking_over_names_the_takeover() {
+    assert!(Takeover::TakeIt.to_string().contains("Take it over"));
 }
 
 #[test]

@@ -149,8 +149,6 @@ fn apply_writes_as_the_user_never_as_root() {
         | Change::SysfsWrite { .. }
         | Change::PackagesInstalled { .. }
         | Change::SystemdUnit { .. }
-        | Change::AptRepository { .. }
-        | Change::ScxScheduler { .. }
         | Change::DirCreated { .. }
         | Change::DirTreeInstalled { .. }) => panic!("expected a file record, got {other:?}"),
     }

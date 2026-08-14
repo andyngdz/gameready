@@ -69,9 +69,10 @@ impl Fake {
         Box::new(Self {
             id,
             probe_result: Probe::Conflict {
-                with: "cosmos".to_owned(),
-                detail: "cosmos is already scheduling this machine".to_owned(),
-                yours: takeover_possible.then(|| "scxctl stop".to_owned()),
+                with: "tuned.service".to_owned(),
+                detail: "tuned.service sets the governor on its own schedule".to_owned(),
+                yours: takeover_possible
+                    .then(|| "systemctl disable --now tuned.service".to_owned()),
             },
             requires: Vec::new(),
         })
@@ -197,7 +198,7 @@ fn a_conflict_the_run_can_clear_is_held_for_the_takeover_question() {
     assert!(probed.settled.is_empty(), "{:?}", probed.settled);
     assert_eq!(probed.contested.len(), 1);
     assert_eq!(probed.contested[0].step.id().as_str(), "test.owned");
-    assert_eq!(probed.contested[0].with, "cosmos");
+    assert_eq!(probed.contested[0].with, "tuned.service");
 }
 
 #[test]
@@ -212,7 +213,7 @@ fn a_conflict_without_a_path_back_is_settled_as_the_skip_it_was() {
         &probed.settled[0].outcome,
         Outcome::Skipped {
             reason: SkipReason::Conflict { with, .. }
-        } if with == "cosmos"
+        } if with == "tuned.service"
     ));
 }
 

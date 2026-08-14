@@ -212,8 +212,6 @@ impl CoreImprovement for GamingTools {
                 | Change::SysctlRuntime { .. }
                 | Change::SysfsWrite { .. }
                 | Change::SystemdUnit { .. }
-                | Change::AptRepository { .. }
-                | Change::ScxScheduler { .. }
                 | Change::DirCreated { .. }
                 | Change::DirTreeInstalled { .. } => {}
             }

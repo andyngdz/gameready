@@ -11,7 +11,6 @@ fn plain(text: &str) -> String {
 fn it_names_the_machine_and_every_tuning() {
     let facts = SystemFacts::fixture(Family::Arch);
     let machine = MachineReport {
-        sched_ext_ready: true,
         swap: None,
         disks: Vec::new(),
     };
@@ -24,7 +23,6 @@ fn it_names_the_machine_and_every_tuning() {
     let rendered = plain(&DoctorReport::new(&facts, &machine, &findings, &[]).to_string());
 
     assert!(rendered.contains("Your machine"));
-    assert!(rendered.contains("sched_ext ready"));
     assert!(rendered.contains("What each tuning would do here"));
     assert!(rendered.contains("CPU governor"));
     assert!(rendered.contains("Nothing above has been changed"));
@@ -35,7 +33,6 @@ fn a_step_that_would_run_says_what_it_would_do_rather_than_that_it_would() {
     // "would apply" on its own is the screen having the answer and keeping it.
     let facts = SystemFacts::fixture(Family::Arch);
     let machine = MachineReport {
-        sched_ext_ready: true,
         swap: None,
         disks: Vec::new(),
     };
@@ -57,7 +54,6 @@ fn a_step_that_would_run_says_what_it_would_do_rather_than_that_it_would() {
 fn a_step_that_is_already_set_is_not_asked_what_it_would_do() {
     let facts = SystemFacts::fixture(Family::Arch);
     let machine = MachineReport {
-        sched_ext_ready: true,
         swap: None,
         disks: Vec::new(),
     };
@@ -82,7 +78,6 @@ fn a_step_that_is_already_set_is_not_asked_what_it_would_do() {
 fn a_warning_says_what_it_is_why_it_matters_and_what_to_run() {
     let facts = SystemFacts::fixture(Family::Arch);
     let machine = MachineReport {
-        sched_ext_ready: true,
         swap: None,
         disks: Vec::new(),
     };
@@ -105,16 +100,4 @@ fn a_warning_says_what_it_is_why_it_matters_and_what_to_run() {
         rendered.contains("Fix systemctl disable --now power-profiles-daemon"),
         "{rendered}"
     );
-}
-
-#[test]
-fn a_kernel_without_sched_ext_says_so() {
-    let facts = SystemFacts::fixture(Family::Arch);
-    let machine = MachineReport {
-        sched_ext_ready: false,
-        swap: None,
-        disks: Vec::new(),
-    };
-    let rendered = plain(&DoctorReport::new(&facts, &machine, &[], &[]).to_string());
-    assert!(rendered.contains("no sched_ext"));
 }

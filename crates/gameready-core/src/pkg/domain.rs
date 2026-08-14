@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 
 /// Whether a package is present, obtainable, or neither.
 ///
-/// The third case is the interesting one. `scx-scheds` does not exist in the
-/// Ubuntu archive at all, so a step needing it is not failing, it is not
+/// The third case is the interesting one. A package that exists in no
+/// configured repository means a step needing it is not failing, it is not
 /// applicable, and the difference is what the user reads on the summary screen.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "state", rename_all = "snake_case")]

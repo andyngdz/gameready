@@ -36,11 +36,11 @@ pub fn write_owner_only(path: &Path, contents: &str) -> Result<(), ExecError> {
 
 /// Moves a staged file into place as root, creating the directories above it.
 ///
-/// `-D` is load bearing. `/etc/systemd/system/scx.service.d` and the other
-/// drop-in directories do not exist until something makes them, and plain
-/// `install` answers "No such file or directory" rather than creating one. The
-/// unprivileged path through `write_file` already calls `create_dir_all`, so
-/// without this the two differ on whether a step may write a new directory.
+/// `-D` is load bearing. The drop-in directories a step writes into do not
+/// exist until something makes them, and plain `install` answers "No such file
+/// or directory" rather than creating one. The unprivileged path through
+/// `write_file` already calls `create_dir_all`, so without this the two differ
+/// on whether a step may write a new directory.
 pub fn install_command(staged: &Path, destination: &Path) -> Cmd {
     Cmd::root(INSTALL)
         .arg("-D")

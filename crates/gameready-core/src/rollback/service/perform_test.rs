@@ -119,7 +119,7 @@ fn a_unit_enabled_before_the_run_is_restarted_on_its_own_config() {
     // user's own configuration names.
     let runner = MockRunner::new();
     let undo = Undo::RestoreUnit {
-        unit: "scx_loader.service".to_owned(),
+        unit: "tuned.service".to_owned(),
         prior: crate::journal::PriorUnitState::WasEnabled,
     };
     let outcome = perform(&undo, &runner, PackagePolicy::Keep);
@@ -129,7 +129,7 @@ fn a_unit_enabled_before_the_run_is_restarted_on_its_own_config() {
         runner
             .commands()
             .iter()
-            .any(|command| command.contains("systemctl restart scx_loader.service")),
+            .any(|command| command.contains("systemctl restart tuned.service")),
         "{:?}",
         runner.commands()
     );
@@ -139,7 +139,7 @@ fn a_unit_enabled_before_the_run_is_restarted_on_its_own_config() {
 fn a_unit_the_run_enabled_is_disabled_again() {
     let runner = MockRunner::new();
     let undo = Undo::RestoreUnit {
-        unit: "scx_loader.service".to_owned(),
+        unit: "tuned.service".to_owned(),
         prior: crate::journal::PriorUnitState::WasDisabled,
     };
     let outcome = perform(&undo, &runner, PackagePolicy::Keep);
@@ -147,6 +147,6 @@ fn a_unit_the_run_enabled_is_disabled_again() {
     assert!(matches!(outcome, UndoOutcome::Reverted { .. }));
     assert_eq!(
         runner.commands(),
-        ["sudo systemctl disable --now scx_loader.service"]
+        ["sudo systemctl disable --now tuned.service"]
     );
 }

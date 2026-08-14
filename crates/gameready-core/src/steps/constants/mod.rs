@@ -2,20 +2,14 @@
 //!
 //! Split by the subsystem each constant belongs to rather than kept in one
 //! list, so a step that touches only sysctl does not have to read past the
-//! Steam and scx vocabularies to find what it needs.
+//! Steam vocabulary to find what it needs.
 
 mod block;
-mod scx;
 mod session;
 mod steam;
 mod sysctl;
 
 pub use block::{IO_SCHEDULER_RULE, QUEUE_ROTATIONAL, QUEUE_SCHEDULER, SYS_BLOCK};
-pub use scx::{
-    ADD_APT_REPOSITORY_BIN, APT_ASSUME_YES, APT_REMOVE, LAVD_SCHEDULER, SCHED_EXT_DISABLED,
-    SCHED_EXT_OPS, SCHED_EXT_STATE, SCXCTL_BIN, SCX_LAVD_BIN, SCX_PPA, SCX_PPA_ORIGIN, SCX_PPA_PIN,
-    SCX_SCHEDULER_OVERRIDE, SCX_SERVICE_NAME, SCX_UNIT_DROPIN, SCX_UNIT_PATH,
-};
 pub use session::{
     DEVICE_VENDOR, ENVIRONMENT_D_DIR, GAMEMODE_INI, SHADER_CACHE_CONF, SYS_CLASS_DRM,
 };

@@ -23,7 +23,7 @@ fn a_folder_says_how_many_of_its_rows_hold() {
     let rows = [
         row("Swappiness", ProbeStatus::Set),
         row("Split lock", ProbeStatus::Set),
-        row("scx lavd", ProbeStatus::Inactive),
+        row("I/O scheduler", ProbeStatus::Inactive),
     ];
 
     let MenuItem::SubMenu(folder) = folder("System tunings", &rows) else {
