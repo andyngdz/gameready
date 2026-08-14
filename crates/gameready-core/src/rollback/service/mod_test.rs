@@ -25,8 +25,6 @@ fn recorded_run(dir: &TempDir) -> (RunId, Vec<crate::journal::JournalRecord>) {
             step: step(),
             change: Change::FileWritten {
                 path: DROPIN.into(),
-                existed: false,
-                backup: None,
                 sha256_after: digest(WROTE),
                 mode: 0o644,
                 privilege: Privilege::Root,

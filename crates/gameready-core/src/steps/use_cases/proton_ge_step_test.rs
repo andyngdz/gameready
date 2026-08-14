@@ -247,7 +247,6 @@ fn apply_records_dir_tree_installed() {
         }
         other @ (Change::FileWritten { .. }
         | Change::SteamConfigWritten { .. }
-        | Change::FileRemoved { .. }
         | Change::SysctlRuntime { .. }
         | Change::SysfsWrite { .. }
         | Change::PackagesInstalled { .. }

@@ -6,9 +6,7 @@ use crate::exec::{Cmd, CommandRunner};
 use crate::improvement::Privilege;
 use crate::journal::{PriorUnitState, Undo};
 use crate::rollback::domain::UndoOutcome;
-use crate::rollback::service::perform_files::{
-    delete_file, remove_dir, remove_dir_tree, restore_file,
-};
+use crate::rollback::service::perform_files::{delete_file, remove_dir, remove_dir_tree};
 use crate::rollback::service::perform_steam::restore_steam_config;
 use crate::steps::SYSCTL_BIN;
 use crate::systemd::{DISABLE, NOW, RESTART, SYSTEMCTL};
@@ -21,14 +19,6 @@ pub(super) fn perform(undo: &Undo, runner: &dyn CommandRunner) -> UndoOutcome {
             expect_sha256,
             privilege,
         } => delete_file(runner, path, expect_sha256, *privilege),
-
-        Undo::RestoreFile {
-            path,
-            from,
-            expect_sha256,
-            privilege,
-            ..
-        } => restore_file(runner, path, from, expect_sha256.as_deref(), *privilege),
 
         Undo::RestoreSteamConfig { path, sections } => restore_steam_config(runner, path, sections),
 

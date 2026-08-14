@@ -130,7 +130,6 @@ fn apply_records_each_disk_previous_scheduler_for_rollback() {
             Change::SysfsWrite { previous, .. } => Some(previous.as_str()),
             Change::FileWritten { .. }
             | Change::SteamConfigWritten { .. }
-            | Change::FileRemoved { .. }
             | Change::SysctlRuntime { .. }
             | Change::PackagesInstalled { .. }
             | Change::SystemdUnit { .. }

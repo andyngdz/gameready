@@ -170,8 +170,6 @@ impl CoreImprovement for ShaderCache {
         cx.mutate(
             Change::FileWritten {
                 path: path.clone(),
-                existed: false,
-                backup: None,
                 sha256_after,
                 mode: 0o644,
                 privilege: Privilege::User,
@@ -228,7 +226,6 @@ impl CoreImprovement for ShaderCache {
                 // step starts recording must fail to compile here rather than
                 // be silently skipped by rollback.
                 Change::SteamConfigWritten { .. }
-                | Change::FileRemoved { .. }
                 | Change::SysctlRuntime { .. }
                 | Change::SysfsWrite { .. }
                 | Change::PackagesInstalled { .. }

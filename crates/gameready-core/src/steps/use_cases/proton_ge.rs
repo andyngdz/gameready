@@ -223,7 +223,6 @@ impl CoreImprovement for ProtonGe {
                 }
                 Change::FileWritten { .. }
                 | Change::SteamConfigWritten { .. }
-                | Change::FileRemoved { .. }
                 | Change::SysctlRuntime { .. }
                 | Change::SysfsWrite { .. }
                 | Change::PackagesInstalled { .. }

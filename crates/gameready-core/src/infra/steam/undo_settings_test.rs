@@ -1,13 +1,40 @@
+use indoc::indoc;
 use tempfile::TempDir;
 
 use super::*;
-use crate::improvement::{ImprovementId, Privilege};
+use crate::improvement::ImprovementId;
 use crate::infra::exec::MockRunner;
-use crate::journal::{digest, RunId, StatePaths, Undo};
+use crate::journal::{RunId, StatePaths, Undo};
 use crate::rollback::{PlannedUndo, UndoOutcome};
+use crate::steam::{PriorBlock, PriorScalar, PriorSection};
 
 const CONFIG: &str = "/steam/config/config.vdf";
-const BACKUP: &str = "/state/backups/01/config.vdf";
+
+/// The config as gameready left it: the game pinned to a build it chose.
+fn written_config() -> String {
+    indoc! {r#"
+        "InstallConfigStore"
+        {
+            "Software"
+            {
+                "Valve"
+                {
+                    "Steam"
+                    {
+                        "CompatToolMapping"
+                        {
+                            "1422450"
+                            {
+                                "name"        "GE-Proton11-3"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    "#}
+    .to_owned()
+}
 
 /// Every test seeds Steam as stopped. `MockRunner` answers `pgrep` the same way
 /// every time, so it cannot play a Steam that was running and then quit: a test
@@ -16,8 +43,7 @@ const BACKUP: &str = "/state/backups/01/config.vdf";
 fn stopped_steam() -> MockRunner {
     MockRunner::new()
         .failing("pgrep -x steam")
-        .with_file(BACKUP, "the config Steam had")
-        .with_file(CONFIG, "the config gameready wrote")
+        .with_file(CONFIG, written_config())
 }
 
 fn journal(dir: &TempDir) -> Journal {
@@ -31,13 +57,29 @@ fn plan_of(step: ImprovementId, undo: Undo) -> RollbackPlan {
     }
 }
 
+/// Puts the pin back to what Steam had, which was nothing.
 fn restore_config() -> Undo {
-    Undo::RestoreFile {
+    Undo::RestoreSteamConfig {
         path: CONFIG.into(),
-        from: BACKUP.into(),
-        expect_sha256: Some(digest("the config gameready wrote")),
-        mode: 0o644,
-        privilege: Privilege::User,
+        sections: vec![PriorSection {
+            section: [
+                "InstallConfigStore",
+                "Software",
+                "Valve",
+                "Steam",
+                "CompatToolMapping",
+                "1422450",
+            ]
+            .iter()
+            .map(|part| (*part).to_owned())
+            .collect(),
+            prior: PriorBlock::Present {
+                entries: vec![PriorScalar {
+                    key: "name".to_owned(),
+                    value: Some("proton_experimental".to_owned()),
+                }],
+            },
+        }],
     }
 }
 
@@ -124,14 +166,16 @@ fn a_steam_that_is_already_stopped_is_not_asked_to_quit() {
 }
 
 #[test]
-fn the_backup_still_goes_back_over_the_written_config() {
+fn the_recorded_settings_still_go_back_into_the_written_config() {
     let dir = TempDir::new().expect("temp dir");
     let runner = stopped_steam();
     let plan = plan_of(SteamProton::id_const(), restore_config());
 
     let report = undo_with_steam_closed(&plan, &runner, &mut journal(&dir)).expect("rolled back");
 
-    assert_eq!(runner.file(CONFIG).as_deref(), Some("the config Steam had"));
+    let after = runner.file(CONFIG).expect("still there");
+    assert!(after.contains("proton_experimental"), "{after}");
+    assert!(!after.contains("GE-Proton11-3"), "{after}");
     assert_eq!(report.reverted(), 1);
     assert!(matches!(
         report.undos[0].outcome,

@@ -209,7 +209,6 @@ impl CoreImprovement for GamingTools {
                 // silently skipped by rollback.
                 Change::FileWritten { .. }
                 | Change::SteamConfigWritten { .. }
-                | Change::FileRemoved { .. }
                 | Change::SysctlRuntime { .. }
                 | Change::SysfsWrite { .. }
                 | Change::SystemdUnit { .. }

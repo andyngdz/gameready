@@ -133,8 +133,6 @@ impl CoreImprovement for Swappiness {
         cx.mutate(
             Change::FileWritten {
                 path: dropin.clone(),
-                existed: false,
-                backup: None,
                 sha256_after,
                 mode: 0o644,
                 privilege: Privilege::Root,
@@ -197,7 +195,6 @@ impl CoreImprovement for Swappiness {
                 // Listed rather than wildcarded: a new Change variant this step
                 // records must fail to compile here, not be skipped silently.
                 Change::SteamConfigWritten { .. }
-                | Change::FileRemoved { .. }
                 | Change::SysfsWrite { .. }
                 | Change::PackagesInstalled { .. }
                 | Change::SystemdUnit { .. }

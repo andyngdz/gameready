@@ -120,9 +120,7 @@ impl<'a> RollbackSummary<'a> {
             // wrong for one that puts something back, where nothing left to do
             // means it is already back.
             UndoOutcome::AlreadyGone => match report.undo {
-                Undo::RestoreFile { .. } | Undo::RestoreSteamConfig { .. } => {
-                    "was already put back".to_owned()
-                }
+                Undo::RestoreSteamConfig { .. } => "was already put back".to_owned(),
                 Undo::DeleteFile { .. }
                 | Undo::SetSysctl { .. }
                 | Undo::WriteSysfs { .. }
@@ -143,7 +141,6 @@ impl<'a> RollbackSummary<'a> {
             Undo::SetSysctl { value, .. } | Undo::WriteSysfs { value, .. } => {
                 format!("back to {value}")
             }
-            Undo::RestoreFile { .. } => "restored from the copy taken first".to_owned(),
             // Says "your settings" because the row is about a file Steam owns,
             // and the point the user needs is that only their own entries moved.
             Undo::RestoreSteamConfig { .. } => "your settings put back".to_owned(),

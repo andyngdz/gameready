@@ -112,8 +112,6 @@ fn recorded_user_file_run(dir: &TempDir, file: &std::path::Path) -> StatePaths {
             step: ImprovementId::from_static("core.sysctl.max-map-count"),
             change: Change::FileWritten {
                 path: file.to_path_buf(),
-                existed: false,
-                backup: None,
                 sha256_after: gameready_core::journal::digest("wrote this"),
                 mode: 0o644,
                 privilege: gameready_core::improvement::Privilege::User,

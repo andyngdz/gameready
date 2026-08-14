@@ -38,22 +38,6 @@ pub enum Undo {
         privilege: Privilege,
     },
 
-    /// Put a pre-image back, restoring the recorded mode.
-    ///
-    /// Refuses for the same reason [`Undo::DeleteFile`] does, and needs its own
-    /// digest to do it: a file edited in place is the higher-value one, since it
-    /// held the user's content before gameready touched it. `None` is the
-    /// [`Change::FileRemoved`](super::Change::FileRemoved) case, where gameready
-    /// deleted the file and so wrote no bytes it could later recognise.
-    RestoreFile {
-        path: PathBuf,
-        from: PathBuf,
-        expect_sha256: Option<String>,
-        mode: u32,
-        #[serde(default = "assumed_root")]
-        privilege: Privilege,
-    },
-
     /// Put back the keys a run set inside a config file Steam owns.
     ///
     /// Surgical rather than a pre-image restore: Steam rewrites the file on
@@ -111,7 +95,6 @@ impl Undo {
             Self::RestoreUnit { unit, .. } => unit.clone(),
             Self::ReportPackages { .. } => "packages".to_owned(),
             Self::RestoreSteamConfig { path, .. }
-            | Self::RestoreFile { path, .. }
             | Self::DeleteFile { path, .. }
             | Self::RemoveDirIfEmpty { path, .. }
             | Self::RemoveDirTree { path, .. } => file_name(path),
@@ -127,8 +110,7 @@ impl Undo {
     #[must_use]
     pub const fn privilege(&self) -> Privilege {
         match self {
-            Self::RestoreFile { privilege, .. }
-            | Self::DeleteFile { privilege, .. }
+            Self::DeleteFile { privilege, .. }
             | Self::RemoveDirIfEmpty { privilege, .. }
             | Self::RemoveDirTree { privilege, .. } => *privilege,
             Self::SetSysctl { .. } | Self::WriteSysfs { .. } | Self::RestoreUnit { .. } => {

@@ -35,7 +35,6 @@ pub fn restore_steam_config(
             // recording fails to compile here instead of being silently
             // skipped by rollback.
             Change::FileWritten { .. }
-            | Change::FileRemoved { .. }
             | Change::SysctlRuntime { .. }
             | Change::SysfsWrite { .. }
             | Change::PackagesInstalled { .. }

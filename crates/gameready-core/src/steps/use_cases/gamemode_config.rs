@@ -172,8 +172,6 @@ impl CoreImprovement for GamemodeConfig {
         cx.mutate(
             Change::FileWritten {
                 path: config.clone(),
-                existed: false,
-                backup: None,
                 sha256_after,
                 mode: 0o644,
                 privilege: Privilege::User,
@@ -218,7 +216,6 @@ impl CoreImprovement for GamemodeConfig {
                 // step starts recording must fail to compile here rather than
                 // be silently skipped by rollback.
                 Change::SteamConfigWritten { .. }
-                | Change::FileRemoved { .. }
                 | Change::SysctlRuntime { .. }
                 | Change::SysfsWrite { .. }
                 | Change::PackagesInstalled { .. }
