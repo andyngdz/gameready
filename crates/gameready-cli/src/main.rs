@@ -11,8 +11,8 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use anyhow::{Context as _, Result};
-use directories::ProjectDirs;
 use gameready_core::exec::CommandRunner;
+use gameready_core::infra::dirs;
 use gameready_core::journal::StatePaths;
 use gameready_core::rollback::PackagePolicy;
 use gameready_core::run::{RunReport, RunStatus};
@@ -21,11 +21,6 @@ use gameready_core::steam::Overlay;
 use crate::cli::args::{Cli, Command};
 use crate::cli::escalation::Escalation;
 use crate::cli::runtime::Machine;
-
-/// The name every per-user directory is built from. Named once because the
-/// state directory and the config directory both derive from it, and two copies
-/// would let one be renamed without the other.
-const PROJECT: &str = "gameready";
 
 fn main() -> ExitCode {
     let cli = Cli::parsed();
@@ -141,29 +136,19 @@ fn reported(cli: &Cli, run: (RunReport, String)) -> Result<(RunStatus, String)> 
     Ok((report.status(), output))
 }
 
-/// The directory under the user's config that holds their game profiles.
-const GAMES_DIR: &str = "games";
-
-/// Resolves where the user's own game profiles live.
-///
-/// Separate from the state directory: profiles are configuration a user writes
-/// and keeps, while the state directory is data gameready writes and prunes.
+/// Resolves where the user's own game profiles live, unless `--games-dir` said.
 fn user_games_dir(override_dir: Option<PathBuf>) -> Result<PathBuf> {
     if let Some(dir) = override_dir {
         return Ok(dir);
     }
-    let dirs = ProjectDirs::from("", "", PROJECT)
-        .context("could not determine a config directory for this user")?;
-    Ok(dirs.config_dir().join(GAMES_DIR))
+    dirs::user_games_dir().context("could not determine a config directory for this user")
 }
 
-/// Resolves where the journal, backups, and logs live.
+/// Resolves where the journal, backups, and logs live, unless `--state-dir` said.
 fn state_paths(override_dir: Option<PathBuf>) -> Result<StatePaths> {
     if let Some(dir) = override_dir {
         return Ok(StatePaths::new(dir));
     }
-    let dirs = ProjectDirs::from("", "", PROJECT)
-        .context("could not determine a state directory for this user")?;
-    let root = dirs.state_dir().unwrap_or_else(|| dirs.data_dir());
-    Ok(StatePaths::new(root.to_path_buf()))
+    let root = dirs::state_dir().context("could not determine a state directory for this user")?;
+    Ok(StatePaths::new(root))
 }
