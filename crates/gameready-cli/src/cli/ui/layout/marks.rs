@@ -60,7 +60,11 @@ impl Mark {
         match status {
             ProbeStatus::Ready => Self::Applied,
             ProbeStatus::Set | ProbeStatus::UpdateAvailable => Self::AlreadySet,
-            ProbeStatus::Attention => Self::Warning,
+            // A conflict and a probe that could not run both read as worth a
+            // look on the doctor screen, where the words under the mark carry
+            // the difference between "someone else owns it" and "I could not
+            // tell".
+            ProbeStatus::Conflict | ProbeStatus::Attention => Self::Warning,
             ProbeStatus::Inactive => Self::Skipped,
         }
     }
