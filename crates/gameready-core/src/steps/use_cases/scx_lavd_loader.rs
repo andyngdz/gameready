@@ -193,21 +193,28 @@ fn start_the_unit(cx: &mut ApplyCx<'_, CoreCx<'_>>, prior: UnitState) -> Result<
     )
 }
 
-/// The drop-in body, carrying the marker `doctor` finds it by.
+/// The gate that makes the unit report readiness honestly.
 ///
-/// The `ExecStartPost` is what makes the unit report readiness honestly: the
-/// package unit is `Type=simple`, so `systemctl enable --now` returns the
-/// moment the wrapper shell spawns, while the scheduler's BPF program
-/// attaches a couple of seconds later. The post waits for the kernel to name
-/// the scheduler, so the start command blocks until the scheduler is actually
-/// running, and a scheduler that never attaches fails the unit (timeout exits
-/// 124, which fails the post) instead of letting the step verify a machine
-/// that had not caught up.
+/// The package unit is `Type=simple`, so `systemctl enable --now` would
+/// return the moment the wrapper shell spawns while the scheduler's BPF
+/// program is still loading. This waits for the kernel to name the
+/// scheduler, so the start command blocks until it is actually running; a
+/// scheduler that never attaches times out, fails the unit, and the step
+/// sees a failed command instead of verifying a machine that had not caught
+/// up. One string, because a line split inside the shell command reads as
+/// two commands.
+const READINESS_GATE: &str = concat!(
+    "ExecStartPost=/usr/bin/timeout 10 sh -c 'until grep -q ^lavd ",
+    "/sys/kernel/sched_ext/root/ops; do sleep 0.1; done'",
+);
+
+/// The drop-in body, carrying the marker `doctor` finds it by.
 fn dropin_contents(run: crate::journal::RunId) -> String {
     format!(
-        "{header}\n[Service]\nEnvironment={SCX_SCHEDULER_OVERRIDE}={SCX_LAVD_BIN}\n\
-         ExecStartPost=/usr/bin/timeout 10 sh -c 'until grep -q ^lavd \
-         /sys/kernel/sched_ext/root/ops; do sleep 0.1; done'\n",
+        "{header}\n\
+         [Service]\n\
+         Environment={SCX_SCHEDULER_OVERRIDE}={SCX_LAVD_BIN}\n\
+         {READINESS_GATE}\n",
         header = crate::steps::constants::managed_header(
             crate::steps::use_cases::scx_lavd::ScxLavd::id_const(),
             run
