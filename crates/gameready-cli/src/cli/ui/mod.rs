@@ -55,6 +55,7 @@ mod rows;
 mod selftest;
 mod steps;
 mod summary;
+mod takeover;
 mod theme;
 
 pub use answers::{ask_everything, Answers};
@@ -78,3 +79,4 @@ pub use rollback::RollbackSummary;
 pub use selftest::SelftestSummary;
 pub use steps::Steps;
 pub use summary::Summary;
+pub use takeover::{ask_takeovers, choose_takeover};

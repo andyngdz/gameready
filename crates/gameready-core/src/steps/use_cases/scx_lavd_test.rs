@@ -76,9 +76,10 @@ fn a_kernel_already_running_lavd_is_left_alone() {
 }
 
 #[test]
-fn a_scheduler_somebody_else_loaded_is_a_conflict_not_something_to_replace() {
-    // Taking over a scheduler this run did not choose would undo a decision the
-    // user made outside gameready, and rollback could not tell the difference.
+fn a_scheduler_somebody_else_loaded_is_a_conflict_this_run_can_clear() {
+    // scxctl is present, so the loader can hand the machine back to the kernel
+    // and take the seat; the conflict says so, which is what turns it into a
+    // takeover question the user gets to answer.
     let runner = MockRunner::new()
         .with_file(SCHED_EXT_STATE, "enabled\n")
         .with_file(crate::steps::constants::SCHED_EXT_OPS, "bpfland\n")
@@ -87,12 +88,57 @@ fn a_scheduler_somebody_else_loaded_is_a_conflict_not_something_to_replace() {
     let cx = CoreCx::new(&facts, &runner).with_packages(&Apt);
 
     match ScxLavd.probe(&cx).expect("probed") {
-        Probe::Conflict { with, .. } => assert_eq!(with, "bpfland"),
+        Probe::Conflict { with, yours, .. } => {
+            assert_eq!(with, "bpfland");
+            let command = yours.expect("scxctl can clear the conflict");
+            assert!(command.contains("scxctl stop"), "{command}");
+        }
         other @ (Probe::Applicable
         | Probe::AlreadyApplied { .. }
         | Probe::NotApplicable { .. }
         | Probe::UpdateAvailable { .. }
         | Probe::Unknown { .. }) => panic!("expected a conflict, got {other:?}"),
+    }
+}
+
+#[test]
+fn a_scheduler_with_no_owner_gameready_can_stop_gets_no_takeover_offer() {
+    // No scxctl and no active scx.service: whatever loaded bpfland is not
+    // something this run can put back, so the conflict carries no path and the
+    // run stands down instead of asking for a takeover it cannot undo.
+    let runner = MockRunner::new()
+        .with_file(SCHED_EXT_STATE, "enabled\n")
+        .with_file(crate::steps::constants::SCHED_EXT_OPS, "bpfland\n");
+    let facts = facts();
+    let cx = CoreCx::new(&facts, &runner).with_packages(&Apt);
+
+    match ScxLavd.probe(&cx).expect("probed") {
+        Probe::Conflict { yours: None, .. } => {}
+        other => panic!("expected an unoffered conflict, got {other:?}"),
+    }
+}
+
+#[test]
+fn a_scheduler_run_by_the_scx_unit_is_offerable_because_the_unit_is_the_owner() {
+    // Ubuntu's scx.service is running, which is proof of where the scheduler
+    // came from; gameready manages that unit, so it can stop it and put the
+    // machine back on the user's own config afterwards.
+    let runner = MockRunner::new()
+        .with_binary("systemctl")
+        .with_file(SCHED_EXT_STATE, "enabled\n")
+        .with_file(crate::steps::constants::SCHED_EXT_OPS, "cosmos\n")
+        .answering("systemctl is-enabled scx", "enabled")
+        .answering("systemctl is-active scx", "active");
+    let facts = facts();
+    let cx = CoreCx::new(&facts, &runner).with_packages(&Apt);
+
+    match ScxLavd.probe(&cx).expect("probed") {
+        Probe::Conflict { with, yours, .. } => {
+            assert_eq!(with, "cosmos");
+            let command = yours.expect("the unit's owner is stoppable");
+            assert!(command.contains("systemctl stop scx"), "{command}");
+        }
+        other => panic!("expected a conflict, got {other:?}"),
     }
 }
 

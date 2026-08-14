@@ -8,11 +8,11 @@ use crate::improvement::{
 use crate::journal::Change;
 use crate::steps::constants::{LAVD_SCHEDULER, SCHED_EXT_STATE};
 use crate::steps::domain::{restore_scheduler, SchedExt};
-use crate::steps::use_cases::scx_lavd_loader::Loader;
+use crate::steps::use_cases::scx_lavd_loader::{takeover_stop, Loader};
 use crate::steps::use_cases::scx_lavd_packages::{probe_tooling, ScxPackages};
 use crate::steps::use_cases::scx_ppa::ScxPpa;
 use crate::steps::use_cases::scx_state::read_sched_ext;
-use crate::systemd::{DISABLE, NOW, SYSTEMCTL};
+use crate::systemd::{DISABLE, ENABLE, NOW, SYSTEMCTL};
 
 /// The label every row shows for this step. One constant because the
 /// terminal and the panel menu want the same words here.
@@ -114,17 +114,17 @@ impl CoreImprovement for ScxLavd {
 
             // Somebody else loaded a scheduler. Replacing it would take over a
             // choice this run did not make, so the step stands down and says
-            // what is there.
-            // No command to hand back: what started the other scheduler is
-            // whatever the user set up, and guessing at it would be worse than
-            // saying so.
+            // what is there, unless the run can take the seat cleanly. That is
+            // when gameready loaded or manages the only mechanism on this
+            // machine: scxctl present, or the scx unit itself running. `yours`
+            // then names the stop, and a run may ask the user whether to do it.
             SchedExt::Running { .. } => Ok(Probe::Conflict {
                 with: state.describe().to_owned(),
                 detail: format!(
                     "{} is already scheduling this machine; stop it first if you want {LAVD_SCHEDULER}",
                     state.describe()
                 ),
-                yours: None,
+                yours: takeover_stop(cx),
             }),
 
             SchedExt::Idle => probe_tooling(cx),
@@ -182,27 +182,43 @@ impl CoreImprovement for ScxLavd {
     }
 
     fn rollback(&self, undo: &[Change], cx: &mut ApplyCx<'_, CoreCx<'_>>) -> Result<(), StepError> {
-        // Reverse order: the unit stops before the drop-in that aims it is
-        // removed, so an interrupted rollback never leaves a file naming a
-        // scheduler nothing is running.
+        // The drop-in goes away before anything starts the unit again, so a
+        // unit handed back to its own enablement runs the scheduler its own
+        // config names rather than ours.
+        for change in undo.iter().rev() {
+            if let Change::FileWritten { path, .. } = change {
+                cx.reader()
+                    .remove_file(path, Privilege::Root)
+                    .map_err(StepError::Exec)?;
+            }
+        }
+
         for change in undo.iter().rev() {
             match change {
                 Change::ScxScheduler { previous } => {
                     let back = restore_scheduler(previous.as_deref());
                     cx.reader().run(&back).map_err(StepError::Exec)?;
                 }
+                Change::SystemdUnit {
+                    unit,
+                    was_enabled: true,
+                    ..
+                } => {
+                    // The unit was the user's own enablement; give it back
+                    // running, now that the drop-in that re-pointed it is gone.
+                    let start = Cmd::root(SYSTEMCTL).arg(ENABLE).arg(NOW).arg(unit);
+                    cx.reader().run(&start).map_err(StepError::Exec)?;
+                }
                 Change::SystemdUnit { unit, .. } => {
                     let stop = Cmd::root(SYSTEMCTL).arg(DISABLE).arg(NOW).arg(unit);
                     cx.reader().run(&stop).map_err(StepError::Exec)?;
                 }
-                Change::FileWritten { path, .. } => {
-                    cx.reader()
-                        .remove_file(path, Privilege::Root)
-                        .map_err(StepError::Exec)?;
-                }
                 // Removing a package is not the inverse of installing one, so
                 // the packages stay and the summary says so.
                 Change::PackagesInstalled { .. } => {}
+                // Already removed in the pass above, before the unit that
+                // reads it is started again.
+                Change::FileWritten { .. } => {}
                 // Listed rather than wildcarded, so a new change this step
                 // starts recording fails to compile here instead of being
                 // silently skipped by rollback.

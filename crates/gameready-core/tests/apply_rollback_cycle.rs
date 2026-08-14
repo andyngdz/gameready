@@ -54,6 +54,7 @@ fn apply(runner: &MockRunner, paths: &StatePaths) -> RunId {
         &mut journal,
         Mode::Apply,
         InstallConsent::Declined,
+        &[],
         &mut |_| {},
     )
     .expect("run completes");

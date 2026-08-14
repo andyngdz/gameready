@@ -25,7 +25,16 @@ fn run_with_packages(
     let system = facts();
     let packages = Apt;
     let cx = CoreCx::new(&system, runner).with_packages(&packages);
-    execute(steps, &cx, &mut journal, Mode::Apply, consent, &mut |_| {}).expect("run completes")
+    execute(
+        steps,
+        &cx,
+        &mut journal,
+        Mode::Apply,
+        consent,
+        &[],
+        &mut |_| {},
+    )
+    .expect("run completes")
 }
 
 /// A step declaring one missing package, so the install screen has something to

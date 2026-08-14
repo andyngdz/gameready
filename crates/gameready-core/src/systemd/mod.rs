@@ -10,7 +10,7 @@ mod domain;
 mod errors;
 mod service;
 
-pub use constants::{DISABLE, ENABLE, NOW, SYSTEMCTL};
+pub use constants::{DISABLE, ENABLE, NOW, RESTART, STOP, SYSTEMCTL};
 pub use domain::UnitState;
 pub use errors::SystemdError;
 pub use service::unit_state;

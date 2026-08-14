@@ -2,13 +2,15 @@
 
 use anyhow::Result;
 use gameready_core::facts::PackageManagerKind;
+use gameready_core::improvement::ImprovementId;
 use gameready_core::run::{InstallConsent, Mode, RunPlan};
 use gameready_core::steam::{GameSetup, Overlay};
 use gameready_core::steps::{CompatWish, CpuGovernor, GamingTools};
 
 use crate::cli::ui::{
     choose_games, choose_governor_persistence, choose_how_to_apply, choose_overlay,
-    choose_proton_pin, consent_to_install, LaunchChoice, ProtonPin, SteamWork, Steps,
+    choose_proton_pin, choose_takeover, consent_to_install, LaunchChoice, ProtonPin, SteamWork,
+    Steps,
 };
 
 /// What the header over the packages question warns about, since it is the one
@@ -143,7 +145,11 @@ impl Questions<'_> {
             self.asks_about_packages(),
             self.mode.mutates() && self.pins_governor(),
         ];
-        asked.into_iter().filter(|&asked| asked).count()
+        let mut count = asked.into_iter().filter(|&asked| asked).count();
+        if self.mode.mutates() {
+            count += self.plan.contested.len();
+        }
+        count
     }
 
     /// Whether the governor step is in this run at all.
@@ -183,6 +189,25 @@ impl Questions<'_> {
             }
             Picker::Ask | Picker::TakeAll => Ok(false),
         }
+    }
+
+    /// Which contested steps the user agreed to take over.
+    ///
+    /// One question per contested step, counting into the run's total like any
+    /// other. A run that cannot ask keeps the safe answer: nothing is taken
+    /// over that nobody agreed to.
+    pub(super) fn takeovers(&self, steps: &mut Steps) -> Result<Vec<ImprovementId>> {
+        let mut agreed = Vec::new();
+        if !(matches!(self.picker, Picker::Ask) && self.mode.mutates()) {
+            return Ok(agreed);
+        }
+        for contested in &self.plan.contested {
+            steps.heading(None);
+            if choose_takeover(contested)? {
+                agreed.push(contested.step.id());
+            }
+        }
+        Ok(agreed)
     }
 }
 

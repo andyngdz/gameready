@@ -3,26 +3,31 @@
 use crate::improvement::{CoreCx, CoreImprovement, ImprovementId, Outcome, SkipReason};
 use crate::journal::{Change, Journal, JournalEvent};
 use crate::run::domain::{
-    Deferred, InstallConsent, Mode, RunEvent, RunPlan, RunReport, StepReport,
+    Contested, Deferred, InstallConsent, Mode, RunEvent, RunPlan, RunReport, StepReport,
 };
 use crate::run::errors::RunError;
 use crate::run::use_cases::plan::plan_run;
+use crate::run::use_cases::probe::finish;
 use crate::run::use_cases::sweep::apply_all;
 
 /// Plans a run and carries it out in one call.
 ///
 /// `consent` is required rather than defaulted, so a caller that never asked
-/// the user cannot install packages by leaving an argument off.
+/// the user cannot install packages by leaving an argument off. `takeovers`
+/// carries the same requirement for contested steps: a caller that never asked
+/// whether to take a setting over passes an empty list, which stands every
+/// contested step down.
 pub fn execute(
     steps: Vec<Box<dyn CoreImprovement>>,
     cx: &CoreCx<'_>,
     journal: &mut Journal,
     mode: Mode,
     consent: InstallConsent,
+    takeovers: &[ImprovementId],
     on_event: &mut dyn FnMut(RunEvent),
 ) -> Result<RunReport, RunError> {
     let plan = plan_run(steps, cx, on_event);
-    apply_plan(plan, cx, journal, mode, consent, on_event)
+    apply_plan(plan, cx, journal, mode, consent, takeovers, on_event)
 }
 
 /// Installs what the user agreed to, then runs every step that can still run.
@@ -35,6 +40,7 @@ pub fn apply_plan(
     journal: &mut Journal,
     mode: Mode,
     consent: InstallConsent,
+    takeovers: &[ImprovementId],
     on_event: &mut dyn FnMut(RunEvent),
 ) -> Result<RunReport, RunError> {
     let waiting_on_install = plan.steps_needing_install();
@@ -42,15 +48,18 @@ pub fn apply_plan(
         mut settled,
         mut pending,
         mut deferred,
+        contested,
         preflight,
         started,
         ..
     } = plan;
 
     if !mode.mutates() {
-        settle_as_dry_run(pending, deferred, &mut settled);
+        settle_as_dry_run(pending, deferred, contested, &mut settled);
         return Ok(report(journal, mode, settled, Vec::new(), started));
     }
+
+    resolve_contested(&mut pending, &mut settled, contested, takeovers, on_event);
 
     let installed = match consent {
         InstallConsent::Granted if preflight.needs_install() => {
@@ -73,6 +82,39 @@ pub fn apply_plan(
     Ok(report(journal, mode, settled, installed, started))
 }
 
+/// Moves every contested step onto whichever list its answer belongs to.
+///
+/// The ones the user agreed to take over are queued with the pending steps, so
+/// the sweep applies them in the same pass and with the same failure handling.
+/// The rest are settled as the skip their conflict described, before anything
+/// changes: a declined takeover must not reach a password prompt or an apply.
+fn resolve_contested(
+    pending: &mut Vec<Box<dyn CoreImprovement>>,
+    settled: &mut Vec<StepReport>,
+    contested: Vec<Contested>,
+    takeovers: &[ImprovementId],
+    on_event: &mut dyn FnMut(RunEvent),
+) {
+    for Contested { step, with, detail } in contested {
+        if takeovers.contains(&step.id()) {
+            pending.push(step);
+            continue;
+        }
+        finish(
+            step.as_ref(),
+            Outcome::Skipped {
+                reason: SkipReason::Conflict {
+                    with,
+                    detail,
+                    yours: None,
+                },
+            },
+            settled,
+            on_event,
+        );
+    }
+}
+
 fn report(
     journal: &Journal,
     mode: Mode,
@@ -92,15 +134,19 @@ fn report(
 /// Records every step a real run would have applied, without applying it.
 ///
 /// Held-open steps are listed too. A dry run cannot know how the second probe
-/// would answer, but dropping the step entirely would tell the user a real run
-/// has nothing to do about it, which is the one thing that is definitely
-/// wrong.
+/// would answer, and a contested step cannot know whether the user would take
+/// it over, but dropping either entirely would tell the user a real run has
+/// nothing to do about it, which is the one thing that is definitely wrong.
 fn settle_as_dry_run(
     pending: Vec<Box<dyn CoreImprovement>>,
     deferred: Vec<Deferred>,
+    contested: Vec<Contested>,
     settled: &mut Vec<StepReport>,
 ) {
-    let held = deferred.into_iter().map(|entry| entry.step);
+    let held = deferred
+        .into_iter()
+        .map(|entry| entry.step)
+        .chain(contested.into_iter().map(|entry| entry.step));
     for step in pending.into_iter().chain(held) {
         settled.push(StepReport::for_step(
             step.as_ref(),

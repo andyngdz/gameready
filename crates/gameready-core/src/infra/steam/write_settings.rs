@@ -47,13 +47,15 @@ pub fn write_steam_settings(
         Box::new(SteamProton::new(configs.install, settings.proton)),
     ];
     // Declined rather than granted because this path has no package tooling and
-    // installs nothing: writing config files is the whole job.
+    // installs nothing: writing config files is the whole job. No takeover
+    // either: nothing here was asked about.
     let report = execute(
         steps,
         &CoreCx::new(facts, runner),
         journal,
         Mode::Apply,
         InstallConsent::Declined,
+        &[],
         &mut |_| {},
     )?;
 

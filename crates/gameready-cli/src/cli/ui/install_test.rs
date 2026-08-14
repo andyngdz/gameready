@@ -54,6 +54,7 @@ fn plan_present(
         settled: Vec::new(),
         pending: Vec::new(),
         deferred: Vec::new(),
+        contested: Vec::new(),
         preflight: PreflightReport {
             dependencies,
             total_install_bytes: total,

@@ -16,8 +16,31 @@ use crate::steps::constants::{
     LAVD_SCHEDULER, SCXCTL_BIN, SCX_LAVD_BIN, SCX_SCHEDULER_OVERRIDE, SCX_SERVICE_NAME,
     SCX_UNIT_DROPIN, SCX_UNIT_PATH,
 };
-use crate::steps::domain::load_scheduler;
-use crate::systemd::{ENABLE, NOW, SYSTEMCTL};
+use crate::steps::domain::{load_scheduler, restore_scheduler};
+use crate::steps::use_cases::scx_state::read_sched_ext;
+use crate::systemd::{unit_state, UnitState, ENABLE, NOW, STOP, SYSTEMCTL};
+
+/// The command that would hand the CPU back, when this run can do it cleanly.
+///
+/// `None` when gameready has no way to stop what is running: a scheduler
+/// somebody started by hand, or from a unit gameready does not manage, has an
+/// owner this run cannot put back, and guessing at it would be worse than
+/// saying so. This is what turns a conflict into a question a run can ask.
+pub(super) fn takeover_stop(cx: &CoreCx<'_>) -> Option<String> {
+    if cx.runner.which(SCXCTL_BIN).is_some() {
+        return Some(restore_scheduler(None).to_string());
+    }
+    matches!(
+        unit_state(cx.runner, SCX_SERVICE_NAME),
+        Ok(UnitState::Running)
+    )
+    .then(|| {
+        Cmd::root(SYSTEMCTL)
+            .arg(STOP)
+            .arg(SCX_SERVICE_NAME)
+            .to_string()
+    })
+}
 
 /// Which mechanism this system uses to put a scheduler in charge.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -82,8 +105,17 @@ impl Loader {
 }
 
 /// Runs the scheduler now, through the loader daemon.
+///
+/// When a different scheduler is already attached, the loader hands it back to
+/// the kernel first. The previous scheduler is still read before that stop and
+/// recorded with the load, so the undo is a switch back to it rather than a
+/// stop.
 fn load_with_scxctl(cx: &mut ApplyCx<'_, CoreCx<'_>>) -> Result<(), StepError> {
-    let previous = crate::steps::use_cases::scx_state::read_sched_ext(cx.reader()).previous();
+    let previous = read_sched_ext(cx.reader()).previous();
+    if previous.is_some() {
+        let stop = restore_scheduler(None);
+        cx.reader().run(&stop).map_err(StepError::Exec)?;
+    }
     cx.mutate(Change::ScxScheduler { previous }, |runner| {
         let load = load_scheduler(LAVD_SCHEDULER);
         runner.run(&load).map(|_| ()).map_err(StepError::Exec)
@@ -94,11 +126,34 @@ fn load_with_scxctl(cx: &mut ApplyCx<'_, CoreCx<'_>>) -> Result<(), StepError> {
 ///
 /// The drop-in goes down before the unit starts, so a run interrupted between
 /// the two leaves a machine that is correct on the next boot rather than
-/// correct now and wrong later.
+/// correct now and wrong later. When the unit is what is running the current
+/// scheduler, the takeover stops it first.
 fn load_with_unit(cx: &mut ApplyCx<'_, CoreCx<'_>>) -> Result<(), StepError> {
+    let prior = unit_state(cx.reader(), SCX_SERVICE_NAME).unwrap_or(UnitState::Dormant);
+    if prior == UnitState::Running {
+        hand_the_unit_over(cx, prior)?;
+    }
+    write_the_dropin(cx)?;
+    start_the_unit(cx, prior)
+}
+
+/// Stops the unit a takeover is about to re-point, recording its handover
+/// first: the journal's newest-first undo then removes the drop-in before it
+/// restarts the unit, so the unit comes back running its own scheduler.
+fn hand_the_unit_over(cx: &mut ApplyCx<'_, CoreCx<'_>>, prior: UnitState) -> Result<(), StepError> {
+    cx.record(Change::SystemdUnit {
+        unit: SCX_SERVICE_NAME.to_owned(),
+        was_enabled: prior.is_live(),
+        was_active: true,
+    })?;
+    let stop = Cmd::root(SYSTEMCTL).arg(STOP).arg(SCX_SERVICE_NAME);
+    cx.reader().run(&stop).map(|_| ()).map_err(StepError::Exec)
+}
+
+/// Writes the drop-in that points the unit at scx_lavd.
+fn write_the_dropin(cx: &mut ApplyCx<'_, CoreCx<'_>>) -> Result<(), StepError> {
     let dropin = PathBuf::from(SCX_UNIT_DROPIN);
     let contents = dropin_contents(cx.run());
-
     cx.mutate(
         Change::FileWritten {
             path: dropin.clone(),
@@ -113,21 +168,28 @@ fn load_with_unit(cx: &mut ApplyCx<'_, CoreCx<'_>>) -> Result<(), StepError> {
                 .write_file(&dropin, &contents, Privilege::Root)
                 .map_err(StepError::Exec)
         },
-    )?;
+    )
+}
 
+/// Starts the unit now and at boot, recording what it changes.
+///
+/// A takeover already recorded the unit's handover before the drop-in went
+/// down, so for one this is only the start.
+fn start_the_unit(cx: &mut ApplyCx<'_, CoreCx<'_>>, prior: UnitState) -> Result<(), StepError> {
+    let start = Cmd::root(SYSTEMCTL)
+        .arg(ENABLE)
+        .arg(NOW)
+        .arg(SCX_SERVICE_NAME);
+    if prior == UnitState::Running {
+        return cx.reader().run(&start).map(|_| ()).map_err(StepError::Exec);
+    }
     cx.mutate(
         Change::SystemdUnit {
             unit: SCX_SERVICE_NAME.to_owned(),
-            was_enabled: false,
+            was_enabled: prior.is_live(),
             was_active: false,
         },
-        |runner| {
-            let start = Cmd::root(SYSTEMCTL)
-                .arg(ENABLE)
-                .arg(NOW)
-                .arg(SCX_SERVICE_NAME);
-            runner.run(&start).map(|_| ()).map_err(StepError::Exec)
-        },
+        |runner| runner.run(&start).map(|_| ()).map_err(StepError::Exec),
     )
 }
 

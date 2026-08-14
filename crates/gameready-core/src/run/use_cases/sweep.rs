@@ -2,9 +2,9 @@
 //!
 //! One pass, not one pass per step. A step that installs something can make an
 //! earlier verdict wrong in both directions: a tuning ruled out for want of a
-//! package becomes possible, and a tuning worth doing becomes unnecessary
-//! because the thing just installed now does it. Both are settled here, while
-//! the run is still in front of the user, rather than left for the next one.
+//! package becomes possible, and one worth doing becomes unnecessary because
+//! the thing just installed now does it. Both are settled here, while the run
+//! is still in front of the user, rather than left for the next one.
 
 use std::collections::VecDeque;
 
@@ -13,7 +13,7 @@ use crate::journal::{Journal, JournalEvent};
 use crate::run::domain::{Deferred, RunEvent, StepReport};
 use crate::run::errors::RunError;
 use crate::run::use_cases::apply_step::apply_and_verify;
-use crate::run::use_cases::probe::{finish, probe_outcome, Settled};
+use crate::run::use_cases::probe::{contested_skip, finish, probe_outcome, Settled};
 
 /// Applies every step that can still run, releasing held-open ones as it goes.
 pub(crate) fn apply_all(
@@ -143,6 +143,7 @@ fn second_look(
 
     match probe_outcome(step, cx) {
         Settled::Apply => None,
+        Settled::Contested { with, detail } => Some(contested_skip(&with, &detail)),
         Settled::Now(outcome) => Some(outcome),
     }
 }
@@ -179,6 +180,14 @@ fn release(
 
         match probe_outcome(step.as_ref(), cx) {
             Settled::Apply => queue.push_back(Queued::released(step)),
+            Settled::Contested { with, detail } => {
+                finish(
+                    step.as_ref(),
+                    contested_skip(&with, &detail),
+                    settled,
+                    on_event,
+                );
+            }
             Settled::Now(outcome) => finish(step.as_ref(), outcome, settled, on_event),
         }
     }

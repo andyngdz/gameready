@@ -32,6 +32,7 @@ fn run_plan(pending: Vec<Box<dyn CoreImprovement>>) -> RunPlan {
         settled: Vec::new(),
         pending,
         deferred: Vec::new(),
+        contested: Vec::new(),
         preflight: PreflightReport {
             dependencies: Vec::new(),
             total_install_bytes: 0,

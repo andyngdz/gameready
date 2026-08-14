@@ -9,7 +9,7 @@ use gameready_core::exec::CommandRunner;
 use gameready_core::improvement::CoreCx;
 use gameready_core::infra::pkg;
 use gameready_core::journal::{Journal, RunId, StatePaths};
-use gameready_core::run::{apply_plan, plan_run, Mode, RunReport};
+use gameready_core::run::{apply_plan, plan_run, InstallConsent, Mode, RunPlan, RunReport};
 
 use crate::cli::escalation::Escalation;
 use crate::cli::ui::{self, Picker};
@@ -38,14 +38,7 @@ pub fn run(
     let plan = plan_run(selected, &cx, &mut |event| progress.on_event(event));
     drop(progress);
 
-    let consent = ui::consent_to_install(&plan, family, picker, mode)?;
-    // A real run installs a moment later and the summary reports what landed.
-    // A dry run has only this list to say what it would have installed.
-    let listed = if mode.mutates() {
-        String::new()
-    } else {
-        ui::InstallList::new(&plan, family).to_string()
-    };
+    let (consent, takeovers, listed) = Approvals::ask(&plan, family, picker, mode)?;
 
     // Nothing above this line changed anything. Nothing below it asks, and it
     // only asks when a step in the run reaches outside the user's own files.
@@ -56,14 +49,60 @@ pub fn run(
     let mut journal =
         Journal::open(paths.clone(), RunId::generate()).context(CANNOT_OPEN_JOURNAL)?;
     let mut progress = ui::ProgressView::sweeping(mode, plan.to_apply());
-    let report = apply_plan(plan, &cx, &mut journal, mode, consent, &mut |event| {
-        progress.on_event(event);
-    })
+    let report = apply_plan(
+        plan,
+        &cx,
+        &mut journal,
+        mode,
+        consent,
+        &takeovers,
+        &mut |event| {
+            progress.on_event(event);
+        },
+    )
     .context("the run could not complete")?;
     drop(progress);
 
     let rendered = listed + &ui::Summary::new(&report, &paths.journal()).to_string();
     Ok((report, rendered))
+}
+
+/// Every answer a run needs before it may change anything.
+///
+/// The install consent, which contested steps the user agreed to take over,
+/// and (for a dry run) the list of what would have been installed. Nothing
+/// here changes the machine, and nothing after here asks.
+struct Approvals;
+
+impl Approvals {
+    fn ask(
+        plan: &RunPlan,
+        family: gameready_core::facts::PackageManagerKind,
+        picker: Picker,
+        mode: Mode,
+    ) -> Result<(
+        InstallConsent,
+        Vec<gameready_core::improvement::ImprovementId>,
+        String,
+    )> {
+        let consent = ui::consent_to_install(plan, family, picker, mode)?;
+        // A contested step is a decision, not a skip: the user gets the same
+        // takeover question `init` would have asked, so `apply --step` on a
+        // scheduler somebody else runs does not silently stand down. A run
+        // that cannot ask keeps the safe answer, and a dry run changes nothing.
+        let takeovers = match (picker, mode.mutates()) {
+            (Picker::Ask, true) => ui::ask_takeovers(&plan.contested)?,
+            _ => Vec::new(),
+        };
+        // A real run installs a moment later and the summary reports what
+        // landed. A dry run has only this list to say what it would have done.
+        let listed = if mode.mutates() {
+            String::new()
+        } else {
+            ui::InstallList::new(plan, family).to_string()
+        };
+        Ok((consent, takeovers, listed))
+    }
 }
 
 #[cfg(test)]

@@ -24,6 +24,7 @@ fn plan_needing(status: DependencyStatus) -> RunPlan {
         settled: Vec::new(),
         pending: Vec::new(),
         deferred: Vec::new(),
+        contested: Vec::new(),
         preflight: PreflightReport {
             dependencies: vec![resolved("mangohud", status)],
             total_install_bytes: 5_000_000,

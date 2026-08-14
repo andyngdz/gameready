@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use gameready_core::games::{default_wrappers, AppId, GameProfile, Source};
-use gameready_core::run::PreflightReport;
+use gameready_core::run::{Contested, PreflightReport};
 use gameready_core::steam::InstalledGame;
 use gameready_core::steps::CpuGovernor;
 
@@ -30,6 +30,7 @@ fn plan(pending: Vec<Box<dyn gameready_core::improvement::CoreImprovement>>) -> 
         settled: Vec::new(),
         pending,
         deferred: Vec::new(),
+        contested: Vec::new(),
         preflight: PreflightReport {
             dependencies: Vec::new(),
             total_install_bytes: 0,
@@ -66,6 +67,33 @@ fn a_machine_with_no_games_is_asked_nothing_about_them() {
     let empty = plan(Vec::new());
 
     assert_eq!(asking(&[], &empty, Mode::Apply).count(), 0);
+}
+
+#[test]
+fn each_contested_step_counts_as_one_more_question() {
+    let games = [setup("Deadlock")];
+    let mut contested = plan(Vec::new());
+    contested.contested = vec![Contested {
+        step: Box::new(CpuGovernor),
+        with: "cosmos".to_owned(),
+        detail: "cosmos is already scheduling this machine".to_owned(),
+    }];
+
+    assert_eq!(asking(&games, &contested, Mode::Apply).count(), 5);
+}
+
+#[test]
+fn a_dry_run_does_not_ask_whether_to_take_anything_over() {
+    // A dry run changes nothing, so the takeover question would offer a change
+    // the run cannot make; the safe answer is what it takes without asking.
+    let mut contested = plan(Vec::new());
+    contested.contested = vec![Contested {
+        step: Box::new(CpuGovernor),
+        with: "cosmos".to_owned(),
+        detail: "cosmos is already scheduling this machine".to_owned(),
+    }];
+
+    assert_eq!(asking(&[], &contested, Mode::DryRun).count(), 0);
 }
 
 #[test]
