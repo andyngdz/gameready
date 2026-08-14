@@ -190,7 +190,19 @@ fn the_plan_names_the_command_it_will_run() {
 #[test]
 fn apply_loads_the_scheduler_and_records_what_it_replaced() {
     let dir = TempDir::new().expect("temp dir");
-    let runner = ready_kernel();
+    let runner = ready_kernel()
+        // The load waits for the attach the start command is meant to cause,
+        // like the kernel would once scxctl actually loads lavd.
+        .where_command_writes(
+            "sudo scxctl start -s lavd -m gaming",
+            SCHED_EXT_STATE,
+            "enabled\n",
+        )
+        .where_command_writes(
+            "sudo scxctl start -s lavd -m gaming",
+            crate::steps::constants::SCHED_EXT_OPS,
+            "lavd\n",
+        );
     let facts = facts();
     let cx = CoreCx::new(&facts, &runner).with_packages(&Apt);
     let mut journal = journal(&dir);

@@ -4,7 +4,7 @@ use super::*;
 use crate::facts::{Family, SystemFacts};
 use crate::infra::exec::MockRunner;
 use crate::journal::{Journal, RunId, StatePaths};
-use crate::steps::constants::{SCHED_EXT_STATE, SCXCTL_BIN};
+use crate::steps::constants::{SCHED_EXT_OPS, SCHED_EXT_STATE, SCXCTL_BIN};
 use crate::steps::use_cases::scx_lavd::ScxLavd;
 
 fn journal(dir: &TempDir) -> Journal {
@@ -53,11 +53,43 @@ fn only_the_unit_mechanism_survives_a_reboot() {
 }
 
 #[test]
+fn a_scheduler_that_never_attaches_fails_the_load_instead_of_verifying_a_lie() {
+    // The start command succeeds but the kernel keeps reporting no scheduler:
+    // the load must fail with the timeout, so the run rolls back rather than
+    // reporting success for work that has not happened.
+    let dir = TempDir::new().expect("temp dir");
+    let runner = MockRunner::new()
+        .with_binary(SCXCTL_BIN)
+        .with_file(SCHED_EXT_STATE, "disabled\n");
+    let facts = SystemFacts::fixture(Family::Arch);
+    let cx = CoreCx::new(&facts, &runner);
+    let mut journal = journal(&dir);
+    let mut apply = ApplyCx::new(cx, ScxLavd::id_const(), &runner, &mut journal);
+
+    match Loader::Scxctl.load(&mut apply) {
+        Err(StepError::StartupTimeout { what, window }) => {
+            assert!(what.contains("lavd"), "{what}");
+            assert_eq!(window, 15);
+        }
+        other => panic!("expected the attach timeout, got {other:?}"),
+    }
+}
+
+#[test]
 fn loading_through_the_unit_writes_the_dropin_before_it_starts_anything() {
     // A run that dies between the two leaves a machine correct on the next
     // boot rather than correct now and wrong later.
     let dir = TempDir::new().expect("temp dir");
-    let runner = MockRunner::new().with_file(SCX_UNIT_PATH, "[Unit]\n");
+    let runner = MockRunner::new()
+        .with_file(SCX_UNIT_PATH, "[Unit]\n")
+        // The attach the load waits for, as the machine would look once the
+        // start command lands.
+        .where_command_writes(
+            "sudo systemctl enable --now scx",
+            SCHED_EXT_STATE,
+            "enabled\n",
+        )
+        .where_command_writes("sudo systemctl enable --now scx", SCHED_EXT_OPS, "lavd\n");
     let facts = SystemFacts::fixture(Family::Debian);
     let cx = CoreCx::new(&facts, &runner);
     let mut journal = journal(&dir);
@@ -77,7 +109,14 @@ fn loading_through_the_unit_writes_the_dropin_before_it_starts_anything() {
 #[test]
 fn the_dropin_aims_the_shipped_unit_at_lavd_without_editing_the_package_file() {
     let dir = TempDir::new().expect("temp dir");
-    let runner = MockRunner::new().with_file(SCX_UNIT_PATH, "[Unit]\n");
+    let runner = MockRunner::new()
+        .with_file(SCX_UNIT_PATH, "[Unit]\n")
+        .where_command_writes(
+            "sudo systemctl enable --now scx",
+            SCHED_EXT_STATE,
+            "enabled\n",
+        )
+        .where_command_writes("sudo systemctl enable --now scx", SCHED_EXT_OPS, "lavd\n");
     let facts = SystemFacts::fixture(Family::Debian);
     let cx = CoreCx::new(&facts, &runner);
     let mut journal = journal(&dir);
@@ -95,7 +134,18 @@ fn the_dropin_aims_the_shipped_unit_at_lavd_without_editing_the_package_file() {
 #[test]
 fn loading_through_scxctl_records_what_it_replaced_and_writes_no_file() {
     let dir = TempDir::new().expect("temp dir");
-    let runner = MockRunner::new().with_binary(SCXCTL_BIN);
+    let runner = MockRunner::new()
+        .with_binary(SCXCTL_BIN)
+        .where_command_writes(
+            "sudo scxctl start -s lavd -m gaming",
+            SCHED_EXT_STATE,
+            "enabled\n",
+        )
+        .where_command_writes(
+            "sudo scxctl start -s lavd -m gaming",
+            SCHED_EXT_OPS,
+            "lavd\n",
+        );
     let facts = SystemFacts::fixture(Family::Arch);
     let cx = CoreCx::new(&facts, &runner);
     let mut journal = journal(&dir);
@@ -104,7 +154,9 @@ fn loading_through_scxctl_records_what_it_replaced_and_writes_no_file() {
     Loader::Scxctl.load(&mut apply).expect("loaded");
 
     assert_eq!(apply.recorded(), [Change::ScxScheduler { previous: None }]);
-    assert!(runner.paths().is_empty(), "{:?}", runner.paths());
+    // Nothing on the machine was configured: the loader owns the scheduler,
+    // and the only writes the mock saw are the kernel's own state files.
+    assert!(runner.file(SCX_UNIT_DROPIN).is_none());
 }
 
 #[test]
@@ -116,7 +168,12 @@ fn a_takeover_stops_the_other_scheduler_before_loading_lavd_and_keeps_it_as_undo
     let runner = MockRunner::new()
         .with_binary(SCXCTL_BIN)
         .with_file(SCHED_EXT_STATE, "enabled\n")
-        .with_file(crate::steps::constants::SCHED_EXT_OPS, "cosmos\n");
+        .with_file(crate::steps::constants::SCHED_EXT_OPS, "cosmos\n")
+        .where_command_writes(
+            "sudo scxctl start -s lavd -m gaming",
+            SCHED_EXT_OPS,
+            "lavd_1.1.2_x86_64_unknown_linux_gnu\n",
+        );
     let facts = SystemFacts::fixture(Family::Arch);
     let cx = CoreCx::new(&facts, &runner);
     let mut journal = journal(&dir);
@@ -152,7 +209,17 @@ fn a_takeover_through_the_unit_stops_it_first_and_records_the_handover_before_th
         .with_binary("systemctl")
         .with_file(SCX_UNIT_PATH, "[Unit]\n")
         .answering("systemctl is-enabled scx", "enabled")
-        .answering("systemctl is-active scx", "active");
+        .answering("systemctl is-active scx", "active")
+        .where_command_writes(
+            "sudo systemctl enable --now scx",
+            SCHED_EXT_STATE,
+            "enabled\n",
+        )
+        .where_command_writes(
+            "sudo systemctl enable --now scx",
+            SCHED_EXT_OPS,
+            "lavd_1.1.2_x86_64_unknown_linux_gnu\n",
+        );
     let facts = SystemFacts::fixture(Family::Debian);
     let cx = CoreCx::new(&facts, &runner);
     let mut journal = journal(&dir);

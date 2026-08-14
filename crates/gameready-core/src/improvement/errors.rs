@@ -61,6 +61,15 @@ pub enum StepError {
     #[error("{step} precondition no longer holds: {detail}")]
     PreconditionLost { step: ImprovementId, detail: String },
 
+    /// The start command succeeded but what it started never came up.
+    ///
+    /// Used where the start is asynchronous, such as a systemd unit whose
+    /// wrapper shell is up before the scheduler's BPF program has attached.
+    /// The step waits a bounded window and fails with this rather than
+    /// reporting success for work that has not happened.
+    #[error("{what} did not attach within {window} s")]
+    StartupTimeout { what: String, window: u64 },
+
     #[error("could not parse {what} from `{path}`")]
     Parse {
         what: &'static str,
