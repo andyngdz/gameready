@@ -168,3 +168,52 @@ fn rollback_is_safe_to_run_twice() {
     // The file is already gone, which is not a failure.
     assert_eq!(second.failed(), 0);
 }
+
+#[test]
+fn a_command_that_exits_zero_without_changing_anything_is_reported_as_failed() {
+    // The reason rollback reads the system back. `sysctl -w` exits zero inside
+    // a container whose /proc is masked, and the value never moves. Trusting
+    // the exit code would tell the user their machine was back to normal.
+    let dir = TempDir::new().expect("temp dir");
+    let (run, records) = recorded_run(&dir);
+    let undo_plan = plan(&records, run).expect("plans");
+    let runner = MockRunner::new()
+        .with_file(DROPIN, WROTE)
+        .with_file("/proc/sys/vm/max_map_count", "2147483642\n");
+    let mut journal = Journal::open(StatePaths::new(dir.path().to_path_buf()), RunId::generate())
+        .expect("journal opens");
+
+    let report = execute(&undo_plan, &runner, &mut journal).expect("rollback runs");
+
+    assert_eq!(report.failed(), 1, "{:?}", report.undos);
+    let sysctl = report
+        .undos
+        .iter()
+        .find(|undo| matches!(undo.undo, Undo::SetSysctl { .. }))
+        .expect("the sysctl undo is in the report");
+    match &sysctl.outcome {
+        UndoOutcome::Failed { error } => {
+            assert!(error.contains("2147483642"), "{error}");
+            assert!(error.contains("1048576"), "{error}");
+        }
+        other => panic!("expected a failure, got {other:?}"),
+    }
+}
+
+#[test]
+fn a_command_that_really_changed_the_system_still_reads_as_reverted() {
+    // The same plan, with /proc answering what the undo asked for.
+    let dir = TempDir::new().expect("temp dir");
+    let (run, records) = recorded_run(&dir);
+    let undo_plan = plan(&records, run).expect("plans");
+    let runner = MockRunner::new()
+        .with_file(DROPIN, WROTE)
+        .with_file("/proc/sys/vm/max_map_count", "1048576\n");
+    let mut journal = Journal::open(StatePaths::new(dir.path().to_path_buf()), RunId::generate())
+        .expect("journal opens");
+
+    let report = execute(&undo_plan, &runner, &mut journal).expect("rollback runs");
+
+    assert_eq!(report.failed(), 0, "{:?}", report.undos);
+    assert_eq!(report.reverted(), 2);
+}

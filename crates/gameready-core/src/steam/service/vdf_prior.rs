@@ -62,6 +62,29 @@ pub fn restore_sections(text: &str, sections: &[PriorSection]) -> Result<String,
     Ok(current)
 }
 
+/// Whether every recorded key already reads back as recorded.
+///
+/// Compares values rather than rendered text. A restore re-renders the whole
+/// document, and the parser normalises indentation and key order, so two files
+/// that say the same thing routinely differ byte for byte.
+pub fn sections_match(text: &str, sections: &[PriorSection]) -> Result<bool, VdfError> {
+    for section in sections {
+        let borrowed: Vec<&str> = section.section.iter().map(String::as_str).collect();
+        let keys: Vec<&str> = match &section.prior {
+            // Nothing to read: the block itself should be gone, which is what
+            // capture_block answers when it cannot descend.
+            PriorBlock::Absent => Vec::new(),
+            PriorBlock::Present { entries } => {
+                entries.iter().map(|entry| entry.key.as_str()).collect()
+            }
+        };
+        if capture_block(text, &borrowed, &keys)? != section.prior {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
 /// Records what `keys` hold under `path`, for a caller about to overwrite them.
 ///
 /// Taken before the write, so the undo names values that were really there

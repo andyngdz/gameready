@@ -1,13 +1,15 @@
 //! Reading a run out of the journal and reversing it.
 
+mod confirm;
 mod perform;
 mod perform_files;
 mod perform_steam;
 
 use crate::exec::CommandRunner;
-use crate::journal::{Change, Journal, JournalEvent, JournalRecord, RunId};
-use crate::rollback::domain::{PlannedUndo, RollbackPlan, RollbackReport, UndoReport};
+use crate::journal::{Change, Journal, JournalEvent, JournalRecord, RunId, Undo};
+use crate::rollback::domain::{PlannedUndo, RollbackPlan, RollbackReport, UndoOutcome, UndoReport};
 use crate::rollback::errors::RollbackError;
+use crate::rollback::service::confirm::confirm;
 use crate::rollback::service::perform::perform;
 
 /// Builds the undo sequence for one run.
@@ -88,7 +90,7 @@ pub fn execute(
 
     let mut undos = Vec::with_capacity(plan.undos.len());
     for planned in &plan.undos {
-        let outcome = perform(&planned.undo, runner);
+        let outcome = confirmed(perform(&planned.undo, runner), &planned.undo, runner);
         journal.append(JournalEvent::Undone {
             step: planned.step.clone(),
             detail: outcome.describe(),
@@ -110,6 +112,27 @@ pub fn execute(
     })?;
 
     Ok(report)
+}
+
+/// Downgrades a claimed revert the system does not actually show.
+///
+/// An undo reports success from the exit code of whatever it ran, and an exit
+/// code is the tool's opinion, not the machine's state. Telling a user their
+/// system is back to normal is the one claim this must not get wrong, so the
+/// claim is checked before it is made.
+///
+/// Only a `Reverted` is checked. Every other outcome already says the system
+/// was not changed, and reading it back would answer a question nobody asked.
+fn confirmed(outcome: UndoOutcome, undo: &Undo, runner: &dyn CommandRunner) -> UndoOutcome {
+    if !matches!(outcome, UndoOutcome::Reverted { .. }) {
+        return outcome;
+    }
+    match confirm(undo, runner) {
+        None => outcome,
+        Some(reason) => UndoOutcome::Failed {
+            error: format!("reported as undone, but {reason}"),
+        },
+    }
 }
 
 /// Every change a run recorded, newest first. Used by `status`.
