@@ -88,9 +88,13 @@ pub enum SchedExt {
 
 impl SchedExt {
     /// Whether `scheduler` is the one currently attached.
+    ///
+    /// The kernel names the attached scheduler with its version and target
+    /// triple ("lavd_1.1.2_x86_64_unknown_linux_gnu"), so the name it is
+    /// compared against is the short one.
     #[must_use]
     pub fn is_running(&self, scheduler: &str) -> bool {
-        matches!(self, Self::Running { scheduler: Some(running) } if running == scheduler)
+        matches!(self, Self::Running { scheduler: Some(running) } if Self::short_name(running) == scheduler)
     }
 
     /// How to name whatever is attached, for a message a user reads.
@@ -102,17 +106,33 @@ impl SchedExt {
             Self::Running { scheduler: None } => "an unnamed sched_ext scheduler",
             Self::Running {
                 scheduler: Some(running),
-            } => running,
+            } => Self::short_name(running),
         }
     }
 
     /// The attached scheduler, for the journal record that has to put it back.
+    ///
+    /// The short name, because the undo is `scxctl switch -s <name>` and the
+    /// loader knows schedulers by the name, not by the versioned ops string.
     #[must_use]
     pub fn previous(&self) -> Option<String> {
         match self {
             Self::Unsupported | Self::Idle => None,
-            Self::Running { scheduler } => scheduler.clone(),
+            Self::Running {
+                scheduler: Some(running),
+            } => Some(Self::short_name(running).to_owned()),
+            Self::Running { scheduler: None } => None,
         }
+    }
+
+    /// The scheduler name without the version and target triple.
+    ///
+    /// sched_ext schedulers name their ops struct `{name}_{version}_{target}`
+    /// ("cosmos_1.1.5_x86_64_unknown_linux_gnu"), and no scheduler name
+    /// contains an underscore, so the first segment is the name. A name with
+    /// no version is returned whole.
+    fn short_name(ops: &str) -> &str {
+        ops.split_once('_').map_or(ops, |(name, _)| name)
     }
 }
 

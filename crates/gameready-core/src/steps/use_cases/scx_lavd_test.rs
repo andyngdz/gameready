@@ -253,3 +253,20 @@ fn verify_passes_once_the_kernel_reports_lavd() {
 
     assert_eq!(ScxLavd.verify(&cx).expect("verified").failed_count(), 0);
 }
+
+#[test]
+fn verify_passes_for_a_versioned_lavd_ops_name() {
+    // The kernel reports the attached scheduler with its version and target
+    // triple, so a freshly loaded lavd reads as "lavd_1.1.2_x86_64_unknown_
+    // linux_gnu" and must still verify.
+    let runner = MockRunner::new()
+        .with_file(SCHED_EXT_STATE, "enabled\n")
+        .with_file(
+            crate::steps::constants::SCHED_EXT_OPS,
+            "lavd_1.1.2_x86_64_unknown_linux_gnu\n",
+        );
+    let facts = facts();
+    let cx = CoreCx::new(&facts, &runner).with_packages(&Apt);
+
+    assert_eq!(ScxLavd.verify(&cx).expect("verified").failed_count(), 0);
+}
