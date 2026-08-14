@@ -8,19 +8,11 @@ use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 use std::thread::{self, JoinHandle};
 
-use directories::ProjectDirs;
-
+use gameready_core::infra::dirs;
 use gameready_core::infra::games::load_catalog;
 
 use crate::infra::journal::watch_journal;
 use crate::infra::{Request, Watch};
-
-/// The name every per-user directory is built from, matching the CLI so both
-/// read the same profiles and the same journal.
-const PROJECT: &str = "gameready";
-
-/// Where a user's own game profiles live, under their config directory.
-const GAMES: &str = "games";
 
 /// Starts the gamemode watcher, if this machine has one to watch.
 ///
@@ -70,24 +62,16 @@ pub fn watch_for_changes(requests: Sender<Request>, state: PathBuf) -> Option<Jo
 /// Where the journal, backups, and logs live, matching the CLI so the tray
 /// watches the file a run actually writes.
 pub fn state_dir() -> PathBuf {
-    ProjectDirs::from("", "", PROJECT)
-        .map(|dirs| {
-            dirs.state_dir()
-                .unwrap_or_else(|| dirs.data_dir())
-                .to_path_buf()
-        })
-        .unwrap_or_default()
+    dirs::state_dir().unwrap_or_default()
 }
 
 /// Where this user's own game profiles live.
 ///
-/// The same directory the CLI reads, so both see the same profiles. An empty
-/// path when the home directory cannot be resolved: the shipped profiles still
-/// load, and a game with no profile is not this tray's business anyway.
+/// An empty path when the home directory cannot be resolved: the shipped
+/// profiles still load, and a game with no profile is not this tray's business
+/// anyway.
 pub fn user_games_dir() -> PathBuf {
-    ProjectDirs::from("", "", PROJECT)
-        .map(|dirs| dirs.config_dir().join(GAMES))
-        .unwrap_or_default()
+    dirs::user_games_dir().unwrap_or_default()
 }
 
 #[cfg(test)]
