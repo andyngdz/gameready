@@ -6,4 +6,4 @@ exit code: 2
 ----- stdout -----
 
 ----- stderr -----
-gameready: no step named `core.sysctl.max-map-conut`. There is: core.conflicts, core.sysctl.max-map-count, core.sysctl.split-lock, core.sysctl.vm-latency, core.io.scheduler, core.memory.swappiness, core.pkg.tools, core.gamemode.config, core.gpu.shader-cache, core.proton.ge, core.cpu.governor
+gameready: no step named `core.sysctl.max-map-conut`. There is: core.conflicts, core.sysctl.max-map-count, core.sysctl.split-lock, core.sysctl.vm-latency, core.io.scheduler, core.memory.swappiness, core.pkg.tools, core.gamemode.config, core.gpu.shader-cache, core.proton.ge, core.cpu.governor, game.steam.launch-options, game.steam.proton

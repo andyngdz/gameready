@@ -5,6 +5,7 @@ mod apply;
 mod constants;
 mod doctor;
 mod explain;
+mod game_steps;
 pub(crate) mod init;
 mod list_games;
 mod rollback;

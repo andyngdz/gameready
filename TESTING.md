@@ -71,6 +71,7 @@ tested, and the runner is discarded either way.
 ```bash
 gameready selftest
 gameready selftest --step core.sysctl.max-map-count
+gameready selftest --step game.steam.launch-options
 ```
 
 Runs the full step lifecycle on the real system: probe, plan, apply, verify,
@@ -78,6 +79,12 @@ rollback, verify reverted. This is the only way to test:
 
 - Writing to `/proc/sys` and `/sys`
 - Writing Steam config files against a real installation
+
+The two per-game steps are reachable only by naming them. A bare
+`gameready selftest` leaves them out because writing Steam's config means
+quitting Steam, and closing a running game client is not something to do to
+someone who typed two words. Name one and it quits Steam, runs the cycle
+against the real `localconfig.vdf` or `config.vdf`, and starts Steam again.
 
 `selftest` needs the privileges the steps need (sudo for kernel parameters,
 user for Steam config). It rolls back everything it applies, so the system
