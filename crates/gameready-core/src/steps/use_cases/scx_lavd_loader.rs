@@ -200,13 +200,14 @@ fn start_the_unit(cx: &mut ApplyCx<'_, CoreCx<'_>>, prior: UnitState) -> Result<
 /// moment the wrapper shell spawns, while the scheduler's BPF program
 /// attaches a couple of seconds later. The post waits for the kernel to name
 /// the scheduler, so the start command blocks until the scheduler is actually
-/// running, and a scheduler that never attaches fails the unit instead of
-/// letting the step verify a machine that had not caught up.
+/// running, and a scheduler that never attaches fails the unit (timeout exits
+/// 124, which fails the post) instead of letting the step verify a machine
+/// that had not caught up.
 fn dropin_contents(run: crate::journal::RunId) -> String {
     format!(
         "{header}\n[Service]\nEnvironment={SCX_SCHEDULER_OVERRIDE}={SCX_LAVD_BIN}\n\
-         ExecStartPost=/bin/sh -c 'i=0; while [ $i -lt 100 ]; do grep -q ^lavd \
-         /sys/kernel/sched_ext/root/ops && exit 0; sleep 0.1; i=$((i+1)); done; exit 1'\n",
+         ExecStartPost=/usr/bin/timeout 10 sh -c 'until grep -q ^lavd \
+         /sys/kernel/sched_ext/root/ops; do sleep 0.1; done'\n",
         header = crate::steps::constants::managed_header(
             crate::steps::use_cases::scx_lavd::ScxLavd::id_const(),
             run

@@ -96,8 +96,9 @@ fn the_dropin_aims_the_shipped_unit_at_lavd_without_editing_the_package_file() {
 fn the_dropin_waits_for_the_scheduler_in_its_post_start_step() {
     // The package unit is Type=simple, so systemctl returns once the wrapper
     // shell spawns while the BPF program still loads. The ExecStartPost is
-    // what makes the unit report readiness honestly, and without it the step
-    // would verify a kernel that had not caught up.
+    // what makes the unit report readiness honestly: the start command blocks
+    // until the kernel names the scheduler, and timeout fails the unit when
+    // it never does.
     let dir = TempDir::new().expect("temp dir");
     let runner = MockRunner::new().with_file(SCX_UNIT_PATH, "[Unit]\n");
     let facts = SystemFacts::fixture(Family::Debian);
@@ -113,6 +114,7 @@ fn the_dropin_waits_for_the_scheduler_in_its_post_start_step() {
         written.contains("/sys/kernel/sched_ext/root/ops"),
         "{written}"
     );
+    assert!(written.contains("timeout 10"), "{written}");
 }
 
 #[test]
