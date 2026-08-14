@@ -7,6 +7,7 @@ fn no_two_statuses_are_drawn_in_the_same_colour() {
     let inks = [
         Ink::for_status(ProbeStatus::Set),
         Ink::for_status(ProbeStatus::Ready),
+        Ink::for_status(ProbeStatus::Conflict),
         Ink::for_status(ProbeStatus::Attention),
         Ink::for_status(ProbeStatus::Inactive),
     ];
@@ -18,6 +19,22 @@ fn no_two_statuses_are_drawn_in_the_same_colour() {
         rgb
     };
     assert_eq!(unique.len(), inks.len(), "{inks:?}");
+}
+
+#[test]
+fn a_conflict_is_the_informational_blue_not_the_alert_red() {
+    let (red, green, blue) = Ink::for_status(ProbeStatus::Conflict).rgb();
+
+    assert!(blue > red && blue > green, "{red} {green} {blue}");
+}
+
+#[test]
+fn a_probe_that_could_not_read_is_the_only_red_dot() {
+    // Red is the one colour a user acts on without reading, so only the state
+    // nothing on the machine explains is allowed to wear it.
+    let (red, green, blue) = Ink::for_status(ProbeStatus::Attention).rgb();
+
+    assert!(red > green && red > blue, "{red} {green} {blue}");
 }
 
 #[test]

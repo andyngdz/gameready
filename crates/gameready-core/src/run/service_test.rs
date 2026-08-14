@@ -129,6 +129,7 @@ fn run_with(steps: Vec<Box<dyn CoreImprovement>>, mode: Mode, runner: &MockRunne
         &mut journal,
         mode,
         InstallConsent::Declined,
+        &[],
         &mut |_| {},
     )
     .expect("run completes")
@@ -276,6 +277,73 @@ fn a_run_with_no_applicable_steps_reports_that_distinctly() {
 }
 
 #[test]
+fn an_agreed_takeover_runs_the_step_and_reports_it_applied() {
+    let runner = MockRunner::new();
+    let dir = TempDir::new().expect("temp dir");
+    let mut journal = Journal::open(StatePaths::new(dir.path().to_path_buf()), RunId::generate())
+        .expect("journal opens");
+    let step = Fake {
+        probe_result: Probe::Conflict {
+            with: "cosmos".to_owned(),
+            detail: "cosmos is already scheduling this machine".to_owned(),
+            yours: Some("scxctl stop".to_owned()),
+        },
+        ..Fake::applicable("test.owned")
+    };
+
+    let report = execute(
+        vec![Box::new(step)],
+        &CoreCx::new(&facts(), &runner),
+        &mut journal,
+        Mode::Apply,
+        InstallConsent::Declined,
+        &[ImprovementId::from_static("test.owned")],
+        &mut |_| {},
+    )
+    .expect("run completes");
+
+    assert!(matches!(report.steps[0].outcome, Outcome::Applied { .. }));
+    assert!(runner.paths().contains(&"/tmp/fake".into()));
+}
+
+#[test]
+fn a_declined_takeover_stands_down_with_the_conflict_words() {
+    let runner = MockRunner::new();
+    let dir = TempDir::new().expect("temp dir");
+    let mut journal = Journal::open(StatePaths::new(dir.path().to_path_buf()), RunId::generate())
+        .expect("journal opens");
+    let step = Fake {
+        probe_result: Probe::Conflict {
+            with: "cosmos".to_owned(),
+            detail: "cosmos is already scheduling this machine".to_owned(),
+            yours: Some("scxctl stop".to_owned()),
+        },
+        ..Fake::applicable("test.owned")
+    };
+
+    let report = execute(
+        vec![Box::new(step)],
+        &CoreCx::new(&facts(), &runner),
+        &mut journal,
+        Mode::Apply,
+        InstallConsent::Declined,
+        &[],
+        &mut |_| {},
+    )
+    .expect("run completes");
+
+    // Declined takeovers change nothing, and the summary keeps the words the
+    // probe found rather than inventing a new reason.
+    assert!(runner.paths().is_empty());
+    assert!(matches!(
+        &report.steps[0].outcome,
+        Outcome::Skipped {
+            reason: SkipReason::Conflict { with, .. }
+        } if with == "cosmos"
+    ));
+}
+
+#[test]
 fn events_arrive_in_phase_order() {
     let dir = TempDir::new().expect("temp dir");
     let runner = MockRunner::new();
@@ -289,6 +357,7 @@ fn events_arrive_in_phase_order() {
         &mut journal,
         Mode::Apply,
         InstallConsent::Declined,
+        &[],
         &mut |event| seen.push(event),
     )
     .expect("run completes");

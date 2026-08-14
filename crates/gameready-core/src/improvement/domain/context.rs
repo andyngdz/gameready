@@ -211,6 +211,21 @@ impl<'a, C> ApplyCx<'a, C> {
         mutate_fn(self.runner)
     }
 
+    /// Records a change without running a mutation against the system.
+    ///
+    /// For the rare change whose mutation is clearing the way for a later one,
+    /// such as stopping a unit a takeover then re-points. Written and fsync'd
+    /// before the caller's own next mutation, like every other record, so an
+    /// interrupt between the two still leaves a fully undoable prefix.
+    pub fn record(&mut self, change: Change) -> Result<(), StepError> {
+        self.journal.append(JournalEvent::Changed {
+            step: self.step.clone(),
+            change: change.clone(),
+        })?;
+        self.recorded.push(change);
+        Ok(())
+    }
+
     /// Every change recorded during this step, in the order performed.
     ///
     /// The executor hands these to `rollback` when verification fails, so a

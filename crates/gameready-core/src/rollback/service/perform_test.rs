@@ -113,7 +113,10 @@ fn packages_are_left_installed_by_default() {
 }
 
 #[test]
-fn a_unit_enabled_before_the_run_is_left_enabled() {
+fn a_unit_enabled_before_the_run_is_restarted_on_its_own_config() {
+    // A takeover re-pointed the unit through a drop-in; the undo removes that
+    // drop-in first, so restarting the unit brings back whatever scheduler the
+    // user's own configuration names.
     let runner = MockRunner::new();
     let undo = Undo::RestoreUnit {
         unit: "scx_loader.service".to_owned(),
@@ -121,8 +124,15 @@ fn a_unit_enabled_before_the_run_is_left_enabled() {
     };
     let outcome = perform(&undo, &runner, PackagePolicy::Keep);
 
-    assert!(matches!(outcome, UndoOutcome::Left { .. }));
-    assert!(runner.commands().is_empty());
+    assert!(matches!(outcome, UndoOutcome::Reverted { .. }));
+    assert!(
+        runner
+            .commands()
+            .iter()
+            .any(|command| command.contains("systemctl restart scx_loader.service")),
+        "{:?}",
+        runner.commands()
+    );
 }
 
 #[test]

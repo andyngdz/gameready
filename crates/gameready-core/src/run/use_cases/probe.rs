@@ -8,13 +8,14 @@
 use crate::improvement::{
     CoreCx, CoreImprovement, ImprovementId, Outcome, Probe, RollbackStatus, SkipReason,
 };
-use crate::run::domain::{Deferred, RunEvent, StepReport};
+use crate::run::domain::{Contested, Deferred, RunEvent, StepReport};
 
 /// The three lists probing sorts every step into.
 pub(super) struct Probed {
     pub(super) settled: Vec<StepReport>,
     pub(super) pending: Vec<Box<dyn CoreImprovement>>,
     pub(super) deferred: Vec<Deferred>,
+    pub(super) contested: Vec<Contested>,
 }
 
 /// A step the probe ruled out that names something, waiting to find out
@@ -34,6 +35,7 @@ pub(super) fn probe_all(
     let mut settled = Vec::with_capacity(total);
     let mut pending = Vec::new();
     let mut candidates = Vec::new();
+    let mut contested = Vec::new();
 
     for (index, step) in steps.into_iter().enumerate() {
         on_event(RunEvent::Probing {
@@ -43,6 +45,7 @@ pub(super) fn probe_all(
         });
         match probe_outcome(step.as_ref(), cx) {
             Settled::Apply => pending.push(step),
+            Settled::Contested { with, detail } => contested.push(Contested { step, with, detail }),
             Settled::Now(outcome) if may_reopen(step.as_ref(), &outcome) => {
                 candidates.push(Candidate { step, outcome });
             }
@@ -61,11 +64,12 @@ pub(super) fn probe_all(
         settled,
         pending,
         deferred,
+        contested,
     }
 }
 
 /// Records a step as settled and tells the caller it finished.
-pub(super) fn finish(
+pub(crate) fn finish(
     step: &dyn CoreImprovement,
     outcome: Outcome,
     settled: &mut Vec<StepReport>,
@@ -80,11 +84,28 @@ pub(super) fn finish(
     settled.push(StepReport::for_step(step, outcome));
 }
 
+/// The skip a conflict settles as when it cannot be asked about.
+///
+/// Used by the sweep, which meets a conflict mid-run where the takeover
+/// question has already been asked and cannot be re-opened. A machine that
+/// changed since is reported, not re-decided.
+#[must_use]
+pub(super) fn contested_skip(with: &str, detail: &str) -> Outcome {
+    Outcome::Skipped {
+        reason: SkipReason::Conflict {
+            with: with.to_owned(),
+            detail: detail.to_owned(),
+            yours: None,
+        },
+    }
+}
+
 /// Whether a ruled-out step could answer differently later in this run.
 ///
 /// A step that could not tell has as much reason for a second look as one that
-/// read a clear no, so both endings are held open. A conflict is not: what owns
-/// the setting is not something this run is going to take away.
+/// read a clear no, so both endings are held open. A conflict is not: it is
+/// held for the takeover question when the run can clear it, and settled
+/// otherwise; either way nothing in this run is going to change its answer.
 fn may_reopen(step: &dyn CoreImprovement, outcome: &Outcome) -> bool {
     let reopenable = matches!(
         outcome,
@@ -146,6 +167,9 @@ pub(super) enum Settled {
     Now(Outcome),
     /// Worth applying.
     Apply,
+    /// Someone else owns the setting, and this run can take it back if the
+    /// user says so. Held for the question the caller asks next.
+    Contested { with: String, detail: String },
 }
 
 /// Turns one probe answer into what the run does about it.
@@ -162,13 +186,23 @@ pub(super) fn probe_outcome(step: &dyn CoreImprovement, cx: &CoreCx<'_>) -> Sett
             with,
             detail,
             yours,
-        }) => Settled::Now(Outcome::Skipped {
-            reason: SkipReason::Conflict {
-                with,
-                detail,
-                yours,
-            },
-        }),
+        }) => {
+            // A conflict names the stop that would clear it only when this run
+            // can take the seat back cleanly. With one, the user gets to
+            // decide; without one the run stands down, because taking over a
+            // scheduler it could not put back would be worse than leaving it.
+            if yours.is_some() {
+                Settled::Contested { with, detail }
+            } else {
+                Settled::Now(Outcome::Skipped {
+                    reason: SkipReason::Conflict {
+                        with,
+                        detail,
+                        yours,
+                    },
+                })
+            }
+        }
         Ok(Probe::Unknown { reason }) => Settled::Now(Outcome::Skipped {
             reason: SkipReason::CouldNotTell { detail: reason },
         }),

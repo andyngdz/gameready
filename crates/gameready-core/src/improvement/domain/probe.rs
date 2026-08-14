@@ -61,7 +61,13 @@ pub enum ProbeStatus {
     /// Not applied, and this system can take it.
     Ready,
 
-    /// Something else owns the setting, and the user should read why.
+    /// Something else owns the setting. Not a fault: the owner is the user's
+    /// own choice, and a surface can offer to take it over without implying
+    /// anything is broken.
+    Conflict,
+
+    /// Probing itself failed, or the state could not be read. The one status a
+    /// user has to act on, because nothing on the machine explains it.
     Attention,
 
     /// Ruled out, or unreadable. Either way nothing will happen here.
@@ -76,7 +82,7 @@ impl Probe {
             Self::AlreadyApplied { .. } => ProbeStatus::Set,
             Self::UpdateAvailable { .. } => ProbeStatus::UpdateAvailable,
             Self::Applicable => ProbeStatus::Ready,
-            Self::Conflict { .. } => ProbeStatus::Attention,
+            Self::Conflict { .. } => ProbeStatus::Conflict,
             Self::NotApplicable { .. } | Self::Unknown { .. } => ProbeStatus::Inactive,
         }
     }

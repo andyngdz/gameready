@@ -4,7 +4,7 @@ use super::*;
 use crate::facts::{Family, SystemFacts};
 use crate::infra::exec::MockRunner;
 use crate::journal::{Journal, RunId, StatePaths};
-use crate::steps::constants::SCXCTL_BIN;
+use crate::steps::constants::{SCHED_EXT_STATE, SCXCTL_BIN};
 use crate::steps::use_cases::scx_lavd::ScxLavd;
 
 fn journal(dir: &TempDir) -> Journal {
@@ -93,6 +93,31 @@ fn the_dropin_aims_the_shipped_unit_at_lavd_without_editing_the_package_file() {
 }
 
 #[test]
+fn the_dropin_waits_for_the_scheduler_in_its_post_start_step() {
+    // The package unit is Type=simple, so systemctl returns once the wrapper
+    // shell spawns while the BPF program still loads. The ExecStartPost is
+    // what makes the unit report readiness honestly: the start command blocks
+    // until the kernel names the scheduler, and timeout fails the unit when
+    // it never does.
+    let dir = TempDir::new().expect("temp dir");
+    let runner = MockRunner::new().with_file(SCX_UNIT_PATH, "[Unit]\n");
+    let facts = SystemFacts::fixture(Family::Debian);
+    let cx = CoreCx::new(&facts, &runner);
+    let mut journal = journal(&dir);
+    let mut apply = ApplyCx::new(cx, ScxLavd::id_const(), &runner, &mut journal);
+
+    Loader::Unit.load(&mut apply).expect("loaded");
+
+    let written = runner.file(SCX_UNIT_DROPIN).expect("drop-in written");
+    assert!(written.contains("ExecStartPost"), "{written}");
+    assert!(
+        written.contains("/sys/kernel/sched_ext/root/ops"),
+        "{written}"
+    );
+    assert!(written.contains("timeout 10"), "{written}");
+}
+
+#[test]
 fn loading_through_scxctl_records_what_it_replaced_and_writes_no_file() {
     let dir = TempDir::new().expect("temp dir");
     let runner = MockRunner::new().with_binary(SCXCTL_BIN);
@@ -105,4 +130,80 @@ fn loading_through_scxctl_records_what_it_replaced_and_writes_no_file() {
 
     assert_eq!(apply.recorded(), [Change::ScxScheduler { previous: None }]);
     assert!(runner.paths().is_empty(), "{:?}", runner.paths());
+}
+
+#[test]
+fn a_takeover_stops_the_other_scheduler_before_loading_lavd_and_keeps_it_as_undo() {
+    // The user agreed to the takeover, so the loader clears the seat first and
+    // records the previous scheduler whole: rollback switches back to cosmos
+    // rather than stopping whatever is left.
+    let dir = TempDir::new().expect("temp dir");
+    let runner = MockRunner::new()
+        .with_binary(SCXCTL_BIN)
+        .with_file(SCHED_EXT_STATE, "enabled\n")
+        .with_file(crate::steps::constants::SCHED_EXT_OPS, "cosmos\n");
+    let facts = SystemFacts::fixture(Family::Arch);
+    let cx = CoreCx::new(&facts, &runner);
+    let mut journal = journal(&dir);
+    let mut apply = ApplyCx::new(cx, ScxLavd::id_const(), &runner, &mut journal);
+
+    Loader::Scxctl.load(&mut apply).expect("loaded");
+
+    assert_eq!(
+        apply.recorded(),
+        [Change::ScxScheduler {
+            previous: Some("cosmos".to_owned())
+        }]
+    );
+    let commands = runner.commands();
+    let stop = commands
+        .iter()
+        .position(|command| command.contains("scxctl stop"))
+        .expect("the owner is stopped first");
+    let load = commands
+        .iter()
+        .position(|command| command.contains("scxctl start -s lavd"))
+        .expect("lavd is loaded");
+    assert!(stop < load, "{commands:?}");
+}
+
+#[test]
+fn a_takeover_through_the_unit_stops_it_first_and_records_the_handover_before_the_dropin() {
+    // The journal's newest-first undo removes the drop-in before it restarts
+    // the unit, so the unit comes back running the scheduler its own config
+    // names rather than ours.
+    let dir = TempDir::new().expect("temp dir");
+    let runner = MockRunner::new()
+        .with_binary("systemctl")
+        .with_file(SCX_UNIT_PATH, "[Unit]\n")
+        .answering("systemctl is-enabled scx", "enabled")
+        .answering("systemctl is-active scx", "active");
+    let facts = SystemFacts::fixture(Family::Debian);
+    let cx = CoreCx::new(&facts, &runner);
+    let mut journal = journal(&dir);
+    let mut apply = ApplyCx::new(cx, ScxLavd::id_const(), &runner, &mut journal);
+
+    Loader::Unit.load(&mut apply).expect("loaded");
+
+    match apply.recorded() {
+        [Change::SystemdUnit {
+            unit,
+            was_enabled: true,
+            was_active: true,
+        }, Change::FileWritten { path, .. }] => {
+            assert_eq!(unit, SCX_SERVICE_NAME);
+            assert_eq!(path, Path::new(SCX_UNIT_DROPIN));
+        }
+        other => panic!("expected a handover before the drop-in, got {other:?}"),
+    }
+    let commands = runner.commands();
+    let stop = commands
+        .iter()
+        .position(|command| command.contains("systemctl stop scx"))
+        .expect("the running unit is stopped first");
+    let start = commands
+        .iter()
+        .position(|command| command.contains("systemctl enable --now scx"))
+        .expect("the unit is re-enabled and started");
+    assert!(stop < start, "{commands:?}");
 }

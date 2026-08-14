@@ -141,6 +141,21 @@ impl<'a> InitPlan<'a> {
         (!parts.is_empty()).then(|| parts.join(", "))
     }
 
+    /// The contested steps this run will take over, named for the plan screen.
+    ///
+    /// Only the ones the user agreed to belong here: the declined ones stay
+    /// out, and the summary reports them as the skips their conflict described.
+    fn takeovers(&self) -> Option<String> {
+        let agreed: Vec<&str> = self
+            .plan
+            .contested
+            .iter()
+            .filter(|entry| self.answers.takeovers.contains(&entry.step.id()))
+            .map(|entry| entry.step.short_name())
+            .collect();
+        (!agreed.is_empty()).then(|| agreed.join(", "))
+    }
+
     /// Whether anything in this run reaches outside the user's own files.
     ///
     /// The same question the escalation asks a moment later, answered from the
@@ -158,6 +173,9 @@ impl<'a> InitPlan<'a> {
         }
         if let Some(system) = self.system() {
             s.labelled(SYSTEM, &system)?;
+        }
+        if let Some(takeovers) = self.takeovers() {
+            s.labelled("Take over", &takeovers)?;
         }
         if let Some(per_game) = self.per_game() {
             s.labelled(PER_GAME, &per_game)?;

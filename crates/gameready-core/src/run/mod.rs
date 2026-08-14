@@ -6,9 +6,9 @@ mod service;
 pub(crate) mod use_cases;
 
 pub use domain::{
-    Deferred, DependencyStatus, InstallConsent, MissingDependency, Mode, Phase, PlannedInstall,
-    PreflightReport, ResolvedDependency, RevertCheck, RunEvent, RunPlan, RunReport, RunStatus,
-    SelftestResult, StepReport, StepSelftest,
+    Contested, Deferred, DependencyStatus, InstallConsent, MissingDependency, Mode, Phase,
+    PlannedInstall, PreflightReport, ResolvedDependency, RevertCheck, RunEvent, RunPlan, RunReport,
+    RunStatus, SelftestResult, StepReport, StepSelftest,
 };
 pub use errors::RunError;
 pub use service::{apply_plan, execute};

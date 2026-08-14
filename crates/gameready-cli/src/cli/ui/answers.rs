@@ -1,6 +1,7 @@
 //! What the user decided, and the one pass that collects it.
 
 use anyhow::Result;
+use gameready_core::improvement::ImprovementId;
 use gameready_core::run::{compat_wishes_for, targets_for, InstallConsent};
 use gameready_core::steam::{with_overlay, GameSetup, Overlay};
 use gameready_core::steps::{CompatWish, LaunchTarget};
@@ -29,6 +30,8 @@ pub struct Answers {
     pub overlay: Overlay,
     /// Whether the CPU governor, if pinned this run, should survive a reboot.
     pub governor_pinned: bool,
+    /// The contested steps the user agreed to take over from whoever owns them.
+    pub takeovers: Vec<ImprovementId>,
 }
 
 /// Asks every question the run has, in one pass.
@@ -54,6 +57,7 @@ pub fn ask_everything(questions: &Questions<'_>) -> Result<Answers> {
     let launch = questions.pick_launch(&work, &mut steps)?;
     let consent = questions.consent(&mut steps)?;
     let governor_pinned = questions.governor_choice(&consent, &mut steps)?;
+    let takeovers = questions.takeovers(&mut steps)?;
 
     Ok(Answers {
         selected,
@@ -63,6 +67,7 @@ pub fn ask_everything(questions: &Questions<'_>) -> Result<Answers> {
         consent,
         overlay,
         governor_pinned,
+        takeovers,
     })
 }
 

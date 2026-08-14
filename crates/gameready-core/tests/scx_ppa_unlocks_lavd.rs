@@ -64,7 +64,16 @@ fn run(runner: &MockRunner, consent: InstallConsent) -> RunReport {
 
     let steps: Vec<Box<dyn CoreImprovement>> = vec![Box::new(ScxPpa), Box::new(ScxLavd)];
 
-    execute(steps, &cx, &mut journal, Mode::Apply, consent, &mut |_| {}).expect("the run completes")
+    execute(
+        steps,
+        &cx,
+        &mut journal,
+        Mode::Apply,
+        consent,
+        &[],
+        &mut |_| {},
+    )
+    .expect("the run completes")
 }
 
 fn outcome_of(report: &RunReport, id: &str) -> OutcomeKind {

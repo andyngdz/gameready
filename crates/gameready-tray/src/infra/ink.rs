@@ -22,7 +22,13 @@ pub enum Ink {
     /// Would apply, and has not yet.
     Pending,
 
-    /// Something else owns this, or it could not be read.
+    /// Something else owns this, and the user can decide whether to take it
+    /// over. Not an error: the owner is a choice, so the dot is informative
+    /// blue rather than alert red.
+    Owned,
+
+    /// Probing could not read the state. The one role that reads as an error,
+    /// because nothing on the machine explains it.
     Alert,
 
     /// Ruled out. Nothing will happen here.
@@ -60,6 +66,7 @@ impl Ink {
             // green; its note line is what tells the two apart.
             ProbeStatus::Set | ProbeStatus::UpdateAvailable => Self::Live,
             ProbeStatus::Ready => Self::Pending,
+            ProbeStatus::Conflict => Self::Owned,
             ProbeStatus::Attention => Self::Alert,
             ProbeStatus::Inactive => Self::Muted,
         }
@@ -77,6 +84,9 @@ impl Ink {
             Self::Dark => (0x20, 0x23, 0x24),
             Self::Live => (0x3F, 0xB9, 0x50),
             Self::Pending => (0xE3, 0xA5, 0x21),
+            // The informational blue every other surface in the app reads as
+            // "look again", which is exactly what a row another tool owns is.
+            Self::Owned => (0x58, 0xA6, 0xFF),
             Self::Alert => (0xD9, 0x53, 0x4F),
             Self::Muted => (0x8A, 0x8F, 0x98),
         }

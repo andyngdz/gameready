@@ -76,14 +76,44 @@ fn an_applied_step_and_one_that_would_apply_never_share_a_status() {
 }
 
 #[test]
-fn a_conflict_is_the_only_status_that_asks_the_user_to_read_something() {
+fn a_conflict_is_not_attention_because_nothing_is_broken() {
     let conflict = Probe::Conflict {
         with: "tuned.service".to_owned(),
         detail: "tuned.service sets the governor on its own schedule".to_owned(),
         yours: None,
     };
 
-    assert_eq!(conflict.status(), ProbeStatus::Attention);
+    assert_eq!(conflict.status(), ProbeStatus::Conflict);
+    assert_ne!(conflict.status(), ProbeStatus::Attention);
+}
+
+#[test]
+fn attention_is_reserved_for_a_probe_that_could_not_read_the_machine() {
+    // Attention comes from the reading path itself, not from any probe answer:
+    // a conflict is a machine state the user chose, and an unknown is a row
+    // nothing will come of. `StepFinding` maps a probe error to Attention, and
+    // this pins that no probe value wears it.
+    let statuses = [
+        Probe::Applicable,
+        Probe::AlreadyApplied {
+            evidence: "swappiness is 10".to_owned(),
+        },
+        Probe::NotApplicable {
+            reason: "kernel has no sched_ext".to_owned(),
+        },
+        Probe::Conflict {
+            with: "tuned.service".to_owned(),
+            detail: "tuned.service sets the governor on its own schedule".to_owned(),
+            yours: None,
+        },
+        Probe::Unknown {
+            reason: "github.com timed out".to_owned(),
+        },
+    ];
+
+    for probe in &statuses {
+        assert_ne!(probe.status(), ProbeStatus::Attention, "{probe:?}");
+    }
 }
 
 #[test]

@@ -116,6 +116,7 @@ impl InitRequest<'_> {
             journal,
             self.mode,
             answers.consent,
+            &answers.takeovers,
             &mut |event| {
                 progress.on_event(event);
             },

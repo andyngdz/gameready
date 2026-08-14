@@ -29,6 +29,7 @@ pub fn plan_run(
         mut settled,
         mut pending,
         mut deferred,
+        contested,
     } = probe_all(steps, cx, on_event);
 
     // Held-open steps are resolved alongside pending ones on purpose. A step
@@ -51,6 +52,7 @@ pub fn plan_run(
         settled,
         pending,
         deferred,
+        contested,
         preflight,
         step_installs,
         step_present,

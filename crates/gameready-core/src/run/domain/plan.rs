@@ -4,6 +4,7 @@ use std::time::Instant;
 
 use crate::facts::PackageManagerKind;
 use crate::improvement::{CoreImprovement, ImprovementId, Privilege};
+use crate::run::domain::contested::{self, Contested};
 use crate::run::domain::preflight::PreflightReport;
 use crate::run::domain::report::StepReport;
 
@@ -54,7 +55,7 @@ impl std::fmt::Debug for Deferred {
     /// trait object with no `Debug` bound.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Deferred")
-            .field("step", &self.step.id())
+            .field(contested::STEP_FIELD, &self.step.id())
             .field("reason", &self.reason)
             .field("waiting_on", &self.waiting_on)
             .finish()
@@ -80,6 +81,11 @@ pub struct RunPlan {
     /// step promoted mid-run must not fetch anything nobody agreed to.
     pub deferred: Vec<Deferred>,
 
+    /// Steps the probe found in conflict, where the run can take the seat back
+    /// if the user says so. Their packages are never a concern: something is
+    /// already running, which is proof the software that runs it is here.
+    pub contested: Vec<Contested>,
+
     /// What those steps need, and whether this system has it.
     pub preflight: PreflightReport,
 
@@ -103,22 +109,28 @@ impl RunPlan {
     ///
     /// Held-open steps are counted: one way or another every one of them ends
     /// with a line, either because it was released and ran or because whatever
-    /// it waited on never came.
+    /// it waited on never came. Contested steps count too: the sweep ends each
+    /// with a row whether the user agreed to the takeover or not.
     #[must_use]
     pub fn to_apply(&self) -> usize {
-        self.pending.len() + self.deferred.len()
+        self.pending.len() + self.deferred.len() + self.contested.len()
     }
 
     /// Whether anything this run may apply reaches outside the user's files.
     ///
     /// Held-open steps count: one of them being released is not a reason to
     /// stop and ask for a password half way through a run that has already
-    /// started changing things.
+    /// started changing things. A contested step counts the same way: its
+    /// takeover stops and restarts services, which is root's work.
     #[must_use]
     pub fn needs_root(&self) -> bool {
         self.considered()
             .iter()
             .any(|step| matches!(step.privilege(), Privilege::Root))
+            || self
+                .contested
+                .iter()
+                .any(|entry| matches!(entry.step.privilege(), Privilege::Root))
     }
 
     /// Whether this run would put any software on the machine.
@@ -181,16 +193,19 @@ impl RunPlan {
     /// Whether the run would do anything at all.
     ///
     /// A held-open step counts: the run has something left to decide about it,
-    /// which is the opposite of empty.
+    /// which is the opposite of empty. A contested step counts the same way:
+    /// the takeover question is a decision this run still has to make.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.pending.is_empty() && self.deferred.is_empty()
+        self.pending.is_empty() && self.deferred.is_empty() && self.contested.is_empty()
     }
 
     /// Every step this run may still apply, held open ones included.
     ///
     /// The list the pre-flight resolver and the install screen both read, so a
     /// step that is promoted mid-run has already had its packages agreed to.
+    /// Contested steps are left out: their packages are on the machine already
+    /// (something is running), and nothing about them rides the install screen.
     #[must_use]
     pub fn considered(&self) -> Vec<&dyn CoreImprovement> {
         let pending = self.pending.iter().map(AsRef::as_ref);
@@ -208,6 +223,7 @@ impl std::fmt::Debug for RunPlan {
             .field("settled", &self.settled)
             .field("pending", &self.pending.len())
             .field("deferred", &self.deferred)
+            .field("contested", &self.contested)
             .field("preflight", &self.preflight)
             .field("step_installs", &self.step_installs)
             .finish()

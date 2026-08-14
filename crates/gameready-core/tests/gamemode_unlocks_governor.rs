@@ -55,6 +55,7 @@ fn run(runner: &MockRunner) -> RunReport {
         &mut journal,
         Mode::Apply,
         InstallConsent::Granted,
+        &[],
         &mut |_| {},
     )
     .expect("the run completes")

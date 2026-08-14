@@ -54,7 +54,7 @@ pub struct Asked {
     message: String,
 
     /// The keys line, in the order a user reaches for them.
-    keys: &'static str,
+    keys: String,
 }
 
 impl Asked {
@@ -65,14 +65,17 @@ impl Asked {
     /// the run wraps between words, and a question is the last place to start
     /// splitting words in half.
     #[must_use]
-    pub fn new(question: &str, detail: &str, keys: &'static str) -> Self {
+    pub fn new(question: &str, detail: &str, keys: &str) -> Self {
         let mut message = String::new();
         let mut section = Section::new(&mut message);
         // Writing into a String cannot fail.
         let _ = section
             .heading(question)
             .and_then(|()| section.under_question(&style(detail).dim().to_string()));
-        Self { message, keys }
+        Self {
+            message,
+            keys: keys.to_owned(),
+        }
     }
 
     /// The list where the answer is one row.
@@ -80,7 +83,7 @@ impl Asked {
     pub fn one_of<T: Display>(&self, options: Vec<T>) -> Select<'_, T> {
         Select::new(&self.message, options)
             .with_render_config(Prompts::choices())
-            .with_help_message(self.keys)
+            .with_help_message(&self.keys)
     }
 
     /// The list where any number of rows can be on.
@@ -88,7 +91,7 @@ impl Asked {
     pub fn any_of<T: Display>(&self, options: Vec<T>) -> MultiSelect<'_, T> {
         MultiSelect::new(&self.message, options)
             .with_render_config(Prompts::many())
-            .with_help_message(self.keys)
+            .with_help_message(&self.keys)
     }
 }
 

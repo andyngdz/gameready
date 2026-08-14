@@ -13,7 +13,7 @@ use crate::steps::{
     restore_scheduler as restore_scheduler_cmd, ADD_APT_REPOSITORY_BIN, APT_ASSUME_YES, APT_REMOVE,
     SYSCTL_BIN,
 };
-use crate::systemd::{DISABLE, NOW, SYSTEMCTL};
+use crate::systemd::{DISABLE, NOW, RESTART, SYSTEMCTL};
 
 /// Reverses one recorded change.
 pub(super) fn perform(
@@ -96,22 +96,35 @@ fn report_packages(installed: &[String], packages: PackagePolicy) -> UndoOutcome
     }
 }
 
-/// Returns a unit to its prior state, which usually means disabling it again.
+/// Returns a unit to its prior state.
+///
+/// A unit that was enabled before the run is given back running: its drop-in
+/// was removed by an earlier undo, so the restart starts whatever scheduler
+/// the unit's own config names. A unit the run enabled is disabled again.
 fn restore_unit(runner: &dyn CommandRunner, unit: &str, prior: PriorUnitState) -> UndoOutcome {
-    if matches!(prior, PriorUnitState::WasEnabled) {
-        return UndoOutcome::Left {
-            reason: format!("{unit} was already enabled before the run"),
-        };
-    }
-
-    let cmd = Cmd::root(SYSTEMCTL).arg(DISABLE).arg(NOW).arg(unit);
-    match runner.run(&cmd) {
-        Ok(_) => UndoOutcome::Reverted {
-            detail: format!("{unit} disabled again"),
-        },
-        Err(error) => UndoOutcome::Failed {
-            error: error.to_string(),
-        },
+    match prior {
+        PriorUnitState::WasEnabled => {
+            let cmd = Cmd::root(SYSTEMCTL).arg(RESTART).arg(unit);
+            match runner.run(&cmd) {
+                Ok(_) => UndoOutcome::Reverted {
+                    detail: format!("{unit} restarted on its own config"),
+                },
+                Err(error) => UndoOutcome::Failed {
+                    error: error.to_string(),
+                },
+            }
+        }
+        PriorUnitState::WasDisabled => {
+            let cmd = Cmd::root(SYSTEMCTL).arg(DISABLE).arg(NOW).arg(unit);
+            match runner.run(&cmd) {
+                Ok(_) => UndoOutcome::Reverted {
+                    detail: format!("{unit} disabled again"),
+                },
+                Err(error) => UndoOutcome::Failed {
+                    error: error.to_string(),
+                },
+            }
+        }
     }
 }
 

@@ -13,6 +13,12 @@ pub const DISABLE: &str = "disable";
 /// next boot.
 pub const NOW: &str = "--now";
 
+/// Stops a running unit, leaving its enablement alone.
+pub const STOP: &str = "stop";
+
+/// Starts a unit without touching its enablement.
+pub const RESTART: &str = "restart";
+
 /// Asks whether a unit starts at boot. Also the existence check: a name with no
 /// unit file behind it fails here with an empty answer.
 pub const IS_ENABLED: &str = "is-enabled";

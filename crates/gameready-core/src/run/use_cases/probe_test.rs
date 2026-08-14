@@ -63,6 +63,19 @@ impl Fake {
                 .collect(),
         })
     }
+
+    /// A step somebody else owns, with or without a path back for a takeover.
+    fn conflicted(id: &'static str, takeover_possible: bool) -> Box<dyn CoreImprovement> {
+        Box::new(Self {
+            id,
+            probe_result: Probe::Conflict {
+                with: "cosmos".to_owned(),
+                detail: "cosmos is already scheduling this machine".to_owned(),
+                yours: takeover_possible.then(|| "scxctl stop".to_owned()),
+            },
+            requires: Vec::new(),
+        })
+    }
 }
 
 impl Improvement for Fake {
@@ -175,6 +188,32 @@ fn a_step_that_is_already_applied_is_never_held_open() {
 
     assert!(probed.deferred.is_empty());
     assert_eq!(probed.settled.len(), 1);
+}
+
+#[test]
+fn a_conflict_the_run_can_clear_is_held_for_the_takeover_question() {
+    let (probed, _) = sort(vec![Fake::conflicted("test.owned", true)]);
+
+    assert!(probed.settled.is_empty(), "{:?}", probed.settled);
+    assert_eq!(probed.contested.len(), 1);
+    assert_eq!(probed.contested[0].step.id().as_str(), "test.owned");
+    assert_eq!(probed.contested[0].with, "cosmos");
+}
+
+#[test]
+fn a_conflict_without_a_path_back_is_settled_as_the_skip_it_was() {
+    // The run could stop the owner, so it has no right to take the seat; the
+    // step stands down the way it always did, with the same words.
+    let (probed, _) = sort(vec![Fake::conflicted("test.owned", false)]);
+
+    assert!(probed.contested.is_empty());
+    assert_eq!(probed.settled.len(), 1);
+    assert!(matches!(
+        &probed.settled[0].outcome,
+        Outcome::Skipped {
+            reason: SkipReason::Conflict { with, .. }
+        } if with == "cosmos"
+    ));
 }
 
 #[test]

@@ -33,6 +33,7 @@ fn answers(selected: Vec<GameSetup>) -> Answers {
         consent: InstallConsent::Declined,
         overlay: gameready_core::steam::Overlay::Hide,
         governor_pinned: false,
+        takeovers: Vec::new(),
     }
 }
 
