@@ -55,7 +55,7 @@ impl<'a> DoctorReport<'a> {
                 self.facts.distro.package_manager()
             ),
         )?;
-        s.labelled("kernel", &self.facts.kernel_release.to_string())?;
+        s.labelled("kernel", &self.facts.kernel_release)?;
         s.labelled("swap", &self.swap_line())?;
         s.labelled("disks", &self.disks_line())
     }

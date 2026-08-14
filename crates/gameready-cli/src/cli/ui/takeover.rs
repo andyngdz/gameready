@@ -42,8 +42,7 @@ impl fmt::Display for Takeover {
 pub fn choose_takeover(contested: &Contested) -> Result<bool> {
     let question = format!("{}?", contested.step.name());
     let why = format!(
-        "{} is already doing this. Not a promise of more FPS. {} {} stops while this takes \
-         over.",
+        "{} is already doing this. {} {} stops while this takes over.",
         contested.with,
         contested.step.gains().unwrap_or_default(),
         contested.with,
