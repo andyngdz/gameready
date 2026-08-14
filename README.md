@@ -64,6 +64,26 @@ The installer also drops in a tray indicator, searchable as "Gameready Tray",
 which shows which tunings are in place and turns green while a configured game
 runs. It starts right after install and at each login.
 
+## Screenshots
+
+`init` reads your machine and shows what it found before it asks anything.
+
+![gameready init listing what it found on the machine, then asking four
+questions: which games to set up, whether to draw a frame-rate overlay, whether
+to use the newest Proton-GE, and whether to write Steam
+settings](docs/screenshots/pre_ask.png)
+
+The summary separates what it changed from what was already fine. Decline the
+Steam step and it prints the exact clicks instead.
+
+![The apply summary: the plan, ten tunings already set, one not applicable, and
+per-game Steam instructions for Deadlock](docs/screenshots/apply_config.png)
+
+The tray indicator shows every tuning and its current state.
+
+![The tray menu listing eleven system tunings, ten with a green dot and
+swappiness greyed out](docs/screenshots/system_tray.png)
+
 ## How it works
 
 gameready checks your system before it changes anything. Each tuning decides

@@ -19,6 +19,14 @@ and editing the fill will never change the tray. Also, the tray embeds the file
 with `include_str!` at build time, so a change to the asset does nothing on a
 machine until the tray binary is rebuilt and reinstalled.
 
+A reinstall does not repaint the app grid on its own, and this is accepted
+behaviour, not a bug: `install.sh` writes the bytes and refreshes no icon cache,
+and the file name never changes, so nothing tells GNOME the icon moved. Verified
+2026-08-14 that the installed file was already correct while the grid still drew
+the old one. The user declined a `gtk-update-icon-cache` call in the installer;
+log out and back in instead. Unblock condition if it is ever revisited: a plan
+sits at `~/.claude/plans/starry-yawning-blum.md`.
+
 Second, separate limit: the artwork is 122.88x79.92, a 1.54:1 ratio. Any square
 icon slot letterboxes it, so it reads smaller than the square icons beside it in
 the app grid. A square canvas does not help, the art itself is wide. Only a
