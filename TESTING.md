@@ -11,8 +11,10 @@ machine.
 Parser tests use fixtures for `/etc/os-release` (Arch, Debian, Ubuntu, Fedora,
 and derivatives), `appmanifest_*.acf`, `libraryfolders.vdf`, and `game.toml`.
 
-The proptest suite generates random apply-then-rollback sequences and asserts
-that the mock filesystem returns to its starting state.
+`tests/rollback_properties.rs` generates random apply-then-rollback sequences
+with proptest and asserts the mock filesystem returns to its starting state.
+`tests/apply_rollback_cycle.rs` covers the same property by example, including a
+kill swept across every command a run issues and a journal truncated mid-write.
 
 ## Snapshot tests (`cargo insta review`)
 

@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 50cb933d6c79d7939477b8d0af7630036b05d22014526a3e772fd89afae2741d # shrinks to steps = [SetSteamKey { to: "a" }]
