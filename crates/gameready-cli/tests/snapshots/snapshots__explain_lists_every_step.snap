@@ -4,7 +4,7 @@ expression: "run_with(&[\"explain\"], Reads :: Fixture, | _, _ | {})"
 ---
 exit code: 0
 ----- stdout -----
-13 tunings, in the order a run works through them
+11 tunings, in the order a run works through them
 
 System
   core.conflicts            Daemons that fight gamemode
@@ -17,8 +17,6 @@ System
   core.gamemode.config      gamemode priority
   core.gpu.shader-cache     Shader cache size
   core.proton.ge            Latest Proton-GE
-  core.repo.scx-ppa         The scx repository, Debian only
-  core.sched.scx-lavd       The scx_lavd CPU scheduler
   core.cpu.governor         Full CPU speed, when nothing else asks for it
 
 Per game

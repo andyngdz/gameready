@@ -55,7 +55,7 @@ pub fn resolve_dependencies(
 }
 
 /// Stable key for deduplication. Two deps with the same resolved package name
-/// (or the same binary name, or the same feature path) are the same thing.
+/// (or the same binary name) are the same thing.
 fn dep_key(dep: &Dependency, pm: PackageManagerKind) -> String {
     match &dep.kind {
         DependencyKind::Binary { name, .. } => format!("bin:{name}"),
@@ -64,7 +64,6 @@ fn dep_key(dep: &Dependency, pm: PackageManagerKind) -> String {
             format!("pkg:{pkg}")
         }
         DependencyKind::Kernel { min } => format!("kernel:{min}"),
-        DependencyKind::Feature { path } => format!("feature:{path}"),
     }
 }
 
@@ -72,7 +71,7 @@ fn spec_bytes(dep: &Dependency, _pm: PackageManagerKind) -> u64 {
     match &dep.kind {
         DependencyKind::Binary { provided_by, .. } => provided_by.approx_bytes,
         DependencyKind::Package { spec } => spec.approx_bytes,
-        DependencyKind::Kernel { .. } | DependencyKind::Feature { .. } => 0,
+        DependencyKind::Kernel { .. } => 0,
     }
 }
 
@@ -110,13 +109,6 @@ fn probe_one(
         }
         DependencyKind::Kernel { min } => {
             if facts.kernel >= *min {
-                DependencyStatus::Present
-            } else {
-                DependencyStatus::Unavailable
-            }
-        }
-        DependencyKind::Feature { path } => {
-            if runner.path_exists(path.as_ref()) {
                 DependencyStatus::Present
             } else {
                 DependencyStatus::Unavailable

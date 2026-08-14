@@ -102,8 +102,8 @@ fn a_quoted_block_carries_its_bar_down_every_wrapped_line() {
     // A description that wraps is still one description, and a second line
     // starting at the margin would read as a second package.
     let mut buf = String::new();
-    let long = "the sched_ext CPU schedulers, scx_lavd among them, and every other one that ships \
-                in the same package";
+    let long = "the whole package list and its per-package sizes, with the longest \
+                descriptions wrapped to the width";
     Section::with_width(&mut buf, CRAMPED).quoted(long).unwrap();
     let rendered = plain(&buf);
 
@@ -125,7 +125,12 @@ fn every_rows_evidence_starts_at_the_same_column() {
         .row(Mark::Applied, "Swappiness", "already 180", COLUMN)
         .unwrap();
     section
-        .row(Mark::AlreadySet, "CPU scheduler scx_lavd", "loaded", COLUMN)
+        .row(
+            Mark::AlreadySet,
+            "I/O scheduler nvme0n1",
+            "mq-deadline",
+            COLUMN,
+        )
         .unwrap();
     let rendered = plain(&buf);
 

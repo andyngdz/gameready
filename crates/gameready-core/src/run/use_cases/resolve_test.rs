@@ -116,14 +116,14 @@ fn unavailable_package_blocks_step() {
     let dep = Dependency::new(
         DependencyKind::Package {
             spec: PackageSpec {
-                pacman: Some("scx"),
-                apt: Some("scx"),
-                dnf: Some("scx"),
+                pacman: Some("missing-package"),
+                apt: Some("missing-package"),
+                dnf: Some("missing-package"),
                 approx_bytes: 10_000,
             },
         },
-        "scheduler",
-        "runs sched_ext",
+        "a package this distro does not ship",
+        "nothing on this distro provides it",
     );
     let step: Box<dyn CoreImprovement> = Box::new(StepWithDeps::new("test.a", vec![dep]));
 
@@ -173,24 +173,6 @@ fn kernel_version_too_low_is_unavailable() {
     let report = resolve_dependencies(&[step.as_ref()], &facts(), &runner, &pm);
 
     assert_eq!(report.dependencies[0].status, DependencyStatus::Unavailable);
-}
-
-#[test]
-fn feature_path_present_is_present() {
-    let runner = MockRunner::new().with_file("/sys/kernel/sched_ext/state", "disabled");
-    let pm = Apt;
-    let dep = Dependency::new(
-        DependencyKind::Feature {
-            path: "/sys/kernel/sched_ext/state",
-        },
-        "sched_ext",
-        "runs BPF schedulers",
-    );
-    let step: Box<dyn CoreImprovement> = Box::new(StepWithDeps::new("test.a", vec![dep]));
-
-    let report = resolve_dependencies(&[step.as_ref()], &facts(), &runner, &pm);
-
-    assert_eq!(report.dependencies[0].status, DependencyStatus::Present);
 }
 
 #[test]

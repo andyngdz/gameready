@@ -284,9 +284,9 @@ fn an_agreed_takeover_runs_the_step_and_reports_it_applied() {
         .expect("journal opens");
     let step = Fake {
         probe_result: Probe::Conflict {
-            with: "cosmos".to_owned(),
-            detail: "cosmos is already scheduling this machine".to_owned(),
-            yours: Some("scxctl stop".to_owned()),
+            with: "tuned.service".to_owned(),
+            detail: "tuned.service sets the governor on its own schedule".to_owned(),
+            yours: Some("systemctl disable --now tuned.service".to_owned()),
         },
         ..Fake::applicable("test.owned")
     };
@@ -314,9 +314,9 @@ fn a_declined_takeover_stands_down_with_the_conflict_words() {
         .expect("journal opens");
     let step = Fake {
         probe_result: Probe::Conflict {
-            with: "cosmos".to_owned(),
-            detail: "cosmos is already scheduling this machine".to_owned(),
-            yours: Some("scxctl stop".to_owned()),
+            with: "tuned.service".to_owned(),
+            detail: "tuned.service sets the governor on its own schedule".to_owned(),
+            yours: Some("systemctl disable --now tuned.service".to_owned()),
         },
         ..Fake::applicable("test.owned")
     };
@@ -339,7 +339,7 @@ fn a_declined_takeover_stands_down_with_the_conflict_words() {
         &report.steps[0].outcome,
         Outcome::Skipped {
             reason: SkipReason::Conflict { with, .. }
-        } if with == "cosmos"
+        } if with == "tuned.service"
     ));
 }
 

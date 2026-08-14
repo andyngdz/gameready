@@ -96,26 +96,6 @@ pub enum Change {
         was_active: bool,
     },
 
-    /// A third-party package repository added to the system.
-    ///
-    /// Held as the spec its tooling accepts (`ppa:owner/name`) rather than as
-    /// the files that were written, because the tool that adds one is the only
-    /// thing that reliably knows which files those are, and it is also the
-    /// thing that removes them.
-    AptRepository { spec: String },
-
-    /// A sched_ext CPU scheduler loaded at runtime.
-    ///
-    /// This one evaporates on reboot by itself, like
-    /// [`SysctlRuntime`](Self::SysctlRuntime), and there is deliberately no
-    /// paired file that makes it persist. The undo unloads it now so nobody has
-    /// to reboot to get their old scheduler back.
-    ScxScheduler {
-        /// What was loaded before, if anything. `None` means the kernel was on
-        /// its own scheduler and the undo is to hand it back.
-        previous: Option<String>,
-    },
-
     /// A directory gameready created.
     ///
     /// Carries the privilege it was made with, like every other path record: a
@@ -209,12 +189,6 @@ impl Change {
                 } else {
                     PriorUnitState::WasDisabled
                 },
-            },
-
-            Self::AptRepository { spec } => Undo::RemoveAptRepository { spec: spec.clone() },
-
-            Self::ScxScheduler { previous } => Undo::RestoreScxScheduler {
-                previous: previous.clone(),
             },
 
             Self::DirCreated { path, privilege } => Undo::RemoveDirIfEmpty {

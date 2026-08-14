@@ -55,15 +55,7 @@ impl<'a> DoctorReport<'a> {
                 self.facts.distro.package_manager()
             ),
         )?;
-        let sched_ext = if self.machine.sched_ext_ready {
-            "sched_ext ready"
-        } else {
-            "no sched_ext"
-        };
-        s.labelled(
-            "kernel",
-            &format!("{} · {sched_ext}", self.facts.kernel_release),
-        )?;
+        s.labelled("kernel", &self.facts.kernel_release)?;
         s.labelled("swap", &self.swap_line())?;
         s.labelled("disks", &self.disks_line())
     }

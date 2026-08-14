@@ -251,8 +251,6 @@ fn apply_records_dir_tree_installed() {
         | Change::SysfsWrite { .. }
         | Change::PackagesInstalled { .. }
         | Change::SystemdUnit { .. }
-        | Change::AptRepository { .. }
-        | Change::ScxScheduler { .. }
         | Change::DirCreated { .. }) => panic!("expected DirTreeInstalled, got {other:?}"),
     }
 }

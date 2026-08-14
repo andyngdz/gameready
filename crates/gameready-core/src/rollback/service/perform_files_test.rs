@@ -84,11 +84,13 @@ fn a_directory_tree_that_is_already_gone_needs_no_undo() {
 fn a_removed_directory_is_named_in_what_the_undo_reports() {
     // The reason a directory undo says which path it took is that the summary
     // is the only place a user sees it; nothing else prints the path.
-    let runner = MockRunner::new().with_file("/etc/scx_loader", String::new());
-    let outcome = remove_dir(&runner, Path::new("/etc/scx_loader"), Privilege::Root);
+    let runner = MockRunner::new().with_file("/etc/gameready-test", String::new());
+    let outcome = remove_dir(&runner, Path::new("/etc/gameready-test"), Privilege::Root);
 
     match outcome {
-        UndoOutcome::Reverted { detail } => assert!(detail.contains("/etc/scx_loader"), "{detail}"),
+        UndoOutcome::Reverted { detail } => {
+            assert!(detail.contains("/etc/gameready-test"), "{detail}")
+        }
         other @ (UndoOutcome::AlreadyGone
         | UndoOutcome::Left { .. }
         | UndoOutcome::Refused { .. }

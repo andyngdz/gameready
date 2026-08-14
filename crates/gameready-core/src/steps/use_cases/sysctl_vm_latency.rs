@@ -108,7 +108,7 @@ impl CoreImprovement for VmLatency {
         if readings.iter().all(KnobReading::already_set) {
             return Ok(Probe::AlreadyApplied {
                 evidence: format!(
-                    "all {count} already set, {key} is {current}",
+                    "{key} is {current} (all {count} at target)",
                     count = readings.len(),
                     key = first.knob.key,
                     current = first.current,
@@ -233,8 +233,6 @@ impl CoreImprovement for VmLatency {
                 | Change::SysfsWrite { .. }
                 | Change::PackagesInstalled { .. }
                 | Change::SystemdUnit { .. }
-                | Change::AptRepository { .. }
-                | Change::ScxScheduler { .. }
                 | Change::DirCreated { .. }
                 | Change::DirTreeInstalled { .. } => {}
             }

@@ -109,12 +109,12 @@ fn a_probe_that_could_not_read_says_it_guessed_at_nothing() {
 #[test]
 fn a_step_left_out_by_a_broken_one_names_the_step_that_broke() {
     let trouble = skipped(SkipReason::DependencyFailed {
-        on: ImprovementId::from_static("core.repo.scx-ppa"),
+        on: ImprovementId::from_static("core.test.broken"),
     })
     .trouble()
     .expect("trouble");
 
-    assert!(trouble.broke.contains("core.repo.scx-ppa"), "{trouble:?}");
+    assert!(trouble.broke.contains("core.test.broken"), "{trouble:?}");
 }
 
 #[test]

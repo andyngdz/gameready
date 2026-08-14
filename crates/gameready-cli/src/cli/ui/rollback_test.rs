@@ -81,14 +81,8 @@ fn each_undo_reads_as_a_subject_and_what_became_of_it() {
                 },
             ),
             entry(
-                Undo::RestoreScxScheduler { previous: None },
-                UndoOutcome::Reverted {
-                    detail: "restored".to_owned(),
-                },
-            ),
-            entry(
                 Undo::RestoreUnit {
-                    unit: "scx_loader.service".to_owned(),
+                    unit: "tuned.service".to_owned(),
                     prior: PriorUnitState::WasDisabled,
                 },
                 UndoOutcome::Failed {
@@ -101,7 +95,7 @@ fn each_undo_reads_as_a_subject_and_what_became_of_it() {
                     installed: vec![
                         "gamemode".to_owned(),
                         "mangohud".to_owned(),
-                        "scx-scheds".to_owned(),
+                        "lutris".to_owned(),
                     ],
                 },
                 UndoOutcome::Left {
@@ -128,18 +122,14 @@ fn each_undo_reads_as_a_subject_and_what_became_of_it() {
         "{text}"
     );
     assert!(
-        row("CPU scheduler ").contains("sched_ext unloaded, kernel scheduler back"),
-        "{text}"
-    );
-    assert!(
-        row("scx_loader.service").contains("could not stop: unit not found"),
+        row("tuned.service").contains("could not stop: unit not found"),
         "{text}"
     );
     // The package report is a note, not a row, and reads as a list.
     assert!(
-        text.contains("gamemode, mangohud and scx-scheds are still installed"),
+        text.contains("gamemode, mangohud and lutris are still installed"),
         "{text}"
     );
     assert!(text.contains("--purge-packages"), "{text}");
-    assert!(text.contains("3 reverted, 1 failed"), "{text}");
+    assert!(text.contains("2 reverted, 1 failed"), "{text}");
 }

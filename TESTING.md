@@ -56,7 +56,6 @@ Runs the full step lifecycle on the real system: probe, plan, apply, verify,
 rollback, verify reverted. This is the only way to test:
 
 - Writing to `/proc/sys` and `/sys`
-- Loading and unloading a sched_ext scheduler
 - Writing Steam config files against a real installation
 
 `selftest` needs the privileges the steps need (sudo for kernel parameters,

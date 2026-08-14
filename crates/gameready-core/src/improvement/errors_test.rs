@@ -5,7 +5,7 @@ const SUDO_REFUSED: &str = "sudo: interactive authentication is required";
 
 fn write_refused(reason: &str) -> StepError {
     StepError::Exec(ExecError::Write {
-        path: PathBuf::from("/etc/apt/preferences.d/99-gameready-scx.pref"),
+        path: PathBuf::from("/etc/sysctl.d/99-gameready.conf"),
         source: std::io::Error::other(reason.to_owned()),
     })
 }
@@ -21,7 +21,7 @@ fn a_write_failure_names_the_reason_the_system_gave() {
 
     let described = error.describe();
     assert!(
-        described.contains("99-gameready-scx.pref"),
+        described.contains("99-gameready.conf"),
         "still names the file: {described}"
     );
     assert!(
@@ -48,7 +48,7 @@ fn a_command_failure_shows_its_stderr() {
 #[test]
 fn a_refused_command_is_not_reported_twice() {
     let error = StepError::Exec(ExecError::NonZeroExit {
-        command: "sudo -n rm -f /etc/apt/preferences.d/99-gameready-scx.pref".to_owned(),
+        command: "sudo -n rm -f /etc/sysctl.d/99-gameready.conf".to_owned(),
         code: 1,
         stdout: String::new(),
         stderr: SUDO_REFUSED.to_owned(),

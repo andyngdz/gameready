@@ -24,7 +24,7 @@ pub struct Dependency {
     pub what: &'static str,
 
     /// Why this step needs it. One sentence.
-    /// "scx writes its scheduler in BPF, which only clang compiles"
+    /// "the bundle ships a BPF program, which only clang compiles"
     pub why: &'static str,
 }
 
@@ -34,9 +34,9 @@ impl Dependency {
         Self { kind, what, why }
     }
 
-    /// Whether the executor can resolve this by installing something. Kernel
-    /// version and kernel feature requirements cannot be installed, so a step
-    /// missing one becomes `NotApplicable` instead of entering the install set.
+    /// Whether the executor can resolve this by installing something. A kernel
+    /// version requirement cannot be installed, so a step missing one becomes
+    /// `NotApplicable` instead of entering the install set.
     #[must_use]
     pub const fn is_installable(&self) -> bool {
         matches!(
@@ -55,20 +55,19 @@ impl Dependency {
         match &self.kind {
             DependencyKind::Binary { provided_by, .. } => provided_by.approx_bytes,
             DependencyKind::Package { spec } => spec.approx_bytes,
-            DependencyKind::Kernel { .. } | DependencyKind::Feature { .. } => 0,
+            DependencyKind::Kernel { .. } => 0,
         }
     }
 
     /// What this is called on the given package tooling.
     ///
-    /// `None` for a kernel version or a kernel feature, which no package
-    /// manager has a name for.
+    /// `None` for a kernel version, which no package manager has a name for.
     #[must_use]
     pub const fn package_name(&self, packages: PackageManagerKind) -> Option<&'static str> {
         match &self.kind {
             DependencyKind::Binary { provided_by, .. } => provided_by.name_for(packages),
             DependencyKind::Package { spec } => spec.name_for(packages),
-            DependencyKind::Kernel { .. } | DependencyKind::Feature { .. } => None,
+            DependencyKind::Kernel { .. } => None,
         }
     }
 }
@@ -92,10 +91,6 @@ pub enum DependencyKind {
 
     /// Minimum kernel version. Not installable.
     Kernel { min: KernelVersion },
-
-    /// A kernel-exposed path that must exist, such as `/sys/kernel/sched_ext`.
-    /// Not installable.
-    Feature { path: &'static str },
 }
 
 /// Package names differ per distro family, so a spec carries one name per

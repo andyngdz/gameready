@@ -215,8 +215,6 @@ impl CoreImprovement for IoScheduler {
                 | Change::SysctlRuntime { .. }
                 | Change::PackagesInstalled { .. }
                 | Change::SystemdUnit { .. }
-                | Change::AptRepository { .. }
-                | Change::ScxScheduler { .. }
                 | Change::DirCreated { .. }
                 | Change::DirTreeInstalled { .. } => {}
             }

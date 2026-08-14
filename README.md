@@ -17,8 +17,7 @@ change is reversible.
 | **Graphics & shaders** | Shader cache | Raises the GPU's shader cache ceiling so games stop recompiling shaders, the classic mid-game stutter |
 | | FPS + GPU monitor | Installs mangohud so you can see FPS, GPU and CPU usage, temperatures, and frame times in game |
 | | Proton-GE | Ships a newer Vulkan stack (DXVK, vkd3d-proton) so Windows games run with fewer graphics issues |
-| **CPU** | CPU scheduler | Runs the threads games wait on first, so stutter under load drops |
-| | CPU speed | Keeps the CPU at full speed while you play |
+| **CPU** | CPU speed | Keeps the CPU at full speed while you play |
 | | Split-lock | Disables a CPU penalty that crawls some games |
 | | Game boost | Raises game priority and CPU speed while the game runs, then restores |
 | **Memory & storage** | Memory map limit | Raises the kernel's memory-map limit so memory-hungry games start instead of crashing on launch |
@@ -206,8 +205,8 @@ gameready selftest                               # real system, real rollback
 ## Milestones
 
 All planned milestones (M1 through M7) are complete: engine and journal,
-system detection, package and service steps, Steam profiles, sched_ext and
-Proton-GE, the full `init` flow, and the remaining system tunings.
+system detection, package and service steps, Steam profiles, Proton-GE, the
+full `init` flow, and the remaining system tunings.
 
 ## License
 

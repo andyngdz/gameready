@@ -25,14 +25,6 @@ line = "apt-cache show mangohud"
 stdout = "Package: mangohud\nVersion: 0.8.2~rc2\nInstalled-Size: 5120\n"
 
 [[commands]]
-line = "dpkg-query --showformat=${Version} --show scx"
-code = 1
-
-[[commands]]
-line = "apt-cache show scx"
-code = 1
-
-[[commands]]
 line = "systemctl is-active ananicy-cpp"
 stdout = "inactive\n"
 code = 3

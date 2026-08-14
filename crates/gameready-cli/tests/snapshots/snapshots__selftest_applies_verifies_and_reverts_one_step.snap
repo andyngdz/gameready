@@ -7,7 +7,7 @@ exit code: 0
 
 Applying each tuning, then undoing it, to prove both halves work
 
-  - Competing daemons         skipped, already set, no competing daemons found
+  - Competing daemons      skipped, already set, no competing daemons found
 
 All 1 passed. Your machine is as it was: selftest undoes its own work even when the test itself
 fails.

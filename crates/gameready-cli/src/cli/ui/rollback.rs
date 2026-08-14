@@ -129,14 +129,9 @@ impl<'a> RollbackSummary<'a> {
             Undo::SetSysctl { value, .. } | Undo::WriteSysfs { value, .. } => {
                 format!("back to {value}")
             }
-            Undo::RestoreScxScheduler { previous } => previous.as_ref().map_or_else(
-                || "sched_ext unloaded, kernel scheduler back".to_owned(),
-                |scheduler| format!("back to {scheduler}"),
-            ),
             Undo::RestoreFile { .. } => "restored from the copy taken first".to_owned(),
             Undo::RestoreUnit { .. } => "disabled again".to_owned(),
             Undo::DeleteFile { .. }
-            | Undo::RemoveAptRepository { .. }
             | Undo::RemoveDirIfEmpty { .. }
             | Undo::RemoveDirTree { .. } => "removed".to_owned(),
             Undo::ReportPackages { .. } => String::new(),

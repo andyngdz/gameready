@@ -18,9 +18,9 @@ fn reports_an_installed_package_with_its_version() {
 #[test]
 fn reports_an_uninstalled_but_available_package() {
     let runner = MockRunner::new()
-        .failing("pacman -Q scx-scheds")
-        .answering("pacman -Si scx-scheds", "Repository : extra\n");
-    let state = Pacman.state(&runner, "scx-scheds").expect("queries");
+        .failing("pacman -Q lutris")
+        .answering("pacman -Si lutris", "Repository : extra\n");
+    let state = Pacman.state(&runner, "lutris").expect("queries");
 
     assert_eq!(state, PackageState::Available);
 }

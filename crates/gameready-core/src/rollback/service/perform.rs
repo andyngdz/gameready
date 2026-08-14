@@ -9,10 +9,7 @@ use crate::rollback::domain::{PackagePolicy, UndoOutcome};
 use crate::rollback::service::perform_files::{
     delete_file, remove_dir, remove_dir_tree, restore_file,
 };
-use crate::steps::{
-    restore_scheduler as restore_scheduler_cmd, ADD_APT_REPOSITORY_BIN, APT_ASSUME_YES, APT_REMOVE,
-    SYSCTL_BIN,
-};
+use crate::steps::SYSCTL_BIN;
 use crate::systemd::{DISABLE, NOW, RESTART, SYSTEMCTL};
 
 /// Reverses one recorded change.
@@ -42,10 +39,6 @@ pub(super) fn perform(
         Undo::ReportPackages { installed, .. } => report_packages(installed, packages),
 
         Undo::RestoreUnit { unit, prior } => restore_unit(runner, unit, *prior),
-
-        Undo::RemoveAptRepository { spec } => remove_repository(runner, spec),
-
-        Undo::RestoreScxScheduler { previous } => restore_scheduler(runner, previous.as_deref()),
 
         Undo::RemoveDirIfEmpty { path, privilege } => remove_dir(runner, path, *privilege),
 
@@ -125,45 +118,6 @@ fn restore_unit(runner: &dyn CommandRunner, unit: &str, prior: PriorUnitState) -
                 },
             }
         }
-    }
-}
-
-/// Takes a third-party repository back off the system.
-///
-/// The same tool that added it removes it, so nothing here has to know which
-/// files were written or where the signing key landed.
-fn remove_repository(runner: &dyn CommandRunner, spec: &str) -> UndoOutcome {
-    let cmd = Cmd::root(ADD_APT_REPOSITORY_BIN)
-        .arg(APT_ASSUME_YES)
-        .arg(APT_REMOVE)
-        .arg(spec);
-    match runner.run(&cmd) {
-        Ok(_) => UndoOutcome::Reverted {
-            detail: format!("{spec} removed"),
-        },
-        Err(error) => UndoOutcome::Failed {
-            error: error.to_string(),
-        },
-    }
-}
-
-/// Hands scheduling back to whatever was running before.
-///
-/// Unloading takes effect on the next scheduling decision, so this is one of
-/// the few undos the user can feel finish. It is also why the step that loads a
-/// scheduler never writes a config file to make it persist: there would then be
-/// two things to undo, and only one of them instant.
-fn restore_scheduler(runner: &dyn CommandRunner, previous: Option<&str>) -> UndoOutcome {
-    match runner.run(&restore_scheduler_cmd(previous)) {
-        Ok(_) => UndoOutcome::Reverted {
-            detail: previous.map_or_else(
-                || "the kernel's own scheduler is back".to_owned(),
-                |scheduler| format!("{scheduler} is back"),
-            ),
-        },
-        Err(error) => UndoOutcome::Failed {
-            error: error.to_string(),
-        },
     }
 }
 

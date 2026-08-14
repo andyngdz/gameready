@@ -57,7 +57,7 @@ fn every_row_of_a_ready_snapshot_gets_its_own_line() {
     let snapshot = Snapshot::Ready {
         rows: vec![
             row("Swappiness", ProbeStatus::Ready),
-            row("scx lavd", ProbeStatus::Inactive),
+            row("I/O scheduler", ProbeStatus::Inactive),
         ],
     };
 

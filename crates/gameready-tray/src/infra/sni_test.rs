@@ -69,7 +69,7 @@ fn two_tunings() -> Snapshot {
     Snapshot::Ready {
         rows: vec![
             row("Swappiness", ProbeStatus::Set),
-            row("scx lavd", ProbeStatus::Inactive),
+            row("I/O scheduler", ProbeStatus::Inactive),
         ],
     }
 }
@@ -105,7 +105,7 @@ fn every_tuning_lives_one_hover_away() {
 
     assert_eq!(rows.len(), 2, "{rows:?}");
     assert!(rows[0].contains("Swappiness"), "{rows:?}");
-    assert!(rows[1].contains("scx lavd"), "{rows:?}");
+    assert!(rows[1].contains("I/O scheduler"), "{rows:?}");
 }
 
 #[test]
@@ -160,7 +160,7 @@ fn the_hover_line_counts_the_tunings_that_hold() {
         rows: vec![
             row("Swappiness", ProbeStatus::Set),
             row("split lock", ProbeStatus::Set),
-            row("scx lavd", ProbeStatus::Inactive),
+            row("I/O scheduler", ProbeStatus::Inactive),
         ],
     });
 

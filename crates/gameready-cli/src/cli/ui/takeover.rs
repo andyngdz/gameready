@@ -24,7 +24,7 @@ enum Takeover {
 impl fmt::Display for Takeover {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
-            Self::TakeIt => "Switch to scx_lavd",
+            Self::TakeIt => "Take it over",
             Self::LeaveIt => "Leave it running",
         })
     }
@@ -42,8 +42,7 @@ impl fmt::Display for Takeover {
 pub fn choose_takeover(contested: &Contested) -> Result<bool> {
     let question = format!("{}?", contested.step.name());
     let why = format!(
-        "{} is scheduling the CPU. Not a promise of more FPS. {} {} stops while this takes \
-         over.",
+        "{} is already doing this. {} {} stops while this takes over.",
         contested.with,
         contested.step.gains().unwrap_or_default(),
         contested.with,

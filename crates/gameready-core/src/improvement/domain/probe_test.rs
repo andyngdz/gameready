@@ -12,7 +12,7 @@ fn every_finding_reads_as_a_phrase_that_follows_a_step_name() {
             latest: "GE-Proton11-5".to_owned(),
         },
         Probe::NotApplicable {
-            reason: "Arch ships scx".to_owned(),
+            reason: "Arch already ships mangohud".to_owned(),
         },
         Probe::Conflict {
             with: "tuned.service".to_owned(),
@@ -41,7 +41,7 @@ fn a_result_nothing_will_come_of_reads_as_inactive_whether_or_not_probing_worked
     // Both mean "this row will not change", and a surface that told them apart
     // by colour would be inventing a distinction the user cannot act on.
     let ruled_out = Probe::NotApplicable {
-        reason: "kernel has no sched_ext".to_owned(),
+        reason: "this machine cannot run it".to_owned(),
     };
     let unreadable = Probe::Unknown {
         reason: "github.com timed out".to_owned(),
@@ -99,7 +99,7 @@ fn attention_is_reserved_for_a_probe_that_could_not_read_the_machine() {
             evidence: "swappiness is 10".to_owned(),
         },
         Probe::NotApplicable {
-            reason: "kernel has no sched_ext".to_owned(),
+            reason: "this machine cannot run it".to_owned(),
         },
         Probe::Conflict {
             with: "tuned.service".to_owned(),

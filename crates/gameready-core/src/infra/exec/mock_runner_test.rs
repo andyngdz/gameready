@@ -61,28 +61,28 @@ fn which_answers_only_for_seeded_binaries() {
 
 #[test]
 fn a_command_seeded_as_failing_succeeds_once_the_command_that_fixes_it_has_run() {
-    // The whole reason the feature exists: apt cannot see scx until the PPA is
-    // added, and a mock whose answers never move cannot express that.
+    // The whole reason the feature exists: apt cannot see lutris until its PPA
+    // is added, and a mock whose answers never move cannot express that.
     let runner = MockRunner::new()
-        .failing("apt-cache show scx")
+        .failing("apt-cache show lutris")
         .where_command_changes_answer(
-            "sudo add-apt-repository ppa:scx",
-            "apt-cache show scx",
-            "Package: scx\n",
+            "sudo add-apt-repository ppa:lutris",
+            "apt-cache show lutris",
+            "Package: lutris\n",
         );
 
     runner
-        .run(&Cmd::user("apt-cache").arg("show").arg("scx"))
+        .run(&Cmd::user("apt-cache").arg("show").arg("lutris"))
         .expect_err("nothing has added the repository yet");
 
     runner
-        .run(&Cmd::root("add-apt-repository").arg("ppa:scx"))
+        .run(&Cmd::root("add-apt-repository").arg("ppa:lutris"))
         .expect("adds the repository");
 
     let output = runner
-        .run(&Cmd::user("apt-cache").arg("show").arg("scx"))
+        .run(&Cmd::user("apt-cache").arg("show").arg("lutris"))
         .expect("the package is visible now");
-    assert_eq!(output.stdout_trimmed(), "Package: scx");
+    assert_eq!(output.stdout_trimmed(), "Package: lutris");
 }
 
 #[test]

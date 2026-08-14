@@ -22,7 +22,7 @@ impl MockRunner {
     /// Records that running `trigger` changes how `command` answers.
     ///
     /// The system a run inspects is not the system it finishes on. Adding a
-    /// package repository is the case this exists for: `apt-cache show scx`
+    /// package repository is the case this exists for: `apt-cache show lutris`
     /// fails before `add-apt-repository` and succeeds after it, and without
     /// that a test cannot tell a step that probes again from one that does not.
     #[must_use]
