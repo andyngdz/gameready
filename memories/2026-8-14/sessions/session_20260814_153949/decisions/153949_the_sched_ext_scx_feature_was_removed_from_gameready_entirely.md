@@ -5,6 +5,12 @@ The whole CPU scheduler feature — `core.sched.scx-lavd` and `core.repo.scx-ppa
 plus every bit of its machinery — was cut in one removal. The user called the
 scheduler "garbage" and approved a hard removal:
 
+Actual reason, user-reported: while gaming under `scx_lavd`, **audio got
+wrecked** (glitching). That matches lavd's documented trade-off — it reorders
+thread wakeups for frame pacing, which can starve latency-sensitive audio
+threads (PipeWire). Treat "lavd wrecked my audio" as a live lead if the
+scheduler ever comes back.
+
 - Deleted: `scx_lavd`, `scx_lavd_loader`, `scx_lavd_packages`, `scx_ppa`,
   `scx_ppa_pin`, `scx_state`, `steps/domain/sched_ext.rs`,
   `steps/constants/scx.rs`, and the integration test
