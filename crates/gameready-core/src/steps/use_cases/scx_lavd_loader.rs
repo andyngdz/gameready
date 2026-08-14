@@ -42,36 +42,6 @@ pub(super) fn takeover_stop(cx: &CoreCx<'_>) -> Option<String> {
     })
 }
 
-/// How long an attaching scheduler may take, and how often the load asks.
-///
-/// `systemctl enable --now` returns once the unit's wrapper shell is up, but
-/// the BPF program it execs attaches a couple of seconds later. The window
-/// has to cover a scheduler loaded from a cold cache, which is the slowest
-/// case.
-const ATTACH_WINDOW: std::time::Duration = std::time::Duration::from_secs(15);
-const ATTACH_POLL: std::time::Duration = std::time::Duration::from_millis(250);
-
-/// Waits until the kernel reports the scheduler this load started.
-///
-/// Without the wait a step would return the moment its start command
-/// succeeded and then fail verification against a kernel that had not caught
-/// up, undoing a load that was about to land.
-fn wait_for_attach(cx: &mut ApplyCx<'_, CoreCx<'_>>) -> Result<(), StepError> {
-    let deadline = std::time::Instant::now() + ATTACH_WINDOW;
-    loop {
-        if read_sched_ext(cx.reader()).is_running(LAVD_SCHEDULER) {
-            return Ok(());
-        }
-        if std::time::Instant::now() >= deadline {
-            return Err(StepError::StartupTimeout {
-                what: format!("scx_{LAVD_SCHEDULER}"),
-                window: ATTACH_WINDOW.as_secs(),
-            });
-        }
-        std::thread::sleep(ATTACH_POLL);
-    }
-}
-
 /// Which mechanism this system uses to put a scheduler in charge.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Loader {
@@ -149,8 +119,7 @@ fn load_with_scxctl(cx: &mut ApplyCx<'_, CoreCx<'_>>) -> Result<(), StepError> {
     cx.mutate(Change::ScxScheduler { previous }, |runner| {
         let load = load_scheduler(LAVD_SCHEDULER);
         runner.run(&load).map(|_| ()).map_err(StepError::Exec)
-    })?;
-    wait_for_attach(cx)
+    })
 }
 
 /// Points the distro's unit at scx_lavd and starts it.
@@ -165,8 +134,7 @@ fn load_with_unit(cx: &mut ApplyCx<'_, CoreCx<'_>>) -> Result<(), StepError> {
         hand_the_unit_over(cx, prior)?;
     }
     write_the_dropin(cx)?;
-    start_the_unit(cx, prior)?;
-    wait_for_attach(cx)
+    start_the_unit(cx, prior)
 }
 
 /// Stops the unit a takeover is about to re-point, recording its handover
@@ -226,9 +194,19 @@ fn start_the_unit(cx: &mut ApplyCx<'_, CoreCx<'_>>, prior: UnitState) -> Result<
 }
 
 /// The drop-in body, carrying the marker `doctor` finds it by.
+///
+/// The `ExecStartPost` is what makes the unit report readiness honestly: the
+/// package unit is `Type=simple`, so `systemctl enable --now` returns the
+/// moment the wrapper shell spawns, while the scheduler's BPF program
+/// attaches a couple of seconds later. The post waits for the kernel to name
+/// the scheduler, so the start command blocks until the scheduler is actually
+/// running, and a scheduler that never attaches fails the unit instead of
+/// letting the step verify a machine that had not caught up.
 fn dropin_contents(run: crate::journal::RunId) -> String {
     format!(
-        "{header}\n[Service]\nEnvironment={SCX_SCHEDULER_OVERRIDE}={SCX_LAVD_BIN}\n",
+        "{header}\n[Service]\nEnvironment={SCX_SCHEDULER_OVERRIDE}={SCX_LAVD_BIN}\n\
+         ExecStartPost=/bin/sh -c 'i=0; while [ $i -lt 100 ]; do grep -q ^lavd \
+         /sys/kernel/sched_ext/root/ops && exit 0; sleep 0.1; i=$((i+1)); done; exit 1'\n",
         header = crate::steps::constants::managed_header(
             crate::steps::use_cases::scx_lavd::ScxLavd::id_const(),
             run
