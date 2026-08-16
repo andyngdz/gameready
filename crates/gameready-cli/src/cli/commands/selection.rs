@@ -6,7 +6,7 @@ use anyhow::{anyhow, Context as _, Result};
 use gameready_core::improvement::{CoreImprovement, ImprovementId};
 use gameready_core::steps::{core_steps, find_core_step, game_steps};
 
-use crate::cli::commands::game_steps::{build_game_step, is_game_step};
+use crate::cli::commands::game_steps::{build_game_step, is_game_step, GameStepBuildError};
 
 /// The steps a `--step` flag selects: the one named, or all of them.
 ///
@@ -17,7 +17,7 @@ pub fn select_steps(step: Option<&str>) -> Result<Vec<Box<dyn CoreImprovement>>>
     let Some(requested) = step else {
         return Ok(core_steps());
     };
-    Ok(vec![find_step(requested)?])
+    Ok(vec![find_step_core(requested)?])
 }
 
 /// The same, for a caller that can also run the per-game steps.
@@ -55,10 +55,19 @@ pub fn select_steps_including_games(
 /// The inert ones carry no config path and no targets, so they probe as not
 /// applicable and the summary says which machine fact stopped them. That is
 /// the same answer a container gets for the shader cache step.
+///
+/// The fallback is deliberate rather than a blanket `unwrap_or`: every way a
+/// build can fail is named, and a machine without Steam, or without an
+/// installed game to write, degrades to a skip. Because the match is
+/// exhaustive, a build failure that is none of those could not be skipped
+/// silently, it would not compile.
 fn game_steps_or_inert(user_games_dir: &Path) -> Vec<Box<dyn CoreImprovement>> {
     game_steps()
         .into_iter()
-        .map(|inert| build_game_step(&inert.id(), user_games_dir).unwrap_or(inert))
+        .map(|inert| match build_game_step(&inert.id(), user_games_dir) {
+            Ok(step) => step,
+            Err(GameStepBuildError::SteamUnavailable | GameStepBuildError::NoGames { .. }) => inert,
+        })
         .collect()
 }
 
@@ -68,16 +77,28 @@ fn game_steps_or_inert(user_games_dir: &Path) -> Vec<Box<dyn CoreImprovement>> {
 /// something anyone remembers, so the error carries them rather than sending
 /// the user off to another command to find out.
 pub fn find_step(requested: &str) -> Result<Box<dyn CoreImprovement>> {
+    find_step_in(requested, core_steps().into_iter().chain(game_steps()))
+}
+
+/// One core step by id, or an error naming the core ids there are.
+///
+/// The same as [`find_step`] without the per-game ids. `apply --step` can only
+/// reach the core steps, so its error must not suggest ids the command will
+/// always reject: listing them would send the user into the same error twice.
+pub fn find_step_core(requested: &str) -> Result<Box<dyn CoreImprovement>> {
+    find_step_in(requested, core_steps())
+}
+
+fn find_step_in(
+    requested: &str,
+    known: impl IntoIterator<Item = Box<dyn CoreImprovement>>,
+) -> Result<Box<dyn CoreImprovement>> {
     let id = ImprovementId::parse(requested)
         .with_context(|| format!("`{requested}` is not a step id"))?;
 
     find_core_step(&id).ok_or_else(|| {
-        // The per-game ids are listed too. They are real ids a user can read off
-        // `explain`, and leaving them out of the error makes a correct id look
-        // like a typo.
-        let known: Vec<String> = core_steps()
-            .iter()
-            .chain(game_steps().iter())
+        let known: Vec<String> = known
+            .into_iter()
             .map(|step| step.id().to_string())
             .collect();
         anyhow!(

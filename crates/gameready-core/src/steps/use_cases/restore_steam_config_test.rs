@@ -14,22 +14,22 @@ fn written() -> String {
     indoc! {r#"
         "UserLocalConfigStore"
         {
-        	"Software"
-        	{
-        		"Valve"
-        		{
-        			"Steam"
-        			{
-        				"apps"
-        				{
-        					"1422450"
-        					{
-        						"LaunchOptions"		"gamemoderun %command%"
-        					}
-        				}
-        			}
-        		}
-        	}
+            "Software"
+            {
+                "Valve"
+                {
+                    "Steam"
+                    {
+                        "apps"
+                        {
+                            "1422450"
+                            {
+                                "LaunchOptions"		"gamemoderun %command%"
+                            }
+                        }
+                    }
+                }
+            }
         }
     "#}
     .to_owned()

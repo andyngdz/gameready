@@ -11,27 +11,27 @@ fn config() -> String {
     indoc! {r#"
         "UserLocalConfigStore"
         {
-        	"Software"
-        	{
-        		"Valve"
-        		{
-        			"Steam"
-        			{
-        				"apps"
-        				{
-        					"730"
-        					{
-        						"LastPlayed"		"1763837497"
-        						"LaunchOptions"		"LD_PRELOAD="
-        					}
-        					"1422450"
-        					{
-        						"LastPlayed"		"1785943212"
-        					}
-        				}
-        			}
-        		}
-        	}
+            "Software"
+            {
+                "Valve"
+                {
+                    "Steam"
+                    {
+                        "apps"
+                        {
+                            "730"
+                            {
+                                "LastPlayed"		"1763837497"
+                                "LaunchOptions"		"LD_PRELOAD="
+                            }
+                            "1422450"
+                            {
+                                "LastPlayed"		"1785943212"
+                            }
+                        }
+                    }
+                }
+            }
         }
     "#}
     .to_owned()
