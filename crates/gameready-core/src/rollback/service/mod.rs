@@ -56,17 +56,40 @@ pub fn plan(records: &[JournalRecord], target: RunId) -> Result<RollbackPlan, Ro
 /// fresh run id, so the newest run is often the previous rollback, which by
 /// definition has nothing to undo. Runs already undone are skipped too, so
 /// running `rollback` twice does not re-target work that is already reversed.
+///
+/// A run is only counted as undone when the rollback that targeted it wrote its
+/// `RollbackEnd`. One that was killed or failed partway has `RollbackBegin`
+/// with no `RollbackEnd`, and its target is only partially undone: skipping it
+/// would silently leave the rest of its changes in place and move on to an
+/// older run. Re-targeting it instead is safe, because each undo is idempotent.
 #[must_use]
 pub fn latest_run(records: &[JournalRecord]) -> Option<RunId> {
-    let undone: Vec<RunId> = records
+    let completed: Vec<RunId> = records
         .iter()
         .filter_map(|record| match &record.event {
-            JournalEvent::RollbackBegin { target } => Some(*target),
+            JournalEvent::RollbackEnd { .. } => Some(record.run),
             JournalEvent::RunBegin { .. }
             | JournalEvent::StepBegin { .. }
             | JournalEvent::Changed { .. }
             | JournalEvent::StepEnd { .. }
             | JournalEvent::RunEnd { .. }
+            | JournalEvent::RollbackBegin { .. }
+            | JournalEvent::Undone { .. } => None,
+        })
+        .collect();
+
+    let undone: Vec<RunId> = records
+        .iter()
+        .filter_map(|record| match &record.event {
+            JournalEvent::RollbackBegin { target } if completed.contains(&record.run) => {
+                Some(*target)
+            }
+            JournalEvent::RunBegin { .. }
+            | JournalEvent::StepBegin { .. }
+            | JournalEvent::Changed { .. }
+            | JournalEvent::StepEnd { .. }
+            | JournalEvent::RunEnd { .. }
+            | JournalEvent::RollbackBegin { .. }
             | JournalEvent::Undone { .. }
             | JournalEvent::RollbackEnd { .. } => None,
         })

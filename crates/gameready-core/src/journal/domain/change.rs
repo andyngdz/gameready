@@ -94,12 +94,8 @@ pub enum Change {
         newly_installed: Vec<String>,
     },
 
-    /// A systemd unit whose enabled or active state was changed.
-    SystemdUnit {
-        unit: String,
-        was_enabled: bool,
-        was_active: bool,
-    },
+    /// A systemd unit whose enabled state was changed.
+    SystemdUnit { unit: String, was_enabled: bool },
 
     /// A directory gameready created.
     ///

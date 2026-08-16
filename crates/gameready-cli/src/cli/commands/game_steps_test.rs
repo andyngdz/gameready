@@ -29,7 +29,7 @@ fn a_machine_without_steam_says_so_rather_than_reporting_a_skip() {
 
     let text = error.to_string();
     assert!(
-        text.contains("Steam") || text.contains("profile"),
+        text.contains("Steam") || text.contains("installed games"),
         "the error does not say what was missing: {text}"
     );
 }

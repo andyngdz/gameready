@@ -66,7 +66,14 @@ fn steam_config_put_back(
     let current = runner.read_to_string(path).ok()?;
     match sections_match(&current, sections) {
         Ok(true) => None,
-        Ok(false) => Some(format!("{} still holds what the run wrote", path.display())),
+        // The undo claimed to have put the recorded keys back and they do not
+        // read back that way. The message stays on what the record promised
+        // rather than guessing which side moved: Steam may have dropped a block
+        // the run wrote, or recreated one the undo removed.
+        Ok(false) => Some(format!(
+            "{} does not read back the keys the run recorded",
+            path.display()
+        )),
         Err(error) => Some(error.to_string()),
     }
 }

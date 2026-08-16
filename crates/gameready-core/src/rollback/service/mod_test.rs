@@ -135,8 +135,10 @@ fn a_rollbacks_own_run_is_never_the_next_target() {
 
 #[test]
 fn a_run_that_failed_to_roll_back_is_still_targetable() {
-    // The 15:25 failure on a cold sudo cache left RollbackBegin without any
-    // change of its own; the applied run must stay reachable so a retry works.
+    // RollbackBegin with no RollbackEnd means the rollback never finished, so
+    // the applied run stays the next bare rollback's target. Re-targeting is
+    // safe: every undo is idempotent, and already-undone changes read back as
+    // nothing left to do.
     let dir = TempDir::new().expect("temp dir");
     let (applied, _) = recorded_run(&dir);
     let paths = StatePaths::new(dir.path().to_path_buf());
@@ -148,9 +150,33 @@ fn a_run_that_failed_to_roll_back_is_still_targetable() {
         .expect("appends");
 
     let records = crate::journal::load(&paths.journal()).expect("reads");
-    assert_eq!(latest_run(&records), None, "marked undone once begun");
-    // Retrying by id always works, which is what the summary tells the user.
+    assert_eq!(latest_run(&records), Some(applied));
     assert!(plan(&records, applied).is_ok());
+}
+
+#[test]
+fn a_rollback_that_died_halfway_leaves_the_run_targetable() {
+    // Killed between two undos: RollbackBegin and one Undone are on disk, no
+    // RollbackEnd. The run has changes the rollback never reached, so a bare
+    // rollback has to target it again.
+    let dir = TempDir::new().expect("temp dir");
+    let (applied, _) = recorded_run(&dir);
+    let paths = StatePaths::new(dir.path().to_path_buf());
+
+    let mut rollback_journal =
+        Journal::open(paths.clone(), RunId::generate()).expect("journal opens");
+    rollback_journal
+        .append(JournalEvent::RollbackBegin { target: applied })
+        .expect("appends");
+    rollback_journal
+        .append(JournalEvent::Undone {
+            step: step(),
+            detail: "one change undone".to_owned(),
+        })
+        .expect("appends");
+
+    let records = crate::journal::load(&paths.journal()).expect("reads");
+    assert_eq!(latest_run(&records), Some(applied));
 }
 
 #[test]

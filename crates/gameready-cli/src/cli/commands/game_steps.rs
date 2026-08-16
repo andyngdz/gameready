@@ -4,9 +4,9 @@
 //! no picker in `selftest`, so this takes the same route the picker's defaults
 //! would: every installed game gameready has a profile for.
 
+use std::fmt;
 use std::path::Path;
 
-use anyhow::{anyhow, Context as _, Result};
 use gameready_core::improvement::{CoreImprovement, ImprovementId};
 use gameready_core::infra::steam::{
     configs_under, discover_setups, installed_compat_tools, locate_steam_dir,
@@ -14,8 +14,36 @@ use gameready_core::infra::steam::{
 use gameready_core::run::{compat_wishes_for, targets_for};
 use gameready_core::steps::{resolve_wishes, SteamLaunchOptions, SteamProton};
 
-/// What to say when Steam's own files cannot be found.
-const NO_STEAM: &str = "could not find a Steam installation to test against";
+/// Why a per-game step could not be built.
+///
+/// A typed error so the selftest sweep can tell a missing machine from a broken
+/// one: the first is a skip, the second has to fail or "all passed" would be a
+/// lie about a step that was never really run.
+#[derive(Debug)]
+pub enum GameStepBuildError {
+    /// No Steam installation to build the step against, or no account config
+    /// under it yet.
+    SteamUnavailable,
+    /// No installed games to write the step to. The scan covers every game
+    /// Steam has installed; a gameready profile only changes what gets written.
+    NoGames { step: ImprovementId },
+}
+
+impl fmt::Display for GameStepBuildError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::SteamUnavailable => {
+                f.write_str("could not find a Steam installation to test against")
+            }
+            Self::NoGames { step } => write!(
+                f,
+                "no installed games were found, so there is nothing for `{step}` to write"
+            ),
+        }
+    }
+}
+
+impl std::error::Error for GameStepBuildError {}
 
 /// Whether an id names one of the per-game steps.
 #[must_use]
@@ -32,16 +60,13 @@ pub fn is_game_step(id: &ImprovementId) -> bool {
 pub fn build_game_step(
     id: &ImprovementId,
     user_games_dir: &Path,
-) -> Result<Box<dyn CoreImprovement>> {
-    let steam = locate_steam_dir().context(NO_STEAM)?;
-    let configs = configs_under(&steam).context(NO_STEAM)?;
+) -> Result<Box<dyn CoreImprovement>, GameStepBuildError> {
+    let steam = locate_steam_dir().map_err(|_| GameStepBuildError::SteamUnavailable)?;
+    let configs = configs_under(&steam).map_err(|_| GameStepBuildError::SteamUnavailable)?;
 
     let setups = discover_setups(user_games_dir);
     if setups.is_empty() {
-        return Err(anyhow!(
-            "no installed game has a gameready profile, so there is nothing for \
-             `{id}` to write"
-        ));
+        return Err(GameStepBuildError::NoGames { step: id.clone() });
     }
 
     if *id == SteamLaunchOptions::id_const() {

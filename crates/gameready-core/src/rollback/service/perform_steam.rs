@@ -5,7 +5,7 @@ use std::path::Path;
 use crate::exec::CommandRunner;
 use crate::improvement::Privilege;
 use crate::rollback::domain::UndoOutcome;
-use crate::steam::{restore_sections, PriorBlock, PriorSection};
+use crate::steam::{restore_sections, sections_match, PriorBlock, PriorSection};
 
 /// Puts back the keys a run set, leaving everything Steam wrote since.
 ///
@@ -34,6 +34,14 @@ pub(super) fn restore_steam_config(
         }
     };
 
+    // Restoring would rewrite the whole document even when there is nothing to
+    // change, so the recorded keys are checked first: an already-rolled-back
+    // file must not be rewritten just because its formatting no longer matches
+    // what this undo would render.
+    if sections_match(&current, sections).unwrap_or(false) {
+        return UndoOutcome::AlreadyGone;
+    }
+
     let restored = match restore_sections(&current, sections) {
         Ok(restored) => restored,
         Err(error) => {
@@ -43,9 +51,7 @@ pub(super) fn restore_steam_config(
         }
     };
 
-    // Nothing to put back means an earlier rollback of this run already did it,
-    // or Steam has since dropped the entries itself. Either way there is no
-    // change to make and no failure to report.
+    // Restoring the keys this file already holds is a no-op, not a failure.
     if restored == current {
         return UndoOutcome::AlreadyGone;
     }

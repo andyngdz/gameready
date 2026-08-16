@@ -13,22 +13,22 @@ fn config() -> String {
     indoc! {r#"
         "UserLocalConfigStore"
         {
-        	"Software"
-        	{
-        		"Valve"
-        		{
-        			"Steam"
-        			{
-        				"apps"
-        				{
-        					"1422450"
-        					{
-        						"LastPlayed"		"1785943212"
-        					}
-        				}
-        			}
-        		}
-        	}
+            "Software"
+            {
+                "Valve"
+                {
+                    "Steam"
+                    {
+                        "apps"
+                        {
+                            "1422450"
+                            {
+                                "LastPlayed"		"1785943212"
+                            }
+                        }
+                    }
+                }
+            }
         }
     "#}
     .to_owned()
@@ -130,6 +130,22 @@ fn undoing_twice_reports_nothing_left_rather_than_failing() {
     let second = restore_steam_config(&runner, Path::new(CONFIG), &sections);
 
     assert!(matches!(second, UndoOutcome::AlreadyGone), "{second:?}");
+}
+
+#[test]
+fn an_already_restored_file_is_not_rewritten_for_its_formatting() {
+    // A second pass over a correctly restored file has to leave it alone even
+    // when its layout differs from what this undo would render: the recorded
+    // keys already read back as recorded, so rewriting would churn a file
+    // Steam itself owns and writes.
+    let (_, sections) = applied("1422450");
+    let already = config();
+    let runner = MockRunner::new().with_file(CONFIG, &already);
+
+    let outcome = restore_steam_config(&runner, Path::new(CONFIG), &sections);
+
+    assert!(matches!(outcome, UndoOutcome::AlreadyGone), "{outcome:?}");
+    assert_eq!(runner.file(CONFIG).as_deref(), Some(already.as_str()));
 }
 
 #[test]

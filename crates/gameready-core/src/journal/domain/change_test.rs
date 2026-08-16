@@ -79,7 +79,6 @@ fn a_unit_is_undone_by_returning_it_to_its_prior_state() {
     let change = Change::SystemdUnit {
         unit: "tuned.service".to_owned(),
         was_enabled: false,
-        was_active: false,
     };
 
     assert_eq!(
@@ -96,7 +95,6 @@ fn a_unit_that_was_already_enabled_records_that_it_should_stay() {
     let change = Change::SystemdUnit {
         unit: "tuned.service".to_owned(),
         was_enabled: true,
-        was_active: true,
     };
 
     assert_eq!(
