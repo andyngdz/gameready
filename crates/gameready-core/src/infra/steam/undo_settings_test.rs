@@ -7,6 +7,7 @@ use crate::infra::exec::MockRunner;
 use crate::journal::{RunId, StatePaths, Undo};
 use crate::rollback::{PlannedUndo, UndoOutcome};
 use crate::steam::{PriorBlock, PriorScalar, PriorSection};
+use crate::steps::{SteamLaunchOptions, SteamProton};
 
 const CONFIG: &str = "/steam/config/config.vdf";
 

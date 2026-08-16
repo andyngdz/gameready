@@ -5,12 +5,10 @@ use gameready_core::exec::CommandRunner;
 use gameready_core::facts;
 use gameready_core::improvement::{CoreCx, CoreImprovement};
 use gameready_core::infra::pkg;
-use gameready_core::infra::steam::{is_running, shutdown, start};
 use gameready_core::journal::{Journal, RunId, StatePaths};
 use gameready_core::run::{selftest, RunStatus, StepSelftest};
 
 use crate::cli::commands::constants::CANNOT_READ_SYSTEM;
-use crate::cli::commands::game_steps::is_game_step;
 use crate::cli::escalation::Escalation;
 use crate::cli::ui::SelftestSummary;
 
@@ -21,9 +19,12 @@ use crate::cli::ui::SelftestSummary;
 /// sharing the host's kernel. `step` limits the run to one id, the same as
 /// `apply --step`.
 ///
-/// Every step runs, the two per-game ones included. Steam is quit first when
-/// one of those is in the list and Steam is up, which is the same thing `init`
-/// does to write the settings in the first place.
+/// Every step runs, the two per-game ones included, but Steam itself is left
+/// alone: a selftest is a frequent dev and CI tool, and closing a running game
+/// client every sweep would be a disruption out of proportion to what it
+/// proves. The per-game steps still apply and roll back against the real
+/// config files, and Steam only rewrites them when it exits, so a running
+/// Steam does not interfere with the test.
 ///
 /// `selected` is resolved by the caller rather than here, because resolving a
 /// per-game step means reading the real Steam installation. Taking the list as
@@ -45,20 +46,7 @@ pub fn run(
 
     let mut journal = Journal::open(paths, RunId::generate())?;
 
-    // Steam holds both config files in memory and writes them out when it
-    // exits, so a selftest of a Steam step against a running Steam would have
-    // its apply, its rollback, or both thrown away without a word.
-    let touches_steam = selected.iter().any(|step| is_game_step(&step.id()));
-    let steam_was_running = touches_steam && is_running(runner);
-    if steam_was_running {
-        shutdown(runner)?;
-    }
-
     let results = selftest(selected, &cx, runner, &mut journal);
-
-    if steam_was_running {
-        start(runner);
-    }
     let status = if results.iter().any(StepSelftest::is_failure) {
         RunStatus::StepFailed
     } else {
