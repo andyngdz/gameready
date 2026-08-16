@@ -179,7 +179,7 @@ it against the published sha256, and installs it to `~/.local/bin`. Read
 change what it does:
 
 ```bash
-GAMEREADY_VERSION=v0.2.5 sh -c "$(curl -fsSL https://andyngdz.github.io/gameready/install.sh)"
+GAMEREADY_VERSION=v0.2.6 sh -c "$(curl -fsSL https://andyngdz.github.io/gameready/install.sh)"
 GAMEREADY_INSTALL_DIR=/usr/local/bin sh -c "$(curl -fsSL https://andyngdz.github.io/gameready/install.sh)"
 ```
 
