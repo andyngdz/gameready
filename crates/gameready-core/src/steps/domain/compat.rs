@@ -1,7 +1,7 @@
 //! Turning a set of per-game Proton choices into one edited config.
 
 use crate::games::{AppId, ProtonChoice};
-use crate::steam::{set_block, SetResult, VdfError};
+use crate::steam::{capture_block, set_block, PriorSection, SetResult, VdfError};
 use crate::steps::constants::{
     COMPAT_CONFIG_KEY, COMPAT_GAME_PRIORITY, COMPAT_MACHINE_WIDE_APP_ID,
     COMPAT_MACHINE_WIDE_PRIORITY, COMPAT_MAPPING_PATH, COMPAT_NAME_KEY, COMPAT_PRIORITY_KEY,
@@ -156,11 +156,7 @@ pub fn apply_compat_targets(
     let mut replaced = Vec::new();
 
     for target in targets {
-        let mut path: Vec<String> = COMPAT_MAPPING_PATH
-            .iter()
-            .map(|part| (*part).to_owned())
-            .collect();
-        path.push(target.app_id.to_string());
+        let path = compat_section(target.app_id);
         let borrowed: Vec<&str> = path.iter().map(String::as_str).collect();
 
         // Steam writes all three keys for every entry it owns. Writing only the
@@ -185,6 +181,40 @@ pub fn apply_compat_targets(
         text: current,
         replaced,
     })
+}
+
+/// Where one game's compatibility entry sits in the config.
+#[must_use]
+pub fn compat_section(app_id: AppId) -> Vec<String> {
+    let mut path: Vec<String> = COMPAT_MAPPING_PATH
+        .iter()
+        .map(|part| (*part).to_owned())
+        .collect();
+    path.push(app_id.to_string());
+    path
+}
+
+/// What every target's entry held before the run wrote into it.
+///
+/// All three keys, because the run writes all three: putting back only the name
+/// would leave the priority gameready raised in place.
+pub fn capture_compat_targets(
+    text: &str,
+    targets: &[(CompatTarget, String)],
+) -> Result<Vec<PriorSection>, VdfError> {
+    targets
+        .iter()
+        .map(|(target, _)| {
+            let section = compat_section(target.app_id);
+            let borrowed: Vec<&str> = section.iter().map(String::as_str).collect();
+            let prior = capture_block(
+                text,
+                &borrowed,
+                &[COMPAT_NAME_KEY, COMPAT_CONFIG_KEY, COMPAT_PRIORITY_KEY],
+            )?;
+            Ok(PriorSection { section, prior })
+        })
+        .collect()
 }
 
 #[cfg(test)]

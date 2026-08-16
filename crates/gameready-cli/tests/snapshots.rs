@@ -115,8 +115,6 @@ fn seed_a_finished_run(state: &Path, home: &Path) {
             step: step.clone(),
             change: Change::FileWritten {
                 path: config,
-                existed: false,
-                backup: None,
                 sha256_after: digest(WROTE),
                 mode: 0o644,
                 privilege: Privilege::User,

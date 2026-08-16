@@ -167,8 +167,6 @@ impl CoreImprovement for CpuGovernor {
             cx.mutate(
                 Change::FileWritten {
                     path: rule.clone(),
-                    existed: false,
-                    backup: None,
                     sha256_after,
                     mode: 0o644,
                     privilege: Privilege::Root,
@@ -225,7 +223,7 @@ impl CoreImprovement for CpuGovernor {
                         .remove_file(path, Privilege::Root)
                         .map_err(StepError::Exec)?;
                 }
-                Change::FileRemoved { .. }
+                Change::SteamConfigWritten { .. }
                 | Change::SysctlRuntime { .. }
                 | Change::PackagesInstalled { .. }
                 | Change::SystemdUnit { .. }

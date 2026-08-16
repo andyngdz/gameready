@@ -132,8 +132,6 @@ impl CoreImprovement for MaxMapCount {
         cx.mutate(
             Change::FileWritten {
                 path: dropin.clone(),
-                existed: false,
-                backup: None,
                 sha256_after,
                 mode: 0o644,
                 privilege: Privilege::Root,
@@ -196,7 +194,7 @@ impl CoreImprovement for MaxMapCount {
                 // Listed rather than wildcarded: a new Change variant this
                 // step starts recording must fail to compile here rather than
                 // be silently skipped by rollback.
-                Change::FileRemoved { .. }
+                Change::SteamConfigWritten { .. }
                 | Change::SysfsWrite { .. }
                 | Change::PackagesInstalled { .. }
                 | Change::SystemdUnit { .. }

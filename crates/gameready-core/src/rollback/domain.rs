@@ -136,19 +136,6 @@ impl RollbackReport {
     }
 }
 
-/// Whether rollback may remove packages it installed.
-///
-/// Off by default. Uninstalling is not the inverse of installing: dependency
-/// cascades, leftover configuration, and other users of the package all differ
-/// from the original operation, so the user has to ask for it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PackagePolicy {
-    /// Report packages and leave them installed.
-    Keep,
-    /// Remove packages this run newly installed.
-    Purge,
-}
-
 #[cfg(test)]
 #[path = "domain_test.rs"]
 mod domain_test;

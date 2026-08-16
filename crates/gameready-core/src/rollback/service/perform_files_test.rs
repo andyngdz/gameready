@@ -35,39 +35,6 @@ fn a_file_already_gone_needs_no_undo() {
 }
 
 #[test]
-fn a_pre_image_is_copied_back_over_the_file_it_came_from() {
-    let backup = "/state/backups/01/localconfig.vdf";
-    let runner = MockRunner::new()
-        .with_file(backup, "original\n")
-        .with_file(DROPIN, "replaced\n");
-
-    let outcome = restore_file(
-        &runner,
-        Path::new(DROPIN),
-        Path::new(backup),
-        Privilege::User,
-    );
-
-    assert!(matches!(outcome, UndoOutcome::Reverted { .. }));
-    assert_eq!(runner.file(DROPIN).as_deref(), Some("original\n"));
-}
-
-#[test]
-fn a_missing_pre_image_fails_rather_than_reporting_a_revert() {
-    // Claiming the file was restored from a backup that is not there would tell
-    // the user their machine is back to normal when it is not.
-    let runner = MockRunner::new().with_file(DROPIN, "replaced\n");
-    let outcome = restore_file(
-        &runner,
-        Path::new(DROPIN),
-        Path::new("/state/backups/gone"),
-        Privilege::User,
-    );
-
-    assert!(matches!(outcome, UndoOutcome::Failed { .. }));
-}
-
-#[test]
 fn a_directory_tree_that_is_already_gone_needs_no_undo() {
     let runner = MockRunner::new();
     let outcome = remove_dir_tree(

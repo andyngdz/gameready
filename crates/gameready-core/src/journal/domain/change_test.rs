@@ -8,8 +8,6 @@ use crate::journal::PriorUnitState;
 fn a_file_we_created_is_undone_by_deleting_it() {
     let change = Change::FileWritten {
         path: PathBuf::from("/etc/sysctl.d/99-gameready.conf"),
-        existed: false,
-        backup: None,
         sha256_after: "abc123".to_owned(),
         mode: 0o644,
         privilege: Privilege::Root,
@@ -25,40 +23,13 @@ fn a_file_we_created_is_undone_by_deleting_it() {
             // The digest lets rollback refuse to clobber a file the user edited.
             assert_eq!(expect_sha256, "abc123");
         }
-        other @ (Undo::RestoreFile { .. }
+        other @ (Undo::RestoreSteamConfig { .. }
         | Undo::SetSysctl { .. }
         | Undo::WriteSysfs { .. }
         | Undo::ReportPackages { .. }
         | Undo::RestoreUnit { .. }
         | Undo::RemoveDirIfEmpty { .. }
         | Undo::RemoveDirTree { .. }) => panic!("expected a delete, got {other:?}"),
-    }
-}
-
-#[test]
-fn a_file_we_replaced_is_undone_by_restoring_its_pre_image() {
-    let change = Change::FileWritten {
-        path: PathBuf::from("/home/u/.steam/config/localconfig.vdf"),
-        existed: true,
-        backup: Some(PathBuf::from("/state/backups/1/localconfig.vdf")),
-        sha256_after: "def456".to_owned(),
-        mode: 0o600,
-        privilege: Privilege::Root,
-    };
-
-    match change.inverse() {
-        Undo::RestoreFile { from, mode, .. } => {
-            assert_eq!(from, PathBuf::from("/state/backups/1/localconfig.vdf"));
-            // Mode comes from the record, never from the backup file itself.
-            assert_eq!(mode, 0o600);
-        }
-        other @ (Undo::DeleteFile { .. }
-        | Undo::SetSysctl { .. }
-        | Undo::WriteSysfs { .. }
-        | Undo::ReportPackages { .. }
-        | Undo::RestoreUnit { .. }
-        | Undo::RemoveDirIfEmpty { .. }
-        | Undo::RemoveDirTree { .. }) => panic!("expected a restore, got {other:?}"),
     }
 }
 
@@ -94,7 +65,7 @@ fn installed_packages_are_reported_rather_than_removed() {
             assert_eq!(installed, ["mangohud"]);
         }
         other @ (Undo::DeleteFile { .. }
-        | Undo::RestoreFile { .. }
+        | Undo::RestoreSteamConfig { .. }
         | Undo::SetSysctl { .. }
         | Undo::WriteSysfs { .. }
         | Undo::RestoreUnit { .. }

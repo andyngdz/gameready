@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::improvement::Privilege;
+use crate::steam::PriorSection;
 
 use super::undo::{PriorUnitState, Undo};
 
@@ -43,15 +44,15 @@ pub fn digest(contents: &str) -> String {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Change {
-    /// A file gameready created. `/etc` files are only ever created, never
-    /// edited in place, so `existed: false` is the normal case and the undo is
-    /// a delete. The `existed: true` path exists for files outside `/etc`, such
-    /// as Steam config, where a pre-image is kept under `backups/`.
+    /// A file gameready created.
+    ///
+    /// Always a create, never an edit in place: the files this covers live
+    /// under `/etc` and belong to gameready alone, so the undo is a delete. A
+    /// file another program owns is recorded as
+    /// [`SteamConfigWritten`](Self::SteamConfigWritten) instead, because
+    /// putting a whole file back would undo that program's work as well.
     FileWritten {
         path: PathBuf,
-        existed: bool,
-        /// Pre-image location, present only when `existed` is true.
-        backup: Option<PathBuf>,
         /// Digest of what gameready wrote, so rollback can tell "unchanged
         /// since we wrote it" from "the user edited it afterwards".
         sha256_after: String,
@@ -65,13 +66,17 @@ pub enum Change {
         privilege: Privilege,
     },
 
-    /// A file gameready deleted, with its pre-image kept.
-    FileRemoved {
+    /// Scalars set inside a config file another program owns and rewrites.
+    ///
+    /// Recorded instead of a pre-image because Steam saves `localconfig.vdf`
+    /// and `config.vdf` every time it exits. Putting a whole file back would
+    /// undo the run and take everything the user changed in Steam since with
+    /// it, so the undo puts back only the keys the run wrote.
+    SteamConfigWritten {
         path: PathBuf,
-        backup: PathBuf,
-        mode: u32,
-        #[serde(default = "assumed_root")]
-        privilege: Privilege,
+        /// One entry per block the run wrote into, since a run sets several
+        /// games in a single write and the undo puts them back the same way.
+        sections: Vec<PriorSection>,
     },
 
     /// A kernel parameter set at runtime. Evaporates on reboot on its own; the
@@ -130,35 +135,18 @@ impl Change {
         match self {
             Self::FileWritten {
                 path,
-                existed,
-                backup,
                 sha256_after,
-                mode,
                 privilege,
-            } => match (existed, backup) {
-                (true, Some(backup)) => Undo::RestoreFile {
-                    path: path.clone(),
-                    from: backup.clone(),
-                    mode: *mode,
-                    privilege: *privilege,
-                },
-                _ => Undo::DeleteFile {
-                    path: path.clone(),
-                    expect_sha256: sha256_after.clone(),
-                    privilege: *privilege,
-                },
+                ..
+            } => Undo::DeleteFile {
+                path: path.clone(),
+                expect_sha256: sha256_after.clone(),
+                privilege: *privilege,
             },
 
-            Self::FileRemoved {
-                path,
-                backup,
-                mode,
-                privilege,
-            } => Undo::RestoreFile {
+            Self::SteamConfigWritten { path, sections } => Undo::RestoreSteamConfig {
                 path: path.clone(),
-                from: backup.clone(),
-                mode: *mode,
-                privilege: *privilege,
+                sections: sections.clone(),
             },
 
             Self::SysctlRuntime { key, previous } => Undo::SetSysctl {

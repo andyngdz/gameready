@@ -7,9 +7,6 @@ pub const STEAM_APPS_PATH: [&str; 5] =
 /// The key holding a game's launch options.
 pub const LAUNCH_OPTIONS_KEY: &str = "LaunchOptions";
 
-/// The name the pre-image of Steam's config is filed under in a run's backups.
-pub const LOCAL_CONFIG_BACKUP: &str = "localconfig.vdf";
-
 /// Where Steam records which Proton build runs which game, inside `config.vdf`.
 pub const COMPAT_MAPPING_PATH: [&str; 5] = [
     "InstallConfigStore",
@@ -52,9 +49,6 @@ pub const COMPAT_MACHINE_WIDE_APP_ID: u32 = 0;
 /// app and knows it by this name. Read off this machine's `appinfo.vdf`, which
 /// carries the same names for every Proton release.
 pub const PROTON_EXPERIMENTAL: &str = "proton_experimental";
-
-/// The name the pre-image of Steam's machine-wide config is filed under.
-pub const CONFIG_BACKUP: &str = "config.vdf";
 
 /// GitHub API endpoint for the latest Proton-GE release.
 pub const PROTON_GE_LATEST_URL: &str =

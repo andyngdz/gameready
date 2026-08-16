@@ -246,7 +246,7 @@ fn apply_records_dir_tree_installed() {
             assert_eq!(*privilege, Privilege::User);
         }
         other @ (Change::FileWritten { .. }
-        | Change::FileRemoved { .. }
+        | Change::SteamConfigWritten { .. }
         | Change::SysctlRuntime { .. }
         | Change::SysfsWrite { .. }
         | Change::PackagesInstalled { .. }

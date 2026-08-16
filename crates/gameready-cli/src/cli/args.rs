@@ -185,20 +185,13 @@ pub enum Command {
         /// Which run to undo. Defaults to the most recent.
         #[arg(long)]
         run: Option<String>,
-
-        /// Also remove packages the run installed.
-        ///
-        /// Off by default: uninstalling is not the inverse of installing, so
-        /// the dependency cascade is the user's call, not ours.
-        #[arg(long)]
-        purge_packages: bool,
     },
 
     /// Apply a step, verify it, roll it back, and verify it reverted.
     ///
-    /// The only way to prove a step that touches kernel state actually works,
-    /// since containers cannot write `/proc/sys` and CI cannot repoint a
-    /// scheduler.
+    /// The only way to prove a step that touches kernel state actually works.
+    /// An unprivileged container cannot write `/proc/sys` at all, and one that
+    /// can is sharing the host's kernel rather than a kernel of its own.
     Selftest {
         /// Test only this step, by id.
         #[arg(long)]

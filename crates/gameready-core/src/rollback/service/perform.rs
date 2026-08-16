@@ -5,19 +5,14 @@ use std::path::Path;
 use crate::exec::{Cmd, CommandRunner};
 use crate::improvement::Privilege;
 use crate::journal::{PriorUnitState, Undo};
-use crate::rollback::domain::{PackagePolicy, UndoOutcome};
-use crate::rollback::service::perform_files::{
-    delete_file, remove_dir, remove_dir_tree, restore_file,
-};
+use crate::rollback::domain::UndoOutcome;
+use crate::rollback::service::perform_files::{delete_file, remove_dir, remove_dir_tree};
+use crate::rollback::service::perform_steam::restore_steam_config;
 use crate::steps::SYSCTL_BIN;
 use crate::systemd::{DISABLE, NOW, RESTART, SYSTEMCTL};
 
 /// Reverses one recorded change.
-pub(super) fn perform(
-    undo: &Undo,
-    runner: &dyn CommandRunner,
-    packages: PackagePolicy,
-) -> UndoOutcome {
+pub(super) fn perform(undo: &Undo, runner: &dyn CommandRunner) -> UndoOutcome {
     match undo {
         Undo::DeleteFile {
             path,
@@ -25,18 +20,13 @@ pub(super) fn perform(
             privilege,
         } => delete_file(runner, path, expect_sha256, *privilege),
 
-        Undo::RestoreFile {
-            path,
-            from,
-            privilege,
-            ..
-        } => restore_file(runner, path, from, *privilege),
+        Undo::RestoreSteamConfig { path, sections } => restore_steam_config(runner, path, sections),
 
         Undo::SetSysctl { key, value } => set_sysctl(runner, key, value),
 
         Undo::WriteSysfs { path, value } => write_back(runner, path, value),
 
-        Undo::ReportPackages { installed, .. } => report_packages(installed, packages),
+        Undo::ReportPackages { installed, .. } => report_packages(installed),
 
         Undo::RestoreUnit { unit, prior } => restore_unit(runner, unit, *prior),
 
@@ -78,14 +68,9 @@ fn write_back(runner: &dyn CommandRunner, path: &Path, value: &str) -> UndoOutco
 /// Removing a package is not the inverse of installing one: dependency
 /// cascades, leftover configuration, and other users of the package all differ
 /// from the original operation.
-fn report_packages(installed: &[String], packages: PackagePolicy) -> UndoOutcome {
-    match packages {
-        PackagePolicy::Keep => UndoOutcome::Left {
-            reason: format!("left installed: {}", installed.join(", ")),
-        },
-        PackagePolicy::Purge => UndoOutcome::Left {
-            reason: "package removal is not implemented yet".to_owned(),
-        },
+fn report_packages(installed: &[String]) -> UndoOutcome {
+    UndoOutcome::Left {
+        reason: format!("left installed: {}", installed.join(", ")),
     }
 }
 

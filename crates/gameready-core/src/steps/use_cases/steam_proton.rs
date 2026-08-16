@@ -6,10 +6,12 @@ use crate::improvement::{
     ApplyCx, Check, CoreCx, CoreImprovement, Improvement, ImprovementId, PlannedAction, Privilege,
     Probe, StepError, StepPlan, Tag, Verification,
 };
-use crate::journal::{digest, Change};
-use crate::steps::constants::{CONFIG_BACKUP, NOT_SET};
-use crate::steps::domain::{apply_compat_targets, CompatEdited, CompatTarget};
-use crate::steps::use_cases::restore_backup::restore_from_backup;
+use crate::journal::Change;
+use crate::steps::constants::NOT_SET;
+use crate::steps::domain::{
+    apply_compat_targets, capture_compat_targets, CompatEdited, CompatTarget,
+};
+use crate::steps::use_cases::restore_steam_config::restore_steam_config;
 
 /// The label every row shows for this step. One constant because the
 /// terminal and the panel menu want the same words here.
@@ -21,9 +23,10 @@ const SHORT_NAME: &str = "Proton pin";
 /// so it is not part of `core_steps()`; `init` constructs it and runs it once
 /// the picker has answered.
 ///
-/// The whole file is backed up before it is touched. `config.vdf` holds the
-/// machine-wide Steam settings as well as this mapping, so a rollback that put
-/// back only the one entry could not put a mistake right.
+/// Only this game's mapping entry is recorded for undo, not a copy of the file.
+/// `config.vdf` holds the machine-wide Steam settings too, and Steam rewrites
+/// the whole file on exit, so a pre-image restore would undo far more than the
+/// run did.
 #[derive(Debug, Clone)]
 pub struct SteamProton {
     config: PathBuf,
@@ -82,8 +85,8 @@ impl Improvement for SteamProton {
         "A game that needs a particular Proton build needs it every time it \
          starts, and Steam's default is whatever it picks for itself. This sets \
          the same thing the Compatibility tab sets, from the profile that says \
-         which build the game wants. The whole config file is copied first, so \
-         undoing this puts back exactly what Steam had."
+         which build the game wants. Whatever the Compatibility tab said first \
+         is recorded, so undoing this puts that back and nothing else."
     }
 
     fn privilege(&self) -> Privilege {
@@ -146,27 +149,20 @@ impl CoreImprovement for SteamProton {
             return Ok(());
         }
 
-        // The pre-image goes down before the journal record, so the record never
-        // names a backup that is not on disk yet. Written owner-only: this file
-        // carries the account's stored credentials, and a copy of them is kept
-        // for every run in a directory nothing prunes.
-        let backup = cx.backup_dir().join(CONFIG_BACKUP);
-        cx.reader()
-            .write_private_file(&backup, &original)
-            .map_err(StepError::Exec)?;
+        // Read off the file as it stands, before the write, so the undo names
+        // values that were really there.
+        let sections = capture_compat_targets(&original, &edited.replaced)?;
 
         let config = self.config.clone();
         let text = edited.text;
         cx.mutate(
-            Change::FileWritten {
+            Change::SteamConfigWritten {
                 path: config.clone(),
-                existed: true,
-                backup: Some(backup),
-                sha256_after: digest(&text),
-                mode: 0o644,
-                privilege: Privilege::User,
+                sections,
             },
             |runner| {
+                // Written as the user: the file is in the user's home, and a
+                // root-owned copy stops Steam saving its own settings.
                 runner
                     .write_file(&config, &text, Privilege::User)
                     .map_err(StepError::Exec)
@@ -196,7 +192,7 @@ impl CoreImprovement for SteamProton {
     }
 
     fn rollback(&self, undo: &[Change], cx: &mut ApplyCx<'_, CoreCx<'_>>) -> Result<(), StepError> {
-        restore_from_backup(undo, cx)
+        restore_steam_config(undo, cx)
     }
 }
 

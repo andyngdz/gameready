@@ -175,7 +175,7 @@ fn apply_records_the_previous_value_so_rollback_can_restore_it() {
             assert_eq!(previous, KERNEL_DEFAULT);
         }
         other @ (Change::FileWritten { .. }
-        | Change::FileRemoved { .. }
+        | Change::SteamConfigWritten { .. }
         | Change::SysfsWrite { .. }
         | Change::PackagesInstalled { .. }
         | Change::SystemdUnit { .. }

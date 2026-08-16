@@ -15,7 +15,7 @@ Needs Rust 1.90 or newer.
 ```bash
 cargo test                                       # unit and snapshot tests
 cargo test --features docker-tests -- --ignored  # per-distro containers
-gameready selftest --all                         # real system, real rollback
+gameready selftest                               # real system, real rollback
 ```
 
 See [TESTING.md](TESTING.md) for what each layer covers.

@@ -16,7 +16,7 @@ mod io_scheduler_devices;
 mod memory_swappiness;
 mod memory_swappiness_state;
 mod proton_ge;
-mod restore_backup;
+mod restore_steam_config;
 mod steam_launch_options;
 mod steam_proton;
 mod sysctl_dropin;

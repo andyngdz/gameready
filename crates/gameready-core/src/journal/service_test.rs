@@ -56,7 +56,6 @@ fn opening_creates_the_directories_a_run_writes_into() {
     let _journal = Journal::open(state.clone(), run).expect("opens");
 
     assert!(state.runs().is_dir());
-    assert!(state.backups(run).is_dir());
     assert!(state.logs().is_dir());
 }
 
@@ -75,6 +74,66 @@ fn a_corrupt_line_stops_the_read_rather_than_being_skipped() {
     let journal_path = paths(&dir).journal();
     std::fs::create_dir_all(dir.path()).expect("dir");
     std::fs::write(&journal_path, "{\"not\": \"a record\"}\n").expect("write");
+
+    assert!(load(&journal_path).is_err());
+}
+
+/// Writes three records, then cuts the file mid-way through the third.
+fn journal_torn_after_two_records(dir: &TempDir) -> PathBuf {
+    let run = RunId::generate();
+    let mut journal = Journal::open(paths(dir), run).expect("opens");
+    let step = ImprovementId::from_static("core.sysctl.max-map-count");
+
+    for previous in ["1048576", "65530", "65531"] {
+        journal
+            .append(JournalEvent::Changed {
+                step: step.clone(),
+                change: Change::SysctlRuntime {
+                    key: "vm.max_map_count".to_owned(),
+                    previous: previous.to_owned(),
+                },
+            })
+            .expect("appends");
+    }
+
+    let journal_path = paths(dir).journal();
+    let whole = std::fs::read(&journal_path).expect("reads");
+    let third_line_starts = whole
+        .iter()
+        .enumerate()
+        .filter(|(_, byte)| **byte == b'\n')
+        .map(|(index, _)| index + 1)
+        .nth(1)
+        .expect("three records means two earlier newlines");
+    // Ten bytes into the third record: past its opening brace, nowhere near its
+    // terminating newline.
+    std::fs::write(&journal_path, &whole[..third_line_starts + 10]).expect("truncates");
+
+    journal_path
+}
+
+#[test]
+fn a_torn_last_line_keeps_every_record_written_before_it() {
+    // A process killed mid-append leaves an unterminated fragment. Failing the
+    // whole read would make every finished run in the file unrollbackable.
+    let dir = TempDir::new().expect("temp dir");
+    let journal_path = journal_torn_after_two_records(&dir);
+
+    let records = load(&journal_path).expect("the intact records still read");
+
+    assert_eq!(records.len(), 2);
+    assert_eq!(records[0].seq, 0);
+    assert_eq!(records[1].seq, 1);
+}
+
+#[test]
+fn a_torn_last_line_does_not_excuse_a_corrupt_line_before_it() {
+    // Only the unterminated tail is truncation. A bad line with records after
+    // it is a hole, and a hole still fails the read.
+    let dir = TempDir::new().expect("temp dir");
+    let journal_path = paths(&dir).journal();
+    std::fs::create_dir_all(dir.path()).expect("dir");
+    std::fs::write(&journal_path, "{\"not\": \"a record\"}\n{\"torn\"").expect("write");
 
     assert!(load(&journal_path).is_err());
 }

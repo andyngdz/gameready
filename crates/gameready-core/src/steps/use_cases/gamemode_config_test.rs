@@ -178,7 +178,7 @@ fn apply_writes_as_the_user_never_as_root() {
 
     match &recorded[0] {
         Change::FileWritten { privilege, .. } => assert_eq!(*privilege, Privilege::User),
-        other @ (Change::FileRemoved { .. }
+        other @ (Change::SteamConfigWritten { .. }
         | Change::SysctlRuntime { .. }
         | Change::SysfsWrite { .. }
         | Change::PackagesInstalled { .. }

@@ -23,9 +23,10 @@ pub struct SteamSettings {
 /// a word. It is stopped once for both files rather than once each: a user who
 /// agreed to close Steam agreed to close it, not to close it twice.
 ///
-/// Each step backs up the whole file it touches before writing, so
-/// `gameready rollback` puts back exactly what Steam had, including anything
-/// the user had set themselves.
+/// Each step records what the keys it writes held first, so
+/// `gameready rollback` puts those back and leaves everything else in the file
+/// alone. A pre-image of the whole file would undo Steam's own later writes
+/// along with gameready's.
 ///
 /// The paths are passed in rather than located here so this can be exercised
 /// against a fixture. Locating them needs a real Steam installation, and a test

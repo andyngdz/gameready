@@ -1,7 +1,6 @@
 use gameready_core::improvement::ImprovementId;
 use gameready_core::infra::exec::MockRunner;
 use gameready_core::journal::{Change, Journal, JournalEvent, RunId, StatePaths};
-use gameready_core::rollback::PackagePolicy;
 use tempfile::TempDir;
 
 use super::run;
@@ -31,14 +30,8 @@ fn an_empty_journal_is_reported_rather_than_treated_as_an_error_state() {
     let runner = MockRunner::new();
     let paths = StatePaths::new(dir.path().to_path_buf());
 
-    let error = run(
-        &runner,
-        paths,
-        None,
-        PackagePolicy::Keep,
-        Escalation::NotNeeded,
-    )
-    .expect_err("there is nothing to undo");
+    let error =
+        run(&runner, paths, None, Escalation::NotNeeded).expect_err("there is nothing to undo");
 
     assert!(error.to_string().contains("no runs"), "{error}");
 }
@@ -49,14 +42,7 @@ fn a_malformed_run_id_is_rejected_before_anything_runs() {
     let runner = MockRunner::new();
     let paths = StatePaths::new(dir.path().to_path_buf());
 
-    let error = run(
-        &runner,
-        paths,
-        Some("not-a-ulid"),
-        PackagePolicy::Keep,
-        Escalation::NotNeeded,
-    )
-    .expect_err("bad id");
+    let error = run(&runner, paths, Some("not-a-ulid"), Escalation::NotNeeded).expect_err("bad id");
 
     assert!(error.to_string().contains("not a run id"), "{error}");
     assert!(runner.commands().is_empty());
@@ -70,14 +56,7 @@ fn rollback_primes_before_the_first_privileged_command() {
     let recorder = PromptRecorder::new(&runner);
     let prompt = || recorder.answer();
 
-    run(
-        &runner,
-        paths,
-        None,
-        PackagePolicy::Keep,
-        Escalation::Ask(&prompt),
-    )
-    .expect("rollback runs");
+    run(&runner, paths, None, Escalation::Ask(&prompt)).expect("rollback runs");
 
     assert_eq!(recorder.times_asked(), 1, "the password is asked for once");
     assert!(
@@ -111,7 +90,6 @@ fn a_run_with_nothing_to_undo_does_not_ask_for_a_password() {
         &runner,
         paths,
         Some(&run_id.to_string()),
-        PackagePolicy::Keep,
         Escalation::Ask(&prompt),
     )
     .expect("the run resolves");
@@ -134,8 +112,6 @@ fn recorded_user_file_run(dir: &TempDir, file: &std::path::Path) -> StatePaths {
             step: ImprovementId::from_static("core.sysctl.max-map-count"),
             change: Change::FileWritten {
                 path: file.to_path_buf(),
-                existed: false,
-                backup: None,
                 sha256_after: gameready_core::journal::digest("wrote this"),
                 mode: 0o644,
                 privilege: gameready_core::improvement::Privilege::User,
@@ -160,14 +136,7 @@ fn undoing_a_run_that_only_touched_the_users_files_never_asks_for_a_password() {
         Ok(())
     };
 
-    run(
-        &runner,
-        paths,
-        None,
-        PackagePolicy::Keep,
-        Escalation::Ask(&prompt),
-    )
-    .expect("the rollback runs");
+    run(&runner, paths, None, Escalation::Ask(&prompt)).expect("the rollback runs");
 
     assert!(!asked.get(), "a user-owned file was undone behind a prompt");
 }

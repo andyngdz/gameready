@@ -15,11 +15,12 @@ pub use block_device::{
     ROTATIONAL_SCHEDULER, SSD_SCHEDULER,
 };
 pub use compat::{
-    apply_compat_targets, resolve_wishes, CompatEdited, CompatRank, CompatTarget, CompatWish,
+    apply_compat_targets, capture_compat_targets, resolve_wishes, CompatEdited, CompatRank,
+    CompatTarget, CompatWish,
 };
 pub use daemons::{CompetingDaemon, COMPETING_DAEMONS, GOVERNOR_DAEMONS};
 pub use gpu::{CacheSetting, DetectedGpu, GpuVendor};
-pub use launch::{apply_targets, Edited, LaunchTarget};
+pub use launch::{apply_targets, capture_targets, Edited, LaunchTarget};
 pub use proton_ge::{newest_ge_proton, parse_checksum, parse_release, ProtonRelease};
 pub use swap::{active_swap, parse_proc_swaps, primary_is_zram, ActiveSwap, SwapArea, SwapBacking};
 pub use tools::{GamingTool, GAMEMODE, GAMING_TOOLS};

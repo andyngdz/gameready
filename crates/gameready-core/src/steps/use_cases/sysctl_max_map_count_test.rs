@@ -156,7 +156,7 @@ fn apply_records_the_previous_value_so_rollback_can_restore_it() {
     match &recorded[1] {
         Change::SysctlRuntime { previous, .. } => assert_eq!(previous, DEFAULT_ON_THIS_MACHINE),
         other @ (Change::FileWritten { .. }
-        | Change::FileRemoved { .. }
+        | Change::SteamConfigWritten { .. }
         | Change::SysfsWrite { .. }
         | Change::PackagesInstalled { .. }
         | Change::SystemdUnit { .. }

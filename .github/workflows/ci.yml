@@ -42,12 +42,16 @@ jobs:
         include:
           - distro: arch
             image: archlinux:base-devel
+            setup: pacman -Sy --noconfirm --quiet sudo procps-ng
           - distro: ubuntu
             image: ubuntu:24.04
+            setup: apt-get update -qq && apt-get install -y -qq sudo procps
           - distro: debian
             image: debian:12
+            setup: apt-get update -qq && apt-get install -y -qq sudo procps
           - distro: fedora
             image: fedora:42
+            setup: dnf install -y -q sudo procps-ng
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
@@ -60,9 +64,31 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y musl-tools
       - name: Build static binary
         run: cargo build --release --target x86_64-unknown-linux-musl -p gameready-cli
-      - name: Run in ${{ matrix.distro }} container
+      # Read-only, so it runs unprivileged and needs nothing installed.
+      - name: Read the system on ${{ matrix.distro }}
         run: |
           docker run --rm \
             -v "$PWD/target/x86_64-unknown-linux-musl/release/gameready:/usr/local/bin/gameready:ro" \
             ${{ matrix.image }} \
             sh -c 'gameready doctor && gameready list-games'
+
+      # selftest applies each tuning, verifies it, rolls it back, and verifies
+      # it reverted. It is the only check that proves the undo half works, and
+      # it needs two things a stock image does not give it:
+      #
+      #   --privileged, because an unprivileged container mounts /proc/sys
+      #     read-only and `sysctl -w` there prints the new value and exits 0
+      #     while changing nothing. Without it the kernel steps cannot apply.
+      #   sudo, because gameready never runs as root: it stays as the invoking
+      #     user and escalates one command at a time, so it needs an escalator
+      #     on PATH even when that user is already root.
+      #
+      # A privileged container shares the runner's kernel, so this really does
+      # move vm.max_map_count on the host. selftest puts it back, which is the
+      # thing being tested, and the runner is thrown away either way.
+      - name: Apply and roll back on ${{ matrix.distro }}
+        run: |
+          docker run --rm --privileged \
+            -v "$PWD/target/x86_64-unknown-linux-musl/release/gameready:/usr/local/bin/gameready:ro" \
+            ${{ matrix.image }} \
+            sh -c '${{ matrix.setup }} >/dev/null 2>&1 && HOME=/root gameready selftest'

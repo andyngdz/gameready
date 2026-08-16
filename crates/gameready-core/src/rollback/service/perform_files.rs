@@ -82,32 +82,6 @@ fn managed_run(contents: &str) -> Option<&str> {
         .map(str::trim)
 }
 
-/// Puts a pre-image back.
-pub(super) fn restore_file(
-    runner: &dyn CommandRunner,
-    path: &Path,
-    from: &Path,
-    privilege: Privilege,
-) -> UndoOutcome {
-    let contents = match runner.read_to_string(from) {
-        Ok(contents) => contents,
-        Err(error) => {
-            return UndoOutcome::Failed {
-                error: error.to_string(),
-            };
-        }
-    };
-
-    match runner.write_file(path, &contents, privilege) {
-        Ok(()) => UndoOutcome::Reverted {
-            detail: format!("restored {}", path.display()),
-        },
-        Err(error) => UndoOutcome::Failed {
-            error: error.to_string(),
-        },
-    }
-}
-
 /// Recursively removes a directory tree gameready installed.
 pub(super) fn remove_dir_tree(
     runner: &dyn CommandRunner,

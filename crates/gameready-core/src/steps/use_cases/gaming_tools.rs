@@ -202,13 +202,13 @@ impl CoreImprovement for GamingTools {
                 // Removing a package is not the inverse of installing one:
                 // dependency cascades and other users of the same package make
                 // it a different operation with a wider blast radius. Rollback
-                // reports and leaves; `--purge-packages` opts into removal.
+                // reports what it installed and leaves it in place.
                 Change::PackagesInstalled { .. } => {}
                 // Listed rather than wildcarded, so a new change this step
                 // starts recording fails to compile here instead of being
                 // silently skipped by rollback.
                 Change::FileWritten { .. }
-                | Change::FileRemoved { .. }
+                | Change::SteamConfigWritten { .. }
                 | Change::SysctlRuntime { .. }
                 | Change::SysfsWrite { .. }
                 | Change::SystemdUnit { .. }
