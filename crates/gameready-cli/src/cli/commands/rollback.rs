@@ -34,6 +34,14 @@ pub fn run(
         ));
     }
 
+    // Shown before anything changes, so the user is deciding, not reviewing.
+    // Read back from the plan and the current machine, which is why the runner
+    // is needed here. Printed before the Steam question and the password
+    // prompt, each of which is its own chance to back out.
+    if console::user_attended_stderr() {
+        eprint!("{}", ui::preview(&undo_plan, runner));
+    }
+
     // Undoing a run that wrote into Steam's config means closing Steam, and
     // closing a running game client is the user's call, not the tool's: Steam
     // may be mid-download or running a game. Asked before the password prompt,

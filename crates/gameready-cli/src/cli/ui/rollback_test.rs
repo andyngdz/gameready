@@ -1,8 +1,12 @@
 use std::path::{Path, PathBuf};
 
 use gameready_core::improvement::ImprovementId;
+use gameready_core::infra::exec::MockRunner;
 use gameready_core::journal::{PriorUnitState, RunId, Undo};
-use gameready_core::rollback::{UndoOutcome, UndoReport};
+use gameready_core::rollback::{PlannedUndo, RollbackPlan, UndoOutcome, UndoReport};
+use gameready_core::steam::{PriorBlock, PriorScalar, PriorSection};
+use gameready_core::steps::SteamProton;
+use indoc::indoc;
 
 use super::*;
 
@@ -132,4 +136,112 @@ fn each_undo_reads_as_a_subject_and_what_became_of_it() {
     );
     assert!(text.contains("Remove them yourself"), "{text}");
     assert!(text.contains("2 reverted, 1 failed"), "{text}");
+}
+
+#[test]
+fn preview_reads_the_current_value_beside_what_it_will_restore_to() {
+    let runner = MockRunner::new().with_file("/proc/sys/vm/max_map_count", "2147483642\n");
+    let plan = RollbackPlan {
+        run: RunId::generate(),
+        undos: vec![PlannedUndo {
+            step: ImprovementId::from_static("core.sysctl.max-map-count"),
+            seq: 0,
+            undo: Undo::SetSysctl {
+                key: "vm.max_map_count".to_owned(),
+                value: "1048576".to_owned(),
+            },
+        }],
+    };
+
+    let text = preview(&plan, &runner);
+
+    assert!(text.contains("vm.max_map_count"), "{text}");
+    assert!(text.contains("2147483642 → 1048576"), "{text}");
+}
+
+#[test]
+fn preview_names_a_steam_block_and_its_current_value() {
+    let runner = MockRunner::new().with_file(
+        "/steam/config/config.vdf",
+        indoc! {r#"
+            "InstallConfigStore"
+            {
+                "Software"
+                {
+                    "Valve"
+                    {
+                        "Steam"
+                        {
+                            "CompatToolMapping"
+                            {
+                                "1422450"
+                                {
+                                    "name"        "GE-Proton11-5-x86_64"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        "#},
+    );
+    let plan = RollbackPlan {
+        run: RunId::generate(),
+        undos: vec![PlannedUndo {
+            step: SteamProton::id_const(),
+            seq: 0,
+            undo: Undo::RestoreSteamConfig {
+                path: "/steam/config/config.vdf".into(),
+                sections: vec![PriorSection {
+                    section: [
+                        "InstallConfigStore",
+                        "Software",
+                        "Valve",
+                        "Steam",
+                        "CompatToolMapping",
+                        "1422450",
+                    ]
+                    .iter()
+                    .map(|part| (*part).to_owned())
+                    .collect(),
+                    prior: PriorBlock::Present {
+                        entries: vec![PriorScalar {
+                            key: "name".to_owned(),
+                            value: Some("proton_experimental".to_owned()),
+                        }],
+                    },
+                }],
+            },
+        }],
+    };
+
+    let text = preview(&plan, &runner);
+
+    assert!(text.contains("Proton pin · 1422450"), "{text}");
+    assert!(
+        text.contains("GE-Proton11-5-x86_64 → proton_experimental"),
+        "{text}"
+    );
+}
+
+#[test]
+fn preview_that_cannot_read_a_value_shows_only_the_target() {
+    let runner = MockRunner::new();
+    let plan = RollbackPlan {
+        run: RunId::generate(),
+        undos: vec![PlannedUndo {
+            step: ImprovementId::from_static("core.sysctl.max-map-count"),
+            seq: 0,
+            undo: Undo::SetSysctl {
+                key: "vm.max_map_count".to_owned(),
+                value: "1048576".to_owned(),
+            },
+        }],
+    };
+
+    let text = preview(&plan, &runner);
+
+    assert!(text.contains("vm.max_map_count"), "{text}");
+    assert!(text.contains("→ 1048576"), "{text}");
+    assert!(!text.contains("2147483642"), "{text}");
 }

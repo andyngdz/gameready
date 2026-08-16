@@ -6,8 +6,12 @@ use std::path::Path;
 use anyhow::Result;
 use chrono::{DateTime, Local};
 use console::style;
-use gameready_core::journal::Undo;
-use gameready_core::rollback::{RollbackReport, UndoOutcome, UndoReport};
+use gameready_core::exec::CommandRunner;
+use gameready_core::journal::{PriorUnitState, Undo};
+use gameready_core::rollback::{
+    PlannedUndo, RollbackPlan, RollbackReport, UndoOutcome, UndoReport,
+};
+use gameready_core::steam::{capture_block, PriorBlock, PriorSection};
 
 use crate::cli::ui::layout::{Mark, ResultTable, Section};
 use crate::cli::ui::{theme, widest};
@@ -205,6 +209,184 @@ pub fn confirm_steam_close() -> Result<bool> {
     .one_of(vec!["Yes, close Steam and undo", "No, cancel rollback"])
     .prompt_skippable()?;
     Ok(choice == Some("Yes, close Steam and undo"))
+}
+
+/// Renders what a rollback will undo, shown before it happens.
+///
+/// The rollback report only appears afterwards, when the machine has already
+/// changed. Reading the plan first, and the current values it will overwrite
+/// where they can be read, turns the confirm into a decision rather than a
+/// review of something already done.
+pub fn preview(plan: &RollbackPlan, runner: &dyn CommandRunner) -> String {
+    let rows: Vec<PreviewRow> = plan
+        .undos
+        .iter()
+        .flat_map(|planned| preview_rows(planned, runner))
+        .collect();
+    if rows.is_empty() {
+        return String::new();
+    }
+
+    let subjects: Vec<String> = rows.iter().map(|row| row.subject.clone()).collect();
+    let column = widest(subjects.iter().map(String::as_str));
+
+    let mut out = String::new();
+    {
+        let mut s = Section::new(&mut out);
+        let _ = s.title("What will be undone");
+        let mut table = ResultTable::new(column);
+        for row in &rows {
+            table.row(Mark::Chosen, &row.subject, &row.evidence);
+        }
+        let _ = s.heading(&table.to_string());
+        let _ = s.blank();
+    }
+    out
+}
+
+/// One line of the rollback preview.
+struct PreviewRow {
+    /// What the undo touches, named for how a user talks about it.
+    subject: String,
+    /// What will happen, with the current value when it can be read.
+    evidence: String,
+}
+
+/// One undo becomes one or more preview rows.
+///
+/// A Steam undo carries several blocks, and each becomes its own row so a user
+/// picks out "Proton pin" from "Launch options" rather than reading a path.
+fn preview_rows(planned: &PlannedUndo, runner: &dyn CommandRunner) -> Vec<PreviewRow> {
+    let subject = |evidence: String| PreviewRow {
+        subject: planned.undo.subject(),
+        evidence,
+    };
+    match &planned.undo {
+        Undo::RestoreSteamConfig { path, sections } => sections
+            .iter()
+            .map(|section| steam_row(runner, path, section))
+            .collect(),
+
+        Undo::SetSysctl { key, value } => vec![subject(sysctl_arrow(runner, key, value))],
+
+        Undo::WriteSysfs { path, value } => {
+            vec![subject(arrow(
+                current(runner, path).as_deref(),
+                Some(value),
+            ))]
+        }
+
+        Undo::RestoreUnit { unit, prior } => {
+            let action = match prior {
+                PriorUnitState::WasEnabled => format!("restart {unit} on its own config"),
+                PriorUnitState::WasDisabled => format!("disable {unit}"),
+            };
+            vec![subject(action)]
+        }
+
+        Undo::ReportPackages { installed, .. } => {
+            vec![subject(format!("keep installed: {}", installed.join(", ")))]
+        }
+
+        Undo::DeleteFile { path, .. } | Undo::RemoveDirTree { path, .. } => {
+            vec![subject(format!("remove {}", path.display()))]
+        }
+
+        Undo::RemoveDirIfEmpty { path, .. } => {
+            vec![subject(format!("remove {} if it is empty", path.display()))]
+        }
+    }
+}
+
+/// One block a Steam undo restores, named and with its current value.
+fn steam_row(runner: &dyn CommandRunner, path: &Path, section: &PriorSection) -> PreviewRow {
+    let subject = match steam_app(&section.section) {
+        Some(id) => format!("{} · {id}", steam_label(section)),
+        None => steam_label(section).to_owned(),
+    };
+    let target = match &section.prior {
+        PriorBlock::Absent => None,
+        PriorBlock::Present { entries } => entries.first().and_then(|entry| entry.value.clone()),
+    };
+    PreviewRow {
+        subject,
+        evidence: arrow(
+            steam_current(runner, path, section).as_deref(),
+            target.as_deref(),
+        ),
+    }
+}
+
+/// The current value a recorded Steam key holds on disk, when it can be read.
+fn steam_current(
+    runner: &dyn CommandRunner,
+    path: &Path,
+    section: &PriorSection,
+) -> Option<String> {
+    let key = match &section.prior {
+        PriorBlock::Present { entries } => entries.first()?.key.as_str(),
+        PriorBlock::Absent => return None,
+    };
+    let text = runner.read_to_string(path).ok()?;
+    let visit: Vec<&str> = section.section.iter().map(String::as_str).collect();
+    match capture_block(&text, &visit, &[key]).ok()? {
+        PriorBlock::Present { entries } => entries.first().and_then(|entry| entry.value.clone()),
+        PriorBlock::Absent => None,
+    }
+}
+
+/// What a Steam block is, from the path it lives under.
+fn steam_label(section: &PriorSection) -> &'static str {
+    if section
+        .section
+        .iter()
+        .any(|part| part == "CompatToolMapping")
+    {
+        "Proton pin"
+    } else if section.section.iter().any(|part| part == "apps") {
+        "Launch options"
+    } else {
+        "Steam setting"
+    }
+}
+
+/// The app id a per-game block sits under, if any.
+fn steam_app(section: &[String]) -> Option<&str> {
+    let last = section.last()?;
+    (!last.is_empty() && last.chars().all(|char| char.is_ascii_digit())).then_some(last.as_str())
+}
+
+/// Whether a sysctl key currently reads back, as a readable value.
+fn sysctl_arrow(runner: &dyn CommandRunner, key: &str, target: &str) -> String {
+    let path = Path::new("/proc/sys").join(key.replace('.', "/"));
+    arrow(current(runner, &path).as_deref(), Some(target))
+}
+
+/// A file's current contents trimmed to one line, when they can be read.
+fn current(runner: &dyn CommandRunner, path: &Path) -> Option<String> {
+    runner
+        .read_to_string(path)
+        .ok()
+        .map(|text| text.trim().to_owned())
+}
+
+/// `<current> → <target>`, or just `→ <target>` when the current value cannot
+/// be read. "(empty)" stands for a value that is absent or blank.
+fn arrow(current: Option<&str>, target: Option<&str>) -> String {
+    let target = target.map_or_else(|| "(empty)".to_owned(), shown);
+    match current {
+        Some(current) => format!("{} → {target}", shown(current)),
+        None => format!("→ {target}"),
+    }
+}
+
+/// A value as it reads on a line: an empty string shows as "(empty)".
+fn shown(value: &str) -> String {
+    if value.is_empty() {
+        "(empty)".to_owned()
+    } else {
+        value.to_owned()
+    }
 }
 
 #[cfg(test)]
