@@ -4,7 +4,6 @@ use crate::exec::CommandRunner;
 use crate::infra::steam::process::{is_running, shutdown, start};
 use crate::journal::Journal;
 use crate::rollback::{execute, RollbackError, RollbackPlan, RollbackReport};
-use crate::steps::{SteamLaunchOptions, SteamProton};
 
 /// Reverses a run, quitting Steam first when the run changed a file Steam owns.
 ///
@@ -15,13 +14,15 @@ use crate::steps::{SteamLaunchOptions, SteamProton};
 ///
 /// Steam is left as it was found. A run that never touched Steam does not close
 /// it, and a Steam that was not running when the rollback started is not opened
-/// at the end.
+/// at the end. Whether closing Steam is allowed is the caller's decision: the
+/// CLI asks the user before this is reached, so a rollback never closes a
+/// running game client on its own.
 pub fn undo_with_steam_closed(
     plan: &RollbackPlan,
     runner: &dyn CommandRunner,
     journal: &mut Journal,
 ) -> Result<RollbackReport, RollbackError> {
-    if !touches_steam_config(plan) {
+    if !plan.touches_steam() {
         return execute(plan, runner, journal);
     }
 
@@ -35,20 +36,6 @@ pub fn undo_with_steam_closed(
         start(runner);
     }
     report
-}
-
-/// Whether the plan puts back a file Steam holds in memory.
-///
-/// Decided from the step rather than from the path. A step id is the journal key
-/// and never changes, while the two config files sit wherever the user installed
-/// Steam, and that same directory also holds things Steam only reads at startup,
-/// such as an installed Proton build. Closing a running game client to undo one
-/// of those would be worse than the bug this avoids.
-fn touches_steam_config(plan: &RollbackPlan) -> bool {
-    let owners = [SteamLaunchOptions::id_const(), SteamProton::id_const()];
-    plan.undos
-        .iter()
-        .any(|planned| owners.contains(&planned.step))
 }
 
 #[cfg(test)]

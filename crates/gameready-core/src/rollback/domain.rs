@@ -2,6 +2,7 @@
 
 use crate::improvement::{ImprovementId, Privilege};
 use crate::journal::{RunId, Undo};
+use crate::steps::{SteamLaunchOptions, SteamProton};
 
 /// One recorded change, paired with the step that made it.
 ///
@@ -49,6 +50,22 @@ impl RollbackPlan {
         self.undos
             .iter()
             .any(|planned| planned.undo.privilege() == Privilege::Root)
+    }
+
+    /// Whether undoing this run rewrites a config file Steam holds in memory.
+    ///
+    /// The two Steam steps restore keys inside `localconfig.vdf` and
+    /// `config.vdf`, which Steam writes out when it exits, so the restore only
+    /// sticks while Steam is stopped. Decided from the step rather than from
+    /// the path: the two files sit wherever Steam is installed, and that same
+    /// directory also holds things Steam only reads at startup, such as an
+    /// installed Proton build.
+    #[must_use]
+    pub fn touches_steam(&self) -> bool {
+        let owners = [SteamLaunchOptions::id_const(), SteamProton::id_const()];
+        self.undos
+            .iter()
+            .any(|planned| owners.contains(&planned.step))
     }
 }
 

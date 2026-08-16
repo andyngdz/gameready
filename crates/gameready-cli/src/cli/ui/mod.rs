@@ -75,7 +75,7 @@ pub use progress::ProgressView;
 pub use prompt::choose_games;
 pub use proton_choice::{choose_proton_pin, ProtonPin};
 pub use questions::{Picker, Questions};
-pub use rollback::RollbackSummary;
+pub use rollback::{confirm_steam_close, RollbackSummary};
 pub use selftest::SelftestSummary;
 pub use steps::Steps;
 pub use summary::Summary;

@@ -1,6 +1,7 @@
 use gameready_core::improvement::ImprovementId;
 use gameready_core::infra::exec::MockRunner;
 use gameready_core::journal::{Change, Journal, JournalEvent, RunId, StatePaths};
+use gameready_core::run::RunStatus;
 use tempfile::TempDir;
 
 use super::run;
@@ -139,4 +140,38 @@ fn undoing_a_run_that_only_touched_the_users_files_never_asks_for_a_password() {
     run(&runner, paths, None, Escalation::Ask(&prompt)).expect("the rollback runs");
 
     assert!(!asked.get(), "a user-owned file was undone behind a prompt");
+}
+
+#[test]
+fn closing_steam_for_a_rollback_is_asked_about_before_anything_runs() {
+    // Undoing a Steam run closes the client, and closing a running game client
+    // is the user's call. A test has no attended terminal, so the confirmation
+    // answers no and the rollback must not touch Steam at all.
+    let dir = TempDir::new().expect("temp dir");
+    let paths = StatePaths::new(dir.path().to_path_buf());
+    let mut journal = Journal::open(paths.clone(), RunId::generate()).expect("journal opens");
+    journal
+        .append(JournalEvent::Changed {
+            step: ImprovementId::from_static("game.steam.launch-options"),
+            change: Change::SteamConfigWritten {
+                path: "/steam/config/localconfig.vdf".into(),
+                sections: Vec::new(),
+            },
+        })
+        .expect("appends");
+
+    let runner = MockRunner::new().answering("pgrep -x steam", "12345\n");
+
+    let (status, text) = run(&runner, paths, None, Escalation::NotNeeded).expect("rollback runs");
+
+    assert_eq!(status, RunStatus::Clean);
+    assert!(text.contains("Nothing undone"), "{text}");
+    assert!(
+        !runner
+            .commands()
+            .iter()
+            .any(|command| command.contains("-shutdown")),
+        "{:?}",
+        runner.commands()
+    );
 }

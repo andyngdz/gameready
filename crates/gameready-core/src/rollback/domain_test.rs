@@ -112,3 +112,40 @@ fn reporting_packages_is_not_a_system_change() {
 
     assert!(!plan.needs_root());
 }
+
+#[test]
+fn a_plan_that_restores_steam_config_has_to_close_steam() {
+    let plan = RollbackPlan {
+        run: crate::journal::RunId::generate(),
+        undos: vec![
+            PlannedUndo {
+                step: SteamLaunchOptions::id_const(),
+                seq: 2,
+                undo: Undo::RestoreSteamConfig {
+                    path: "/steam/config/localconfig.vdf".into(),
+                    sections: Vec::new(),
+                },
+            },
+            PlannedUndo {
+                step: SteamProton::id_const(),
+                seq: 1,
+                undo: Undo::RestoreSteamConfig {
+                    path: "/steam/config/config.vdf".into(),
+                    sections: Vec::new(),
+                },
+            },
+        ],
+    };
+
+    assert!(plan.touches_steam());
+}
+
+#[test]
+fn a_plan_without_a_steam_step_leaves_steam_alone() {
+    let plan = plan_of(vec![Undo::SetSysctl {
+        key: "vm.max_map_count".to_owned(),
+        value: "65530".to_owned(),
+    }]);
+
+    assert!(!plan.touches_steam());
+}

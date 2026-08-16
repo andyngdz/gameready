@@ -3,13 +3,14 @@
 use std::fmt;
 use std::path::Path;
 
+use anyhow::Result;
 use chrono::{DateTime, Local};
 use console::style;
 use gameready_core::journal::Undo;
 use gameready_core::rollback::{RollbackReport, UndoOutcome, UndoReport};
 
 use crate::cli::ui::layout::{Mark, ResultTable, Section};
-use crate::cli::ui::widest;
+use crate::cli::ui::{theme, widest};
 
 /// A rollback report paired with where its journal lives, ready to print.
 ///
@@ -180,6 +181,30 @@ fn join_and(names: &[&str]) -> String {
         [only] => (*only).to_owned(),
         [rest @ .., last] => format!("{} and {last}", rest.join(", ")),
     }
+}
+
+/// Asks whether a rollback may close Steam.
+///
+/// The Steam steps restore keys inside files Steam holds in memory and writes
+/// out when it exits, so the restore only sticks while Steam is stopped, and
+/// closing a running game client is the user's call: Steam may be mid-download
+/// or running a game. Steam is reopened when the rollback finishes.
+///
+/// Anything short of an explicit yes answers no, including a terminal that
+/// cannot ask. An unattended rollback must never close Steam on its own.
+pub fn confirm_steam_close() -> Result<bool> {
+    if !console::user_attended_stderr() {
+        return Ok(false);
+    }
+    let choice = theme::Asked::new(
+        "Undoing this run has to close Steam",
+        "It rewrites files Steam holds in memory, so the undo only sticks while \
+         Steam is stopped. Steam is reopened when the rollback finishes.",
+        "up down move · enter choose · esc cancels",
+    )
+    .one_of(vec!["Yes, close Steam and undo", "No, cancel rollback"])
+    .prompt_skippable()?;
+    Ok(choice == Some("Yes, close Steam and undo"))
 }
 
 #[cfg(test)]

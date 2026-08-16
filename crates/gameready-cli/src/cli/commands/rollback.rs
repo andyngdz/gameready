@@ -6,7 +6,7 @@ use gameready_core::journal::{self, Journal, RunId, StatePaths};
 
 use crate::cli::escalation::Escalation;
 use crate::cli::ui;
-use gameready_core::infra::steam::undo_with_steam_closed;
+use gameready_core::infra::steam::{is_running, undo_with_steam_closed};
 use gameready_core::rollback::{latest_run, plan, RollbackError};
 use gameready_core::run::RunStatus;
 
@@ -31,6 +31,19 @@ pub fn run(
         return Ok((
             RunStatus::Clean,
             format!("\nRun {target} recorded no changes to undo.\n"),
+        ));
+    }
+
+    // Undoing a run that wrote into Steam's config means closing Steam, and
+    // closing a running game client is the user's call, not the tool's: Steam
+    // may be mid-download or running a game. Asked before the password prompt,
+    // so a No never triggers one, and only when Steam is actually up.
+    if undo_plan.touches_steam() && is_running(runner) && !ui::confirm_steam_close()? {
+        return Ok((
+            RunStatus::Clean,
+            "\nNothing undone. Close Steam yourself, then run \
+             `gameready rollback` again.\n"
+                .to_owned(),
         ));
     }
 
