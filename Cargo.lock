@@ -892,7 +892,7 @@ dependencies = [
 
 [[package]]
 name = "gameready-cli"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -920,7 +920,7 @@ dependencies = [
 
 [[package]]
 name = "gameready-core"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "directories",
  "indoc",
@@ -946,7 +946,7 @@ dependencies = [
 
 [[package]]
 name = "gameready-tray"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "directories",
  "gameready-core",
