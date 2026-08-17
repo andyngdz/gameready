@@ -27,6 +27,7 @@ indicatif.workspace = true
 inquire.workspace = true
 itertools.workspace = true
 terminal_size.workspace = true
+thiserror.workspace = true
 tracing.workspace = true
 tracing-appender.workspace = true
 tracing-subscriber.workspace = true

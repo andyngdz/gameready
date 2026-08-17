@@ -4,8 +4,8 @@ use tempfile::TempDir;
 
 use super::run;
 use crate::cli::commands::prompt_recorder::PromptRecorder;
-use crate::cli::commands::selection::select_steps;
 use crate::cli::escalation::Escalation;
+use crate::features::select_steps;
 
 #[test]
 fn a_step_that_applies_and_reverts_cleanly_passes() {

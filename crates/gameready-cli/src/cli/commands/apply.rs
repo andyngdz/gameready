@@ -4,7 +4,7 @@ use anyhow::{Context as _, Result};
 use gameready_core::facts;
 
 use crate::cli::commands::constants::{CANNOT_OPEN_JOURNAL, CANNOT_READ_SYSTEM};
-use crate::cli::commands::selection::select_steps;
+use crate::features::select_steps;
 use gameready_core::exec::CommandRunner;
 use gameready_core::improvement::CoreCx;
 use gameready_core::infra::pkg;
