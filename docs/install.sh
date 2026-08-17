@@ -116,12 +116,8 @@ if [ -z "${GAMEREADY_NO_TRAY:-}" ]; then
 	fetch_verified gameready-tray-linux-x86_64
 	install_into 755 "$workdir/gameready-tray-linux-x86_64" "$INSTALL_DIR/gameready-tray"
 
-	# The entry and its icon are not checksummed: they are text and an SVG, and
-	# the binary they point at is the one that had to be verified.
-	curl -fsSL -o "$workdir/gameready-tray.desktop" "$download_base/gameready-tray.desktop" ||
-		die "desktop entry missing: $download_base/gameready-tray.desktop"
-	curl -fsSL -o "$workdir/gameready.svg" "$download_base/gameready.svg" ||
-		die "icon missing: $download_base/gameready.svg"
+	fetch_verified gameready-tray.desktop
+	fetch_verified gameready.svg
 
 	# Absolute path rather than a bare name: a login session starts autostart
 	# entries with its own PATH, which usually does not carry ~/.local/bin. The

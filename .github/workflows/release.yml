@@ -45,6 +45,8 @@ jobs:
           # can put the tray on the bar the way the packages do.
           cp pkg/gameready-tray.desktop .
           cp crates/gameready-tray/assets/gameready.svg .
+          sha256sum gameready-tray.desktop > gameready-tray.desktop.sha256
+          sha256sum gameready.svg > gameready.svg.sha256
 
       - name: Create release
         env:
@@ -57,4 +59,6 @@ jobs:
             gameready-tray-linux-x86_64 \
             gameready-tray-linux-x86_64.sha256 \
             gameready-tray.desktop \
-            gameready.svg
+            gameready-tray.desktop.sha256 \
+            gameready.svg \
+            gameready.svg.sha256
