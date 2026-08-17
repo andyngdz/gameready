@@ -5,11 +5,9 @@ mod apply;
 mod constants;
 mod doctor;
 mod explain;
-mod game_steps;
 pub(crate) mod init;
 mod list_games;
 mod rollback;
-mod selection;
 mod selftest;
 
 /// Shared by the command tests that assert the password prompt came before the
@@ -24,5 +22,4 @@ pub use explain::run as explain;
 pub use init::{run as init, InitRequest};
 pub use list_games::run as list_games;
 pub use rollback::run as rollback;
-pub use selection::select_steps_including_games;
 pub use selftest::run as selftest;

@@ -10,6 +10,13 @@ stutter, and frame-time hitches. For the GPU it raises the shader cache so games
 stop recompiling shaders mid-run, and adds an in-game FPS and GPU monitor. Every
 change is reversible.
 
+## Before you run it
+
+This is a personal tool. I built it for my own setup and verify it on my machine
+(Ubuntu 26.04 LTS, kernel 7.0.0-29-generic); I make no promise about any other.
+It changes system settings and asks for root, so run it only if you trust it
+after reading what it does. If you do not, please do not use it.
+
 ## What it fixes
 
 | What it fixes | Tuning | How |
@@ -17,19 +24,29 @@ change is reversible.
 | **Graphics & shaders** | Shader cache | Raises the GPU's shader cache ceiling so games stop recompiling shaders, the classic mid-game stutter |
 | | FPS + GPU monitor | Installs mangohud so you can see FPS, GPU and CPU usage, temperatures, and frame times in game |
 | | Proton-GE | Ships a newer Vulkan stack (DXVK, vkd3d-proton) so Windows games run with fewer graphics issues |
-| **CPU** | CPU speed | Keeps the CPU at full speed while you play |
+| **CPU** | GameMode boost | Runs each game through `gamemoderun`. While the game plays, GameMode raises its priority and can switch the CPU to the `performance` governor, then restores both when the game exits |
+| | CPU governor fallback | Only for machines without GameMode. Holds the whole CPU at the `performance` governor; wears off at the next reboot unless you choose to keep it |
 | | Split-lock | Disables a CPU penalty that crawls some games |
-| | Game boost | Raises game priority and CPU speed while the game runs, then restores |
 | **Memory & storage** | Memory map limit | Raises the kernel's memory-map limit so memory-hungry games start instead of crashing on launch |
 | | Memory latency | Retunes the memory manager for low latency instead of server throughput |
 | | Swap | Uses zram for swap instead of starving RAM |
 | | I/O scheduler | Matches each disk to the right I/O scheduler, fewer hitches |
 | **Steam & Proton** | Launch options | Adds the boost and overlay to each game's launch |
 | | Proton version | Pins each game to the Proton build its profile asks for |
-| | Conflict check | Tells you if a power daemon is fighting the boost |
+| | Conflict check | Checks for daemons that can overwrite GameMode's priority or governor changes |
 
-`gameready init` applies the gamemode boost to every game you pick, and uses a
-tuned profile (launch options, Proton version) where one exists.
+`gameready init` runs every game you pick through `gamemoderun` and applies a
+tuned profile (launch options, Proton version) where one exists. GameMode
+changes the CPU only while a game runs and puts it back on exit. Raising game
+priority needs your user in the `gamemode` group: gameready shows you the one
+command to join it, and it takes effect after your next login.
+
+The CPU governor fallback is the blunt alternative for machines without
+GameMode. It pins the whole system at full speed whether or not a game is
+running, so gameready reaches for it only when GameMode is absent. By default it
+lasts until the next reboot and leaves no file behind; choose to keep it and it
+writes a rule that re-applies on every boot.
+
 `gameready explain` lists every tuning and what it would do on your machine.
 
 ## It won't touch

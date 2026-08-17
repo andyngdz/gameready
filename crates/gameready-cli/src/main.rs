@@ -6,6 +6,7 @@
 #![cfg_attr(test, allow(clippy::expect_used, clippy::unwrap_used, clippy::panic))]
 
 mod cli;
+pub(crate) mod features;
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -91,7 +92,7 @@ fn carry_out(
 
         Command::Selftest { step } => {
             let games = user_games_dir(cli.games_dir.clone())?;
-            let selected = cli::commands::select_steps_including_games(step.as_deref(), &games)?;
+            let selected = features::select_steps_including_games(step.as_deref(), &games)?;
             cli::commands::selftest(runner, paths, selected, escalation)
         }
     }
