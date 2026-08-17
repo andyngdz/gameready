@@ -40,7 +40,7 @@ tool could see or remove them, because the undo variants went with the code.
 They were deleted by hand. No cleanup path was added to `doctor`, so anyone
 who ran gameready 0.2.4 or older with scx applied still has both files.
 
-Live machine (andy, Ubuntu PPA stack) at removal time:
+Live machine (redacted user, Ubuntu PPA stack) at removal time:
 - `scxctl` is NOT installed. `scx.service` runs `/usr/sbin/scx_lavd` via the
   gameready drop-in `/etc/systemd/system/scx.service.d/10-gameready.conf`
   (`SCX_SCHEDULER_OVERRIDE=/usr/sbin/scx_lavd`).
