@@ -10,6 +10,13 @@ stutter, and frame-time hitches. For the GPU it raises the shader cache so games
 stop recompiling shaders mid-run, and adds an in-game FPS and GPU monitor. Every
 change is reversible.
 
+## Before you run it
+
+This is a personal tool. I built it for my own setup and verify it on my machine
+(Ubuntu 26.04 LTS, kernel 7.0.0-29-generic); I make no promise about any other.
+It changes system settings and asks for root, so run it only if you trust it
+after reading what it does. If you do not, please do not use it.
+
 ## What it fixes
 
 | What it fixes | Tuning | How |
