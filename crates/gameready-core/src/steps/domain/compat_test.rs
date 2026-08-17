@@ -181,8 +181,9 @@ fn the_machine_wide_entry_keeps_the_rank_steam_files_it_under() {
         &installed(&["GE-Proton11-5-x86_64"]),
     );
 
-    assert_eq!(targets[0].rank, CompatRank::MachineWide);
-    assert_eq!(targets[0].rank.priority(), "75");
+    let machine_wide_target = &targets[0];
+    assert_eq!(machine_wide_target.rank, CompatRank::MachineWide);
+    assert_eq!(machine_wide_target.rank.priority(), "75");
     assert_eq!(CompatRank::Game.priority(), "250");
 }
 
